@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'GearCore',
   description: 'El núcleo operativo de tu taller',
