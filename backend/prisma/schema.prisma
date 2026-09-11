@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum RolUsuario {
+  ADMINISTRADOR
+  RECEPCIONISTA
+  MECANICO
+}
+
+enum EstadoOT {
+  RECIBIDO
+  DIAGNOSTICO
+  COTIZACION
+  APROBADO
+  EN_REPARACION
+  CONTROL_CALIDAD
+  ENTREGADO
+}
+
+model Perfil {
+  id       String     @id
+  nombre   String
+  email    String     @unique
+  rol      RolUsuario @default(MECANICO)
+  activo   Boolean    @default(true)
+  creadoEn DateTime   @default(now())
+
+  ordenesAsignadas OrdenTrabajo[] @relation("MecanicoAsignado")
+
+  @@map("perfiles")
+}
+
+model Cliente {
+  id        String   @id @default(uuid())
+  nombre    String
+  rut       String   @unique
+  telefono  String?
+  email     String?
+  creadoEn  DateTime @default(now())
+
+  vehiculos Vehiculo[]
+}
+
+model Vehiculo {
+  id          String   @id @default(uuid())
+  patente     String   @unique
+  vin         String?
+  marca       String
+  modelo      String
+  anio        Int?
+  kilometraje Int?
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id])
+  creadoEn    DateTime @default(now())
+
+  ordenes OrdenTrabajo[]
+}
+
+model OrdenTrabajo {
+  id             String    @id @default(uuid())
+  vehiculoId     String
+  vehiculo       Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  mecanicoId     String?
+  mecanico       Perfil?   @relation("MecanicoAsignado", fields: [mecanicoId], references: [id])
+  fallaReportada String
+  estado         EstadoOT  @default(RECIBIDO)
+  horasHombre    Float     @default(0)
+  fechaRecepcion DateTime  @default(now())
+  fechaEntrega   DateTime?
+  creadoEn       DateTime  @default(now())
+
+  detalleRepuestos DetalleOTRepuesto[]
+}
+
+model Repuesto {
+  id           String   @id @default(uuid())
+  codigo       String   @unique
+  nombre       String
+  stock        Int      @default(0)
+  stockMinimo  Int      @default(5)
+  precioCompra Float
+  precioVenta  Float
+  creadoEn     DateTime @default(now())
+
+  usosEnOT DetalleOTRepuesto[]
+}
+
+model DetalleOTRepuesto {
+  id             String       @id @default(uuid())
+  ordenId        String
+  orden          OrdenTrabajo @relation(fields: [ordenId], references: [id])
+  repuestoId     String
+  repuesto       Repuesto     @relation(fields: [repuestoId], references: [id])
+  cantidad       Int
+  precioUnitario Float
+}
