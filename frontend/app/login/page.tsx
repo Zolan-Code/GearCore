@@ -11,8 +11,10 @@ interface ToastState {
 }
 
 export default function LoginPage() {
+  const [view, setView] = useState<'login' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -25,46 +27,7 @@ export default function LoginPage() {
     }, 4500);
   }
 
-  async function handleForgotPassword(e: React.MouseEvent) {
-    e.preventDefault();
-
-    if (!email.trim()) {
-      triggerToast(
-        'Recuperación de contraseña',
-        'Escribe tu correo en el formulario para enviarte el enlace o contacta al administrador.',
-        '🔑',
-      );
-      return;
-    }
-
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/login`,
-      });
-
-      if (resetError) {
-        triggerToast(
-          'Aviso de recuperación',
-          'No se pudo enviar el correo automático. Contacta al administrador del taller.',
-          '⚠️',
-        );
-      } else {
-        triggerToast(
-          'Correo enviado',
-          `Enviamos las instrucciones a ${email.trim()}. Revisa tu bandeja de entrada.`,
-          '📬',
-        );
-      }
-    } catch {
-      triggerToast(
-        'Aviso de recuperación',
-        'Contacta al administrador del taller para restablecer tus credenciales.',
-        'ℹ️',
-      );
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -72,7 +35,7 @@ export default function LoginPage() {
 
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
@@ -86,6 +49,36 @@ export default function LoginPage() {
       window.location.href = '/';
     } catch (err: any) {
       setError(err?.message || 'Ocurrió un error inesperado al iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!email.trim()) {
+      setError('Por favor ingresa tu correo electrónico.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/login`,
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setSuccess(`Enlace enviado a ${email.trim()}. Revisa tu bandeja de entrada.`);
+        triggerToast('Correo enviado', 'Instrucciones enviadas correctamente a tu correo.', '📬');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo enviar el correo de recuperación.');
     } finally {
       setLoading(false);
     }
@@ -130,51 +123,170 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Columna Derecha: Card de Login */}
+      {/* Columna Derecha: Card interactiva */}
       <div className={styles.formSide}>
         <div className={styles.card}>
-          <h2 className={styles.cardTitle}>Iniciar Sesión</h2>
+          {view === 'login' ? (
+            /* Vista 1: Iniciar Sesión */
+            <>
+              <h2 className={styles.cardTitle}>Iniciar Sesión</h2>
 
-          <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Correo electrónico</label>
-              <input
-                type="email"
-                placeholder="Ingresa tu correo"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={styles.input}
-                required
-              />
-            </div>
+              <form onSubmit={handleLoginSubmit} className={styles.form}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label}>Correo electrónico</label>
+                  <input
+                    type="email"
+                    placeholder="Ingresa tu correo"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={styles.input}
+                    required
+                  />
+                </div>
 
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Contraseña</label>
-              <input
-                type="password"
-                placeholder="Ingresa tu contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={styles.input}
-                required
-              />
-            </div>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label}>Contraseña</label>
+                  <div className={styles.passwordWrapper}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Ingresa tu contraseña"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={`${styles.input} ${styles.passwordInput}`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={styles.eyeBtn}
+                      title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showPassword ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-            <a
-              href="#recuperar"
-              onClick={handleForgotPassword}
-              className={styles.forgotLink}
-            >
-              ¿Olvidaste tu contraseña?
-            </a>
+                <a
+                  href="#recuperar"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setError(null);
+                    setSuccess(null);
+                    setView('reset');
+                  }}
+                  className={styles.forgotLink}
+                >
+                  ¿Olvidaste tu contraseña?
+                </a>
 
-            {error && <div className={styles.errorBanner}>{error}</div>}
-            {success && <div className={styles.successBanner}>{success}</div>}
+                {error && <div className={styles.errorBanner}>{error}</div>}
+                {success && <div className={styles.successBanner}>{success}</div>}
 
-            <button type="submit" disabled={loading} className={styles.submitBtn}>
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </button>
-          </form>
+                <button type="submit" disabled={loading} className={styles.submitBtn}>
+                  {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                </button>
+              </form>
+
+              {/* Accesos rápidos provisorios para pruebas */}
+              <div className={styles.demoBox}>
+                <div className={styles.demoTitle}>
+                  <span>Accesos rápidos (Pruebas)</span>
+                  <span>Clave: Password123!</span>
+                </div>
+                <div className={styles.demoButtons}>
+                  <button
+                    type="button"
+                    className={styles.demoBtn}
+                    onClick={() => {
+                      setEmail('admin@gearcore.cl');
+                      setPassword('Password123!');
+                    }}
+                    title="Clic para autocompletar"
+                  >
+                    <span><strong>Admin:</strong> admin@gearcore.cl</span>
+                    <span className={styles.demoBadge}>ADMIN</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.demoBtn}
+                    onClick={() => {
+                      setEmail('recepcion@gearcore.cl');
+                      setPassword('Password123!');
+                    }}
+                    title="Clic para autocompletar"
+                  >
+                    <span><strong>Recepción:</strong> recepcion@gearcore.cl</span>
+                    <span className={styles.demoBadge}>RECEPCIÓN</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.demoBtn}
+                    onClick={() => {
+                      setEmail('mecanico@gearcore.cl');
+                      setPassword('Password123!');
+                    }}
+                    title="Clic para autocompletar"
+                  >
+                    <span><strong>Mecánico:</strong> mecanico@gearcore.cl</span>
+                    <span className={styles.demoBadge}>MECÁNICO</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Vista 2: Recuperar Contraseña */
+            <>
+              <h2 className={styles.cardTitle}>Recuperar Contraseña</h2>
+              <p className={styles.cardSubtitle}>
+                Ingresa tu correo para recibir un enlace de restablecimiento.
+              </p>
+
+              <form onSubmit={handleResetSubmit} className={styles.form}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label}>Correo electrónico</label>
+                  <input
+                    type="email"
+                    placeholder="Ingresa tu correo"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={styles.input}
+                    required
+                  />
+                </div>
+
+                {error && <div className={styles.errorBanner}>{error}</div>}
+                {success && <div className={styles.successBanner}>{success}</div>}
+
+                <button type="submit" disabled={loading} className={styles.submitBtn}>
+                  {loading ? 'Enviando enlace...' : 'Enviar Enlace'}
+                </button>
+
+                <a
+                  href="#login"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setError(null);
+                    setSuccess(null);
+                    setView('login');
+                  }}
+                  className={styles.backLink}
+                >
+                  ← Volver a Iniciar Sesión
+                </a>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
