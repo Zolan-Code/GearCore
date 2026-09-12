@@ -75,7 +75,7 @@ export default function LoginPage() {
         setError(resetError.message);
       } else {
         setSuccess(`Enlace enviado a ${email.trim()}. Revisa tu bandeja de entrada.`);
-        triggerToast('Correo enviado', 'Instrucciones enviadas correctamente a tu correo.', '📬');
+        triggerToast('Correo enviado', 'Instrucciones enviadas correctamente a tu correo.', '✓');
       }
     } catch (err: any) {
       setError(err?.message || 'No se pudo enviar el correo de recuperación.');

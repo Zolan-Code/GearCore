@@ -1,8 +1,339 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import styles from './page.module.css';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  nombre?: string;
+  rol?: string;
+}
+
 export default function HomePage() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'general' | 'mision' | 'politicas'>('general');
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const authUser = data.session.user;
+      setUser({
+        id: authUser.id,
+        email: authUser.email || '',
+        nombre: authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
+        rol: authUser.user_metadata?.rol || 'USUARIO',
+      });
+      setLoading(false);
+    }
+
+    loadUser();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+        <p style={{ color: '#64748b' }}>Cargando panel de GearCore...</p>
+      </div>
+    );
+  }
+
+  const initialLetter = (user?.nombre || user?.email || 'U').charAt(0).toUpperCase();
+
   return (
-    <main style={{ padding: 40, fontFamily: 'sans-serif' }}>
-      <h1>GearCore</h1>
-      <p>Plantilla base. Los módulos (Clientes, Vehículos, OT, Inventario...) se agregan aquí.</p>
-    </main>
+    <div className={styles.layout}>
+      {/* Barra Lateral Izquierda (Sidebar) */}
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarTop}>
+          <div className={styles.brand}>
+            <img src="/assets/logo.png" alt="GearCore" className={styles.brandLogo} />
+            <div className={styles.brandText}>
+              <h3>GearCore</h3>
+              <p>ERP Taller Mecánico</p>
+            </div>
+          </div>
+
+          <ul className={styles.navList}>
+            <li>
+              <button type="button" className={`${styles.navItem} ${styles.navItemActive}`}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  <span>Dashboard</span>
+                </span>
+                <span className={styles.activeDot} />
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.navItem}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  <span>Gestión de Clientes y Vehículos</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.navItem}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                  <span>Ordenes de Trabajo(OT)</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.navItem}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m7.5 4.27 9 5.15" />
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                    <path d="m3.3 7 8.7 5 8.7-5" />
+                    <path d="M12 22V12" />
+                  </svg>
+                  <span>Inventario de Repuestos</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.navItem}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <span>Cotizaciones y Facturación</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.navItem}>
+                <span className={styles.navItemContent}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span>Usuarios, Roles y Seguridad</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div className={styles.sidebarFooter}>
+          <button type="button" className={styles.navItem}>
+            <span className={styles.navItemContent}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <span>Mi Perfil</span>
+            </span>
+          </button>
+          <button type="button" onClick={handleLogout} className={styles.logoutBtn} title="Cerrar sesión">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Área Principal de Contenido */}
+      <main className={styles.mainContent}>
+        {/* Banner Superior de Bienvenida */}
+        <section className={styles.headerBanner}>
+          <div className={styles.userInfo}>
+            <div className={styles.avatarBox}>{initialLetter}</div>
+            <div>
+              <h2 className={styles.welcomeTitle}>Bienvenido, {user?.nombre || 'Usuario'}</h2>
+              <p className={styles.userRoleSubtitle}>{user?.email}</p>
+
+              <div className={styles.metaGrid}>
+                <div className={styles.metaItem}>
+                  <span>ID Usuario</span>
+                  <strong>{user?.id.slice(0, 8)}...</strong>
+                </div>
+                <div className={styles.metaItem}>
+                  <span>Rol Activo</span>
+                  <strong>{user?.rol}</strong>
+                </div>
+                <div className={styles.metaItem}>
+                  <span>Estado</span>
+                  <strong style={{ color: '#10b981' }}>En Línea</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Cuadrícula de 4 Tarjetas de Resumen (Estructura Base) */}
+        <section className={styles.cardsGrid}>
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h4>Jornada / Horas</h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <div className={styles.cardBody}>
+              <div className={styles.statRow}>
+                <span>Entrada</span>
+                <strong>08:30 AM</strong>
+              </div>
+              <div className={styles.statRow}>
+                <span>Horas hoy</span>
+                <strong>--:--</strong>
+              </div>
+            </div>
+            <button type="button" className={styles.cardAction}>Registrar Marca</button>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h4>Órdenes Pendientes</h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              </svg>
+            </div>
+            <div className={styles.cardBody}>
+              <div className={styles.statRow}>
+                <span>En Recepción</span>
+                <strong>0</strong>
+              </div>
+              <div className={styles.statRow}>
+                <span>En Taller</span>
+                <strong>0</strong>
+              </div>
+            </div>
+            <button type="button" className={styles.cardAction}>Ver Órdenes</button>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h4>Alertas e Inventario</h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </div>
+            <div className={styles.cardBody}>
+              <div className={styles.statRow}>
+                <span>Stock Crítico</span>
+                <strong>0</strong>
+              </div>
+              <div className={styles.statRow}>
+                <span>Notificaciones</span>
+                <strong>0</strong>
+              </div>
+            </div>
+            <button type="button" className={styles.cardAction}>Ver Alertas</button>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h4>Accesos Rápidos</h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            <div className={styles.cardBody}>
+              <div className={styles.statRow}>
+                <span>Recepción Rápida</span>
+                <strong>+</strong>
+              </div>
+              <div className={styles.statRow}>
+                <span>Nueva OT</span>
+                <strong>+</strong>
+              </div>
+            </div>
+            <button type="button" className={styles.cardAction}>Nuevo Registro</button>
+          </div>
+        </section>
+
+        {/* Sección Inferior de Estructura / Información */}
+        <section className={styles.bottomSection}>
+          <div className={styles.tabPills}>
+            <button
+              type="button"
+              className={`${styles.tabPill} ${activeTab === 'general' ? styles.tabPillActive : ''}`}
+              onClick={() => setActiveTab('general')}
+            >
+              General
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabPill} ${activeTab === 'mision' ? styles.tabPillActive : ''}`}
+              onClick={() => setActiveTab('mision')}
+            >
+              Misión
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabPill} ${activeTab === 'politicas' ? styles.tabPillActive : ''}`}
+              onClick={() => setActiveTab('politicas')}
+            >
+              Políticas del Taller
+            </button>
+          </div>
+
+          <div className={styles.infoCard}>
+            {activeTab === 'general' && (
+              <div>
+                <h5>Plantilla Base Operativa</h5>
+                <p>
+                  Esta es la estructura visual del ERP lista para albergar los módulos de negocio.
+                </p>
+              </div>
+            )}
+            {activeTab === 'mision' && (
+              <div>
+                <h5>Misión Operativa</h5>
+                <p>
+                  Optimizar y digitalizar el flujo de trabajo de talleres mecánicos independientes,
+                  garantizando trazabilidad técnica, control de repuestos y satisfacción del cliente.
+                </p>
+              </div>
+            )}
+            {activeTab === 'politicas' && (
+              <div>
+                <h5>Políticas de Servicio y Calidad</h5>
+                <p>
+                  Control de calidad obligatorio antes de la entrega de cada vehículo, registro
+                  de horas hombre por mecánico e informe de diagnóstico documentado.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
