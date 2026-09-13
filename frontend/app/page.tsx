@@ -212,8 +212,15 @@ export default function HomePage() {
 
               <div className={styles.metaGrid}>
                 <div className={styles.metaItem}>
-                  <span>ID Usuario</span>
-                  <strong>{user?.id.slice(0, 8)}...</strong>
+                  <span>Fecha</span>
+                  <strong style={{ textTransform: 'capitalize' }}>
+                    {new Date().toLocaleDateString('es-CL', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </strong>
                 </div>
                 <div className={styles.metaItem}>
                   <span>Rol Activo</span>
