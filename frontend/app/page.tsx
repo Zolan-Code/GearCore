@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import styles from './page.module.css';
 import ClientesVehiculosView from './components/ClientesVehiculosView';
+import OrdenesTrabajoView from './components/OrdenesTrabajoView';
 
 interface UserProfile {
   id: string;
@@ -235,9 +236,11 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Contenido Condicional: Dashboard o Gestión de Clientes y Vehículos */}
+        {/* Contenido Condicional: Dashboard, Clientes y Vehículos, u Órdenes de Trabajo */}
         {activeSection === 'clientes-vehiculos' ? (
           <ClientesVehiculosView userRole={userRole} />
+        ) : activeSection === 'ordenes-trabajo' ? (
+          <OrdenesTrabajoView userRole={userRole} />
         ) : (
           <>
             {/* Cuadrícula de 4 Tarjetas de Resumen (Estructura Base) */}
@@ -281,7 +284,13 @@ export default function HomePage() {
                     <strong>0</strong>
                   </div>
                 </div>
-                <button type="button" className={styles.cardAction}>Ver Órdenes</button>
+                <button
+                  type="button"
+                  className={styles.cardAction}
+                  onClick={() => setActiveSection('ordenes-trabajo')}
+                >
+                  Ver Órdenes
+                </button>
               </div>
 
               <div className={styles.card}>
@@ -334,7 +343,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     className={styles.cardAction}
-                    onClick={() => setActiveSection('dashboard')}
+                    onClick={() => setActiveSection('ordenes-trabajo')}
                   >
                     Ver Órdenes Asignadas
                   </button>

@@ -64,17 +64,29 @@ model Vehiculo {
 }
 
 model OrdenTrabajo {
-  id             String    @id @default(uuid())
-  vehiculoId     String
-  vehiculo       Vehiculo  @relation(fields: [vehiculoId], references: [id])
-  mecanicoId     String?
-  mecanico       Perfil?   @relation("MecanicoAsignado", fields: [mecanicoId], references: [id])
-  fallaReportada String
-  estado         EstadoOT  @default(RECIBIDO)
-  horasHombre    Float     @default(0)
-  fechaRecepcion DateTime  @default(now())
-  fechaEntrega   DateTime?
-  creadoEn       DateTime  @default(now())
+  id                    String    @id @default(uuid())
+  vehiculoId            String
+  vehiculo              Vehiculo  @relation(fields: [vehiculoId], references: [id])
+  mecanicoId            String?
+  mecanico              Perfil?   @relation("MecanicoAsignado", fields: [mecanicoId], references: [id])
+  fallaReportada        String
+  estado                EstadoOT  @default(RECIBIDO)
+  horasHombre           Float     @default(0)
+  fechaRecepcion        DateTime  @default(now())
+  fechaEntrega          DateTime?
+  
+  // Checklist de recepción (SCRUM-11)
+  nivelCombustible      String?
+  rayonesCarroceria     String?
+  elementosValor        String?
+  kilometrajeRecepcion  Int?
+
+  // Diagnóstico técnico y fotos (SCRUM-13, SCRUM-19)
+  diagnostico           String?
+  trabajoRealizado      String?
+  fotosDiagnostico      String[]  @default([])
+
+  creadoEn              DateTime  @default(now())
 
   detalleRepuestos DetalleOTRepuesto[]
 }
