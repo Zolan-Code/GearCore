@@ -9,6 +9,7 @@ import {
   validarPatenteChilena,
   formatearPatente,
 } from '../../lib/validators';
+import VehiclePhoto from './VehiclePhoto';
 
 interface Cliente {
   id: string;
@@ -76,6 +77,25 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skipSearchRef = useRef(false);
+  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Cerrar menú al hacer clic fuera del buscador
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchWrapperRef.current &&
+        !searchWrapperRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (userRole === 'MECANICO') {
     return (
@@ -188,6 +208,12 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
       clearTimeout(searchTimeoutRef.current);
     }
 
+    // Si la búsqueda fue generada por una selección de vehículo, no volver a disparar el dropdown
+    if (skipSearchRef.current) {
+      skipSearchRef.current = false;
+      return;
+    }
+
     const term = searchTerm.trim();
     if (term.length < 2) {
       setSuggestions([]);
@@ -217,8 +243,10 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
   // Seleccionar vehículo y cargar su historial de OTs (SCRUM-17)
   async function handleSelectVehiculo(vehiculo: Vehiculo) {
+    skipSearchRef.current = true;
     setSelectedVehiculo(vehiculo);
     setShowDropdown(false);
+    setSuggestions([]);
     setSearchTerm(vehiculo.patente);
     setLoadingHistory(true);
 
@@ -355,7 +383,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     <div className={styles.container}>
       {/* Barra de Búsqueda y Acciones */}
       <div className={styles.toolbar}>
-        <div className={styles.searchWrapper}>
+        <div className={styles.searchWrapper} ref={searchWrapperRef}>
           <span className={styles.searchIcon}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
@@ -367,9 +395,12 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
             className={styles.searchInput}
             placeholder="Buscar vehículo por patente (autocompletado, ej: BBCL10)..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              skipSearchRef.current = false;
+              setSearchTerm(e.target.value);
+            }}
             onFocus={() => {
-              if (suggestions.length > 0) setShowDropdown(true);
+              if (suggestions.length > 0 && !selectedVehiculo) setShowDropdown(true);
             }}
           />
           {searchTerm && (
@@ -478,6 +509,14 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                   {selectedVehiculo.cliente?.rut})
                 </p>
               </div>
+            </div>
+
+            {/* Foto de referencia automotriz real (Wikipedia) */}
+            <div className={styles.vehicleRenderWrapper}>
+              <VehiclePhoto
+                marca={selectedVehiculo.marca}
+                modelo={selectedVehiculo.modelo}
+              />
             </div>
 
             <button

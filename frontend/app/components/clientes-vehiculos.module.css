@@ -235,6 +235,30 @@
   color: #64748b;
 }
 
+/* Render del vehículo estilo Uber */
+.vehicleRenderWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 140px;
+  max-width: 240px;
+  height: 85px;
+  margin: 0 auto;
+}
+
+.vehicleRenderImg {
+  max-width: 100%;
+  max-height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.1));
+  transition: transform 0.25s ease;
+}
+
+.vehicleRenderImg:hover {
+  transform: scale(1.08);
+}
+
 .specsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
