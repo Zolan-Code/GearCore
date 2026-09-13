@@ -440,6 +440,31 @@
   box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.03);
 }
 
+.clientSearchWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin-top: 14px;
+}
+
+.clientSearchInput {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.clientSearchInput:focus {
+  background: #ffffff;
+  border-color: #1e1b4b;
+  box-shadow: 0 0 0 3px rgba(30, 27, 75, 0.08);
+}
+
 .clientsTable {
   width: 100%;
   border-collapse: collapse;
@@ -484,6 +509,89 @@
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 10px;
+}
+
+.clientLinkBtn {
+  background: transparent;
+  border: none;
+  color: #1e1b4b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+
+.clientLinkBtn:hover {
+  color: #2563eb;
+  text-decoration-color: #2563eb;
+}
+
+.clientVehicleList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.clientVehicleCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.clientVehicleCard:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.clientVehicleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clientVehicleTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clientVehicleMeta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.btnViewVehicle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e1b4b;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btnViewVehicle:hover {
+  background: #2e2870;
 }
 
 /* Modal */

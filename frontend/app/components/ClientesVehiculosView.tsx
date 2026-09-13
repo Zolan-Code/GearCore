@@ -131,21 +131,55 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [vehiculoSuccess, setVehiculoSuccess] = useState<string | null>(null);
   const [savingVehiculo, setSavingVehiculo] = useState(false);
 
+  // Buscador de clientes
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const clientSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Ficha de detalle de cliente y sus vehículos (Modal)
+  const [selectedClienteModal, setSelectedClienteModal] = useState<Cliente | null>(null);
+  const [loadingClienteModal, setLoadingClienteModal] = useState(false);
+  const [showClienteDetailModal, setShowClienteDetailModal] = useState(false);
+
+  async function handleOpenClienteModal(clienteId: string) {
+    setShowClienteDetailModal(true);
+    setLoadingClienteModal(true);
+    setSelectedClienteModal(null);
+    try {
+      const data = await fetchWithAuth<Cliente>(`/clientes/${clienteId}`);
+      setSelectedClienteModal(data);
+    } catch (err) {
+      console.error('Error cargando ficha de cliente:', err);
+    } finally {
+      setLoadingClienteModal(false);
+    }
+  }
+
   // Cargar lista inicial de clientes
   useEffect(() => {
     cargarClientes();
   }, []);
 
-  async function cargarClientes() {
+  async function cargarClientes(filtro?: string) {
     setLoadingClientes(true);
     try {
-      const data = await fetchWithAuth<Cliente[]>('/clientes');
+      const query = filtro && filtro.trim() ? `?q=${encodeURIComponent(filtro.trim())}` : '';
+      const data = await fetchWithAuth<Cliente[]>(`/clientes${query}`);
       setClientes(data || []);
     } catch (err: any) {
       console.error('Error cargando clientes:', err);
     } finally {
       setLoadingClientes(false);
     }
+  }
+
+  function handleClientSearchChange(term: string) {
+    setClientSearchTerm(term);
+    if (clientSearchTimeoutRef.current) {
+      clearTimeout(clientSearchTimeoutRef.current);
+    }
+    clientSearchTimeoutRef.current = setTimeout(() => {
+      cargarClientes(term);
+    }, 250);
   }
 
   // Autocompletado de patente predictivo (SCRUM-16)
@@ -585,9 +619,36 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           </h4>
         </div>
 
+        {/* Buscador de Clientes en Tiempo Real */}
+        <div className={styles.clientSearchWrapper}>
+          <span className={styles.searchIcon}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            className={styles.clientSearchInput}
+            placeholder="Filtrar clientes por nombre, RUT o correo..."
+            value={clientSearchTerm}
+            onChange={(e) => handleClientSearchChange(e.target.value)}
+          />
+          {clientSearchTerm && (
+            <button
+              type="button"
+              className={styles.searchClear}
+              onClick={() => handleClientSearchChange('')}
+              title="Limpiar filtro"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         {loadingClientes ? (
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>
-            Cargando clientes...
+            Buscando clientes...
           </p>
         ) : clientes.length > 0 ? (
           <div style={{ overflowX: 'auto' }}>
@@ -605,7 +666,14 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 {clientes.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <strong>{c.nombre}</strong>
+                      <button
+                        type="button"
+                        className={styles.clientLinkBtn}
+                        onClick={() => handleOpenClienteModal(c.id)}
+                        title="Ver ficha y vehículos del cliente"
+                      >
+                        {c.nombre}
+                      </button>
                     </td>
                     <td>
                       <span className={styles.rutBadge}>{c.rut}</span>
@@ -613,9 +681,16 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                     <td>{c.telefono || '—'}</td>
                     <td>{c.email || '—'}</td>
                     <td>
-                      <span className={styles.vehicleCountPill}>
-                        {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
-                      </span>
+                      <button
+                        type="button"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={() => handleOpenClienteModal(c.id)}
+                        title="Ver vehículos del cliente"
+                      >
+                        <span className={styles.vehicleCountPill}>
+                          {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
+                        </span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -916,6 +991,131 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ficha y Vehículos del Cliente */}
+      {showClienteDetailModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: '620px' }}>
+            <div className={styles.modalHeader}>
+              <h3>Ficha del Cliente</h3>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => setShowClienteDetailModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingClienteModal ? (
+              <p style={{ fontSize: '13px', color: '#64748b', padding: '16px 0' }}>
+                Cargando información del cliente...
+              </p>
+            ) : selectedClienteModal ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '18px', color: '#0f172a', fontWeight: '700' }}>
+                      {selectedClienteModal.nombre}
+                    </h4>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                      Cliente registrado el {new Date(selectedClienteModal.creadoEn).toLocaleDateString('es-CL')}
+                    </p>
+                  </div>
+                  <span className={styles.rutBadge} style={{ fontSize: '13px', padding: '4px 8px' }}>
+                    {selectedClienteModal.rut}
+                  </span>
+                </div>
+
+                <div className={styles.specsGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <div className={styles.specItem}>
+                    <span>Teléfono</span>
+                    <strong>{selectedClienteModal.telefono || 'No registrado'}</strong>
+                  </div>
+                  <div className={styles.specItem}>
+                    <span>Correo Electrónico</span>
+                    <strong>{selectedClienteModal.email || 'No registrado'}</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <div className={styles.sectionHeader} style={{ marginBottom: '8px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                      Vehículos Asociados ({selectedClienteModal.vehiculos?.length || 0})
+                    </h4>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      style={{ padding: '5px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        setShowClienteDetailModal(false);
+                        setFormVehiculo({
+                          ...formVehiculo,
+                          clienteId: selectedClienteModal.id,
+                        });
+                        setShowModalVehiculo(true);
+                      }}
+                    >
+                      + Asociar Vehículo
+                    </button>
+                  </div>
+
+                  {selectedClienteModal.vehiculos && selectedClienteModal.vehiculos.length > 0 ? (
+                    <div className={styles.clientVehicleList}>
+                      {selectedClienteModal.vehiculos.map((v) => (
+                        <div key={v.id} className={styles.clientVehicleCard}>
+                          <div className={styles.clientVehicleInfo}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className={styles.patentePlateMini}>{v.patente}</span>
+                              <span className={styles.clientVehicleTitle}>
+                                {v.marca} {v.modelo}
+                              </span>
+                            </div>
+                            <span className={styles.clientVehicleMeta}>
+                              Año: {v.anio || '—'} • {v.kilometraje ? `${v.kilometraje.toLocaleString()} km` : 'Sin km'} {v.vin ? `• VIN: ${v.vin}` : ''}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.btnViewVehicle}
+                            onClick={() => {
+                              setShowClienteDetailModal(false);
+                              handleSelectVehiculo(v);
+                            }}
+                          >
+                            <span>Ver Historial OT</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState} style={{ padding: '20px', marginTop: '6px' }}>
+                      <div className={styles.emptyStateText} style={{ fontSize: '12px' }}>
+                        Este cliente aún no tiene vehículos registrados.
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => setShowClienteDetailModal(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#ef4444' }}>No se pudo cargar la información del cliente.</p>
+            )}
           </div>
         </div>
       )}
