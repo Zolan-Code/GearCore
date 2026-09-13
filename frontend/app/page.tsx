@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import styles from './page.module.css';
+import ClientesVehiculosView from './components/ClientesVehiculosView';
 
 interface UserProfile {
   id: string;
@@ -11,10 +12,96 @@ interface UserProfile {
   rol?: string;
 }
 
+type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
+
+interface NavItemConfig {
+  id: string;
+  label: string;
+  roles: Rol[];
+  icon: React.ReactNode;
+}
+
+const NAV_ITEMS: NavItemConfig[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+      </svg>
+    ),
+  },
+  {
+    id: 'clientes-vehiculos',
+    label: 'Gestión de Clientes y Vehículos',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    id: 'ordenes-trabajo',
+    label: 'Órdenes de Trabajo (OT)',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'inventario',
+    label: 'Inventario de Repuestos',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m7.5 4.27 9 5.15" />
+        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+        <path d="m3.3 7 8.7 5 8.7-5" />
+        <path d="M12 22V12" />
+      </svg>
+    ),
+  },
+  {
+    id: 'cotizaciones',
+    label: 'Cotizaciones y Facturación',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+      </svg>
+    ),
+  },
+  {
+    id: 'usuarios-seguridad',
+    label: 'Usuarios, Roles y Seguridad',
+    roles: ['ADMINISTRADOR'],
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
+];
+
 export default function HomePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'general' | 'mision' | 'politicas'>('general');
+  const [activeSection, setActiveSection] = useState<string>('dashboard');
 
   useEffect(() => {
     async function loadUser() {
@@ -25,12 +112,16 @@ export default function HomePage() {
       }
 
       const authUser = data.session.user;
+      const rol = (authUser.user_metadata?.rol || 'MECANICO') as Rol;
       setUser({
         id: authUser.id,
         email: authUser.email || '',
         nombre: authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
-        rol: authUser.user_metadata?.rol || 'USUARIO',
+        rol: rol,
       });
+
+      // El dashboard es la vista por defecto
+      setActiveSection('dashboard');
       setLoading(false);
     }
 
@@ -51,6 +142,10 @@ export default function HomePage() {
   }
 
   const initialLetter = (user?.nombre || user?.email || 'U').charAt(0).toUpperCase();
+  const userRole = (user?.rol || 'MECANICO') as Rol;
+
+  // Filtrar módulos visibles según el rol del usuario
+  const visibleNavItems = NAV_ITEMS.filter((item) => item.roles.includes(userRole));
 
   return (
     <div className={styles.layout}>
@@ -66,80 +161,21 @@ export default function HomePage() {
           </div>
 
           <ul className={styles.navList}>
-            <li>
-              <button type="button" className={`${styles.navItem} ${styles.navItemActive}`}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" />
-                    <rect x="14" y="3" width="7" height="7" />
-                    <rect x="14" y="14" width="7" height="7" />
-                    <rect x="3" y="14" width="7" height="7" />
-                  </svg>
-                  <span>Dashboard</span>
-                </span>
-                <span className={styles.activeDot} />
-              </button>
-            </li>
-            <li>
-              <button type="button" className={styles.navItem}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  <span>Gestión de Clientes y Vehículos</span>
-                </span>
-              </button>
-            </li>
-            <li>
-              <button type="button" className={styles.navItem}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                  </svg>
-                  <span>Ordenes de Trabajo(OT)</span>
-                </span>
-              </button>
-            </li>
-            <li>
-              <button type="button" className={styles.navItem}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m7.5 4.27 9 5.15" />
-                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                    <path d="m3.3 7 8.7 5 8.7-5" />
-                    <path d="M12 22V12" />
-                  </svg>
-                  <span>Inventario de Repuestos</span>
-                </span>
-              </button>
-            </li>
-            <li>
-              <button type="button" className={styles.navItem}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                  <span>Cotizaciones y Facturación</span>
-                </span>
-              </button>
-            </li>
-            <li>
-              <button type="button" className={styles.navItem}>
-                <span className={styles.navItemContent}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>Usuarios, Roles y Seguridad</span>
-                </span>
-              </button>
-            </li>
+            {visibleNavItems.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={`${styles.navItem} ${activeSection === item.id ? styles.navItemActive : ''}`}
+                  onClick={() => setActiveSection(item.id)}
+                >
+                  <span className={styles.navItemContent}>
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </span>
+                  {activeSection === item.id && <span className={styles.activeDot} />}
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -192,91 +228,112 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Cuadrícula de 4 Tarjetas de Resumen (Estructura Base) */}
-        <section className={styles.cardsGrid}>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h4>Jornada / Horas</h4>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <div className={styles.cardBody}>
-              <div className={styles.statRow}>
-                <span>Entrada</span>
-                <strong>08:30 AM</strong>
+        {/* Contenido Condicional: Dashboard o Gestión de Clientes y Vehículos */}
+        {activeSection === 'clientes-vehiculos' ? (
+          <ClientesVehiculosView userRole={userRole} />
+        ) : (
+          <>
+            {/* Cuadrícula de 4 Tarjetas de Resumen (Estructura Base) */}
+            <section className={styles.cardsGrid}>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4>Jornada / Horas</h4>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.statRow}>
+                    <span>Entrada</span>
+                    <strong>08:30 AM</strong>
+                  </div>
+                  <div className={styles.statRow}>
+                    <span>Horas hoy</span>
+                    <strong>--:--</strong>
+                  </div>
+                </div>
+                <button type="button" className={styles.cardAction}>Registrar Marca</button>
               </div>
-              <div className={styles.statRow}>
-                <span>Horas hoy</span>
-                <strong>--:--</strong>
-              </div>
-            </div>
-            <button type="button" className={styles.cardAction}>Registrar Marca</button>
-          </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h4>Órdenes Pendientes</h4>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-              </svg>
-            </div>
-            <div className={styles.cardBody}>
-              <div className={styles.statRow}>
-                <span>En Recepción</span>
-                <strong>0</strong>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4>Órdenes Pendientes</h4>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                  </svg>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.statRow}>
+                    <span>En Recepción</span>
+                    <strong>0</strong>
+                  </div>
+                  <div className={styles.statRow}>
+                    <span>En Taller</span>
+                    <strong>0</strong>
+                  </div>
+                </div>
+                <button type="button" className={styles.cardAction}>Ver Órdenes</button>
               </div>
-              <div className={styles.statRow}>
-                <span>En Taller</span>
-                <strong>0</strong>
-              </div>
-            </div>
-            <button type="button" className={styles.cardAction}>Ver Órdenes</button>
-          </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h4>Alertas e Inventario</h4>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </div>
-            <div className={styles.cardBody}>
-              <div className={styles.statRow}>
-                <span>Stock Crítico</span>
-                <strong>0</strong>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4>Alertas e Inventario</h4>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.statRow}>
+                    <span>Stock Crítico</span>
+                    <strong>0</strong>
+                  </div>
+                  <div className={styles.statRow}>
+                    <span>Notificaciones</span>
+                    <strong>0</strong>
+                  </div>
+                </div>
+                <button type="button" className={styles.cardAction}>Ver Alertas</button>
               </div>
-              <div className={styles.statRow}>
-                <span>Notificaciones</span>
-                <strong>0</strong>
-              </div>
-            </div>
-            <button type="button" className={styles.cardAction}>Ver Alertas</button>
-          </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h4>Accesos Rápidos</h4>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-            </div>
-            <div className={styles.cardBody}>
-              <div className={styles.statRow}>
-                <span>Recepción Rápida</span>
-                <strong>+</strong>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4>Accesos Rápidos</h4>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.statRow}>
+                    <span>{userRole === 'MECANICO' ? 'Mis Tareas' : 'Recepción Rápida'}</span>
+                    <strong>+</strong>
+                  </div>
+                  <div className={styles.statRow}>
+                    <span>{userRole === 'MECANICO' ? 'Taller' : 'Clientes y Autos'}</span>
+                    <strong>+</strong>
+                  </div>
+                </div>
+                {userRole !== 'MECANICO' ? (
+                  <button
+                    type="button"
+                    className={styles.cardAction}
+                    onClick={() => setActiveSection('clientes-vehiculos')}
+                  >
+                    Ir a Clientes y Vehículos
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.cardAction}
+                    onClick={() => setActiveSection('dashboard')}
+                  >
+                    Ver Órdenes Asignadas
+                  </button>
+                )}
               </div>
-              <div className={styles.statRow}>
-                <span>Nueva OT</span>
-                <strong>+</strong>
-              </div>
-            </div>
-            <button type="button" className={styles.cardAction}>Nuevo Registro</button>
-          </div>
-        </section>
+            </section>
 
         {/* Sección Inferior de Estructura / Información */}
         <section className={styles.bottomSection}>
@@ -333,6 +390,8 @@ export default function HomePage() {
             )}
           </div>
         </section>
+        </>
+        )}
       </main>
     </div>
   );

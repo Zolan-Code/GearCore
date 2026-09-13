@@ -1,9 +1,34 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  private supabase: SupabaseClient;
+
+  constructor() {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error(
+        'SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no están configuradas en el backend.',
+      );
+    }
+
+    this.supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader: string | undefined = request.headers['authorization'];
 
@@ -12,18 +37,18 @@ export class SupabaseAuthGuard implements CanActivate {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const secret = process.env.SUPABASE_JWT_SECRET;
 
-    if (!secret) {
-      throw new Error('SUPABASE_JWT_SECRET no está configurado en el backend.');
-    }
+    const { data, error } = await this.supabase.auth.getUser(token);
 
-    try {
-      const payload = jwt.verify(token, secret) as jwt.JwtPayload;
-      request.user = { id: payload.sub, email: payload['email'] };
-      return true;
-    } catch {
+    if (error || !data.user) {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
+
+    request.user = {
+      id: data.user.id,
+      email: data.user.email,
+    };
+
+    return true;
   }
 }
