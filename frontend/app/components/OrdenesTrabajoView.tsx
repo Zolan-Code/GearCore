@@ -75,6 +75,7 @@ interface OrdenTrabajo {
 
 interface Props {
   userRole: 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
+  userId?: string;
 }
 
 const ESTADOS_OT: { id: EstadoOT; label: string; class: string }[] = [
@@ -165,7 +166,7 @@ function renderFallaIcon(id: string) {
 
 const NIVELES_COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno'];
 
-export default function OrdenesTrabajoView({ userRole }: Props) {
+export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
   const [mecanicos, setMecanicos] = useState<Mecanico[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,7 +205,12 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
   // Modal WhatsApp
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappData, setWhatsappData] = useState<{ url: string; texto: string; telefono: string } | null>(null);
-  const [cargandoWhatsapp, setCargandoWhatsapp] = useState(false);
+  const [cargandoWhatsappId, setCargandoWhatsappId] = useState<string | null>(null);
+
+  // Subida de archivos y visualización a detalle (Lightbox)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [procesandoFotos, setProcesandoFotos] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   // Carga inicial
   useEffect(() => {
@@ -326,6 +332,73 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
     setShowTecnicoModal(true);
   }
 
+  // Comprimir imagen localmente a HD WebP/JPEG optimizado (~70KB)
+  function comprimirImagen(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1280;
+          const MAX_HEIGHT = 1280;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.onerror = reject;
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Manejar selección de archivos desde PC o Galería de Celular
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setProcesandoFotos(true);
+      const nuevasFotos: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const dataUrl = await comprimirImagen(file);
+          nuevasFotos.push(dataUrl);
+        }
+      }
+      setEditFotos((prev) => [...prev, ...nuevasFotos]);
+    } catch (err: any) {
+      alert('Error al procesar imágenes: ' + err.message);
+    } finally {
+      setProcesandoFotos(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   // Guardar Técnico (SCRUM-13, 19)
   async function handleGuardarTecnico() {
     if (!selectedOT) return;
@@ -365,7 +438,7 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
   // Generar WhatsApp (SCRUM-20)
   async function handleGenerarWhatsapp(otId: string) {
     try {
-      setCargandoWhatsapp(true);
+      setCargandoWhatsappId(otId);
       const data = await fetchWithAuth<{ url: string; texto: string; telefono: string }>(
         `/ordenes-trabajo/${otId}/whatsapp`
       );
@@ -374,7 +447,7 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
     } catch (err: any) {
       alert(`Error al preparar WhatsApp: ${err.message}`);
     } finally {
-      setCargandoWhatsapp(false);
+      setCargandoWhatsappId(null);
     }
   }
 
@@ -403,7 +476,9 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
         <div>
           <h2 className={styles.headerTitle}>Órdenes de Trabajo (OT)</h2>
           <p className={styles.headerSubtitle}>
-            Recepción, diagnóstico técnico, registro de horas y trazabilidad en taller
+            {userRole === 'MECANICO'
+              ? 'Bandeja de órdenes asignadas: diagnóstico técnico, fotos y registro de horas hombre'
+              : 'Recepción, diagnóstico técnico, registro de horas y trazabilidad en taller'}
           </p>
         </div>
 
@@ -445,19 +520,42 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
           </div>
 
           <div className={styles.filterControls}>
-            <select
-              className={styles.selectInput}
-              value={filtroMecanico}
-              onChange={(e) => setFiltroMecanico(e.target.value)}
-            >
-              <option value="TODOS">Todos los mecánicos</option>
-              <option value="SIN_ASIGNAR">Sin asignar</option>
-              {mecanicos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  Mecánico: {m.nombre}
-                </option>
-              ))}
-            </select>
+            {userRole !== 'MECANICO' ? (
+              <select
+                className={styles.selectInput}
+                value={filtroMecanico}
+                onChange={(e) => setFiltroMecanico(e.target.value)}
+              >
+                <option value="TODOS">Todos los mecánicos</option>
+                <option value="SIN_ASIGNAR">Sin asignar</option>
+                {mecanicos.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    Mecánico: {m.nombre}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8',
+                  padding: '7px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Mis Órdenes Asignadas</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -588,6 +686,21 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
                     </svg>
                     <span>{ot.horasHombre || 0} hrs</span>
                   </div>
+
+                  {ot.fotosDiagnostico && ot.fotosDiagnostico.length > 0 && (
+                    <div
+                      className={styles.hoursPill}
+                      style={{ background: '#f0fdf4', color: '#166534', cursor: 'pointer' }}
+                      title={`${ot.fotosDiagnostico.length} foto(s) de diagnóstico. Clic para ver`}
+                      onClick={() => abrirModalTecnico(ot)}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                      <span>{ot.fotosDiagnostico.length} fotos</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Acciones de la Tarjeta */}
@@ -631,13 +744,32 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
                   <button
                     type="button"
                     className={styles.btnWhatsApp}
+                    disabled={cargandoWhatsappId === ot.id}
                     onClick={() => handleGenerarWhatsapp(ot.id)}
                     title="Notificar avance o cotización por WhatsApp"
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                    </svg>
-                    <span>WhatsApp</span>
+                    {cargandoWhatsappId === ot.id ? (
+                      <>
+                        <span
+                          className={styles.spinner}
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            borderWidth: '2px',
+                            borderColor: '#a7f3d0',
+                            borderTopColor: '#047857',
+                          }}
+                        />
+                        <span>Cargando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                        </svg>
+                        <span>WhatsApp</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -972,39 +1104,76 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
 
               {/* Fotografías del Diagnóstico (SCRUM-19) */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                    <circle cx="12" cy="13" r="4" />
-                  </svg>
-                  <span>Fotografías del Diagnóstico ({editFotos.length})</span>
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="url"
-                    className={styles.formInput}
-                    placeholder="Pegar URL de fotografía (ej: https://...)"
-                    value={nuevaFotoUrl}
-                    onChange={(e) => setNuevaFotoUrl(e.target.value)}
-                  />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className={styles.formLabel} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <span>Fotografías del Diagnóstico ({editFotos.length})</span>
+                  </label>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>Clic en foto para ver a detalle</span>
+                </div>
+
+                {/* Input nativo de archivo para PC y Galería/Cámara de celular */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelect}
+                />
+
+                <div className={styles.photoActionsRow}>
                   <button
                     type="button"
-                    className={styles.btnActionSecondary}
-                    onClick={() => {
-                      if (nuevaFotoUrl.trim()) {
-                        setEditFotos((prev) => [...prev, nuevaFotoUrl.trim()]);
-                        setNuevaFotoUrl('');
-                      }
-                    }}
+                    className={styles.btnUploadFile}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={procesandoFotos}
+                    title="Subir fotos desde el computador o galería/cámara del celular"
                   >
-                    + Agregar
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span>{procesandoFotos ? 'Procesando imágenes...' : 'Subir desde PC o Celular'}</span>
                   </button>
+
+                  <div className={styles.urlInputRow}>
+                    <input
+                      type="url"
+                      className={styles.formInput}
+                      style={{ flex: 1 }}
+                      placeholder="O pegar URL de fotografía..."
+                      value={nuevaFotoUrl}
+                      onChange={(e) => setNuevaFotoUrl(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.btnActionSecondary}
+                      onClick={() => {
+                        if (nuevaFotoUrl.trim()) {
+                          setEditFotos((prev) => [...prev, nuevaFotoUrl.trim()]);
+                          setNuevaFotoUrl('');
+                        }
+                      }}
+                    >
+                      + Agregar URL
+                    </button>
+                  </div>
                 </div>
 
                 {editFotos.length > 0 && (
                   <div className={styles.photosGrid}>
                     {editFotos.map((url, idx) => (
-                      <div key={idx} style={{ position: 'relative' }}>
+                      <div
+                        key={idx}
+                        className={styles.photoThumbnailWrapper}
+                        onClick={() => setFotoAmpliada(url)}
+                        title="Clic para maximizar y ver a detalle"
+                      >
                         <img
                           src={url}
                           alt={`Diagnóstico ${idx + 1}`}
@@ -1013,15 +1182,22 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
                             e.currentTarget.src = 'https://via.placeholder.com/150?text=Foto+No+Disponible';
                           }}
                         />
+                        <div className={styles.photoZoomBadge}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="11" y1="8" x2="11" y2="14" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                          </svg>
+                          <span>Ver</span>
+                        </div>
                         <button
                           type="button"
-                          style={{
-                            position: 'absolute', top: '4px', right: '4px',
-                            background: 'rgba(0,0,0,0.6)', color: '#fff',
-                            border: 'none', borderRadius: '50%', width: '20px', height: '20px',
-                            cursor: 'pointer', fontSize: '11px', lineHeight: '1',
+                          className={styles.photoDeleteBtn}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditFotos((prev) => prev.filter((_, i) => i !== idx));
                           }}
-                          onClick={() => setEditFotos((prev) => prev.filter((_, i) => i !== idx))}
                           title="Eliminar foto"
                         >
                           ✕
@@ -1122,6 +1298,44 @@ export default function OrdenesTrabajoView({ userRole }: Props) {
           </div>
         </div>
       )}
+
+      {/* MODAL 4: FOTO AMPLIADA A DETALLE (LIGHTBOX) */}
+      {fotoAmpliada && (
+        <div className={styles.lightboxOverlay} onClick={() => setFotoAmpliada(null)}>
+          <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className={styles.lightboxCloseBtn}
+              onClick={() => setFotoAmpliada(null)}
+              title="Cerrar vista previa"
+            >
+              ✕
+            </button>
+            <img
+              src={fotoAmpliada}
+              alt="Fotografía de diagnóstico ampliada"
+              className={styles.lightboxImg}
+            />
+            <div className={styles.lightboxFooter}>
+              <a
+                href={fotoAmpliada}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.lightboxDownloadBtn}
+                download="diagnostico-gearcore.jpg"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>Abrir en pestaña nueva / Descargar</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

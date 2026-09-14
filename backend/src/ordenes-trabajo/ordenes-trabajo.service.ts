@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -100,19 +101,38 @@ export class OrdenesTrabajoService {
   /**
    * Buscar órdenes con filtros combinables (estado, mecánico, patente, cliente)
    */
-  async buscarTodos(filtros?: {
-    estado?: EstadoOT;
-    mecanicoId?: string;
-    busqueda?: string;
-  }) {
+  async buscarTodos(
+    filtros?: {
+      estado?: EstadoOT;
+      mecanicoId?: string;
+      busqueda?: string;
+    },
+    usuarioId?: string,
+  ) {
     const where: any = {};
+
+    // Si el usuario solicitante es MECANICO, forzar filtro a sus propias órdenes
+    if (usuarioId) {
+      const perfil = await this.prisma.perfil.findUnique({ where: { id: usuarioId } });
+      if (perfil?.rol === RolUsuario.MECANICO) {
+        where.mecanicoId = perfil.id;
+      } else if (filtros?.mecanicoId) {
+        if (filtros.mecanicoId === 'SIN_ASIGNAR') {
+          where.mecanicoId = null;
+        } else if (filtros.mecanicoId !== 'TODOS') {
+          where.mecanicoId = filtros.mecanicoId;
+        }
+      }
+    } else if (filtros?.mecanicoId) {
+      if (filtros.mecanicoId === 'SIN_ASIGNAR') {
+        where.mecanicoId = null;
+      } else if (filtros.mecanicoId !== 'TODOS') {
+        where.mecanicoId = filtros.mecanicoId;
+      }
+    }
 
     if (filtros?.estado) {
       where.estado = filtros.estado;
-    }
-
-    if (filtros?.mecanicoId) {
-      where.mecanicoId = filtros.mecanicoId;
     }
 
     if (filtros?.busqueda) {
@@ -141,7 +161,7 @@ export class OrdenesTrabajoService {
   /**
    * Obtener detalle completo de una Orden de Trabajo
    */
-  async buscarPorId(id: string) {
+  async buscarPorId(id: string, usuarioId?: string) {
     const orden = await this.prisma.ordenTrabajo.findUnique({
       where: { id },
       include: {
@@ -161,14 +181,23 @@ export class OrdenesTrabajoService {
       throw new NotFoundException(`Orden de trabajo con ID ${id} no encontrada.`);
     }
 
+    if (usuarioId) {
+      const perfil = await this.prisma.perfil.findUnique({ where: { id: usuarioId } });
+      if (perfil?.rol === RolUsuario.MECANICO && orden.mecanicoId !== perfil.id) {
+        throw new ForbiddenException(
+          'No tienes permisos para acceder a órdenes de trabajo asignadas a otros mecánicos.',
+        );
+      }
+    }
+
     return orden;
   }
 
   /**
    * Cambiar estado de la OT (flujo de ciclo de vida)
    */
-  async cambiarEstado(id: string, dto: CambiarEstadoDto) {
-    await this.buscarPorId(id);
+  async cambiarEstado(id: string, dto: CambiarEstadoDto, usuarioId?: string) {
+    await this.buscarPorId(id, usuarioId);
 
     const data: any = { estado: dto.estado };
 
@@ -193,8 +222,8 @@ export class OrdenesTrabajoService {
   /**
    * Actualizar diagnóstico, trabajos realizados y fotos
    */
-  async actualizarDiagnostico(id: string, dto: ActualizarDiagnosticoDto) {
-    await this.buscarPorId(id);
+  async actualizarDiagnostico(id: string, dto: ActualizarDiagnosticoDto, usuarioId?: string) {
+    await this.buscarPorId(id, usuarioId);
 
     const data: any = {};
 
@@ -243,8 +272,8 @@ export class OrdenesTrabajoService {
   /**
    * Registrar / sumar horas-hombre invertidas por el mecánico
    */
-  async registrarHoras(id: string, dto: RegistrarHorasDto) {
-    const orden = await this.buscarPorId(id);
+  async registrarHoras(id: string, dto: RegistrarHorasDto, usuarioId?: string) {
+    const orden = await this.buscarPorId(id, usuarioId);
 
     const horasActualizadas = Number(orden.horasHombre || 0) + Number(dto.horas);
     let trabajo = orden.trabajoRealizado || '';

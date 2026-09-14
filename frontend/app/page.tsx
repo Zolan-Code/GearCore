@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { fetchWithAuth } from '../lib/api';
 import styles from './page.module.css';
 import ClientesVehiculosView from './components/ClientesVehiculosView';
 import OrdenesTrabajoView from './components/OrdenesTrabajoView';
@@ -113,6 +114,26 @@ export default function HomePage() {
       }
 
       const authUser = data.session.user;
+
+      try {
+        // Consultar perfil real y rol asignado desde la base de datos (PostgreSQL/Prisma)
+        const perfilBD = await fetchWithAuth<UserProfile>('/auth/perfil');
+        if (perfilBD) {
+          setUser({
+            id: perfilBD.id,
+            email: perfilBD.email,
+            nombre: perfilBD.nombre || authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
+            rol: (perfilBD.rol || 'MECANICO') as Rol,
+          });
+          setActiveSection('dashboard');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar perfil desde API, usando metadata:', err);
+      }
+
+      // Fallback a metadata de Supabase Auth
       const rol = (authUser.user_metadata?.rol || 'MECANICO') as Rol;
       setUser({
         id: authUser.id,
@@ -161,6 +182,53 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* Tarjeta de Usuario / Bienvenido en Barra Lateral */}
+          <div className={styles.sidebarUserCard}>
+            <div className={styles.sidebarUserMain}>
+              <div className={styles.sidebarAvatar}>{initialLetter}</div>
+              <div className={styles.sidebarUserDetails}>
+                <div className={styles.sidebarGreeting}>Bienvenido,</div>
+                <h4 className={styles.sidebarUserName} title={user?.nombre || 'Usuario'}>
+                  {user?.nombre || 'Usuario'}
+                </h4>
+                <p className={styles.sidebarUserEmail} title={user?.email}>
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.sidebarUserMeta}>
+              <div className={styles.sidebarMetaItem}>
+                <span className={styles.sidebarMetaLabel}>Rol Activo</span>
+                <span className={styles.sidebarRoleBadge}>{user?.rol}</span>
+              </div>
+              <div className={styles.sidebarMetaItem}>
+                <span className={styles.sidebarMetaLabel}>Estado</span>
+                <span className={styles.sidebarStatusBadge}>
+                  <span className={styles.onlineDot} />
+                  En Línea
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.sidebarDateRow}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>
+                {new Date().toLocaleDateString('es-CL', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
+          </div>
+
           <ul className={styles.navList}>
             {visibleNavItems.map((item) => (
               <li key={item.id}>
@@ -203,46 +271,19 @@ export default function HomePage() {
 
       {/* Área Principal de Contenido */}
       <main className={styles.mainContent}>
-        {/* Banner Superior de Bienvenida */}
-        <section className={styles.headerBanner}>
-          <div className={styles.userInfo}>
-            <div className={styles.avatarBox}>{initialLetter}</div>
-            <div>
-              <h2 className={styles.welcomeTitle}>Bienvenido, {user?.nombre || 'Usuario'}</h2>
-              <p className={styles.userRoleSubtitle}>{user?.email}</p>
-
-              <div className={styles.metaGrid}>
-                <div className={styles.metaItem}>
-                  <span>Fecha</span>
-                  <strong style={{ textTransform: 'capitalize' }}>
-                    {new Date().toLocaleDateString('es-CL', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </strong>
-                </div>
-                <div className={styles.metaItem}>
-                  <span>Rol Activo</span>
-                  <strong>{user?.rol}</strong>
-                </div>
-                <div className={styles.metaItem}>
-                  <span>Estado</span>
-                  <strong style={{ color: '#10b981' }}>En Línea</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Contenido Condicional: Dashboard, Clientes y Vehículos, u Órdenes de Trabajo */}
         {activeSection === 'clientes-vehiculos' ? (
           <ClientesVehiculosView userRole={userRole} />
         ) : activeSection === 'ordenes-trabajo' ? (
-          <OrdenesTrabajoView userRole={userRole} />
+          <OrdenesTrabajoView userRole={userRole} userId={user?.id} />
         ) : (
           <>
+            {/* Encabezado de Sección en Dashboard */}
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Panel de Control</h2>
+              <p className={styles.sectionSubtitle}>Resumen operativo del taller y accesos rápidos en tiempo real</p>
+            </div>
+
             {/* Cuadrícula de 4 Tarjetas de Resumen (Estructura Base) */}
             <section className={styles.cardsGrid}>
               <div className={styles.card}>

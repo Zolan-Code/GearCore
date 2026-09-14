@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { EstadoOT, RolUsuario } from '@prisma/client';
@@ -36,16 +37,17 @@ export class OrdenesTrabajoController {
 
   @Get()
   async buscarTodos(
+    @Req() req: any,
     @Query('estado') estado?: EstadoOT,
     @Query('mecanicoId') mecanicoId?: string,
     @Query('busqueda') busqueda?: string,
   ) {
-    return this.ordenesService.buscarTodos({ estado, mecanicoId, busqueda });
+    return this.ordenesService.buscarTodos({ estado, mecanicoId, busqueda }, req.user.id);
   }
 
   @Get(':id')
-  async buscarPorId(@Param('id') id: string) {
-    return this.ordenesService.buscarPorId(id);
+  async buscarPorId(@Param('id') id: string, @Req() req: any) {
+    return this.ordenesService.buscarPorId(id, req.user.id);
   }
 
   @Patch(':id/estado')
@@ -53,8 +55,9 @@ export class OrdenesTrabajoController {
   async cambiarEstado(
     @Param('id') id: string,
     @Body() dto: CambiarEstadoDto,
+    @Req() req: any,
   ) {
-    return this.ordenesService.cambiarEstado(id, dto);
+    return this.ordenesService.cambiarEstado(id, dto, req.user.id);
   }
 
   @Patch(':id/diagnostico')
@@ -62,8 +65,9 @@ export class OrdenesTrabajoController {
   async actualizarDiagnostico(
     @Param('id') id: string,
     @Body() dto: ActualizarDiagnosticoDto,
+    @Req() req: any,
   ) {
-    return this.ordenesService.actualizarDiagnostico(id, dto);
+    return this.ordenesService.actualizarDiagnostico(id, dto, req.user.id);
   }
 
   @Post(':id/horas')
@@ -71,8 +75,9 @@ export class OrdenesTrabajoController {
   async registrarHoras(
     @Param('id') id: string,
     @Body() dto: RegistrarHorasDto,
+    @Req() req: any,
   ) {
-    return this.ordenesService.registrarHoras(id, dto);
+    return this.ordenesService.registrarHoras(id, dto, req.user.id);
   }
 
   @Get(':id/whatsapp')
