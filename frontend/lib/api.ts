@@ -1,6 +1,21 @@
 import { supabase } from './supabaseClient';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+function getNormalizedApiUrl(): string {
+  let url = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api').trim();
+  // Quitar barras finales
+  url = url.replace(/\/+$/, '');
+  // Asegurar que termine en /api (el prefijo global de NestJS)
+  if (!url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+}
+
+function buildRequestUrl(endpoint: string): string {
+  const base = getNormalizedApiUrl();
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${base}${cleanEndpoint}`;
+}
 
 /**
  * Obtiene un token de acceso válido de Supabase, refrescándolo si ya expiró o está por expirar.
@@ -37,7 +52,8 @@ export async function fetchWithAuth<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const url = buildRequestUrl(endpoint);
+  const response = await fetch(url, {
     ...options,
     headers,
   });
