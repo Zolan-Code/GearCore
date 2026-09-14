@@ -33,6 +33,7 @@ model Perfil {
   creadoEn DateTime   @default(now())
 
   ordenesAsignadas OrdenTrabajo[] @relation("MecanicoAsignado")
+  auditorias       RegistroAuditoria[]
 
   @@map("perfiles")
 }
@@ -113,3 +114,18 @@ model DetalleOTRepuesto {
   cantidad       Int
   precioUnitario Float
 }
+
+model RegistroAuditoria {
+  id         String   @id @default(uuid())
+  usuarioId  String?
+  usuario    Perfil?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  accion     String
+  entidad    String
+  entidadId  String?
+  detalles   String?
+  ip         String?
+  creadoEn   DateTime @default(now())
+
+  @@map("registros_auditoria")
+}
+

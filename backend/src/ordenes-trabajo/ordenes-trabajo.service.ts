@@ -11,12 +11,14 @@ import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 import { ActualizarDiagnosticoDto } from './dto/actualizar-diagnostico.dto';
 import { RegistrarHorasDto } from './dto/registrar-horas.dto';
 import { NotificadorWhatsAppService } from './notificadores/notificador-whatsapp.service';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 
 @Injectable()
 export class OrdenesTrabajoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificadorWhatsApp: NotificadorWhatsAppService,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   /**
@@ -324,5 +326,26 @@ export class OrdenesTrabajoService {
       orden.estado,
       detalle,
     );
+  }
+
+  /**
+   * Eliminar orden de trabajo (solo Administrador) con log de auditoría (SCRUM-41)
+   */
+  async eliminar(id: string, adminUserId: string) {
+    const orden = await this.buscarPorId(id);
+
+    await this.prisma.ordenTrabajo.delete({
+      where: { id },
+    });
+
+    await this.auditoriaService.registrar({
+      usuarioId: adminUserId,
+      accion: 'ELIMINACION_OT',
+      entidad: 'OrdenTrabajo',
+      entidadId: id,
+      detalles: `OT #${orden.id.slice(0, 8).toUpperCase()} (Vehículo: ${orden.vehiculo.marca} ${orden.vehiculo.modelo}, patente ${orden.vehiculo.patente}, Cliente: ${orden.vehiculo.cliente.nombre}) eliminada permanentemente.`,
+    });
+
+    return { ok: true, mensaje: 'Orden de trabajo eliminada exitosamente.' };
   }
 }

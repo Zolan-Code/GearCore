@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -84,5 +85,11 @@ export class OrdenesTrabajoController {
   @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCIONISTA, RolUsuario.MECANICO)
   async generarWhatsApp(@Param('id') id: string) {
     return this.ordenesService.generarWhatsApp(id);
+  }
+
+  @Delete(':id')
+  @Roles(RolUsuario.ADMINISTRADOR)
+  async eliminar(@Param('id') id: string, @Req() req: any) {
+    return this.ordenesService.eliminar(id, req.user.id);
   }
 }

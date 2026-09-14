@@ -6,6 +6,8 @@ import { fetchWithAuth } from '../lib/api';
 import styles from './page.module.css';
 import ClientesVehiculosView from './components/ClientesVehiculosView';
 import OrdenesTrabajoView from './components/OrdenesTrabajoView';
+import UsuariosSeguridadView from './components/UsuariosSeguridadView';
+import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 
 interface UserProfile {
   id: string;
@@ -104,6 +106,20 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'general' | 'mision' | 'politicas'>('general');
   const [activeSection, setActiveSection] = useState<string>('dashboard');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Cierre de sesión automático por inactividad (SCRUM-42)
+  const {
+    showWarning: showInactivityWarning,
+    secondsRemaining: inactivitySeconds,
+    mantenerSesionActiva,
+  } = useInactivityTimeout({
+    timeoutMinutes: 15,
+    warningMinutes: 1,
+    onTimeout: handleLogout,
+    enabled: !!user,
+  });
 
   useEffect(() => {
     async function loadUser() {
@@ -171,15 +187,48 @@ export default function HomePage() {
 
   return (
     <div className={styles.layout}>
+      {/* Botón flotante para reabrir el menú lateral cuando está colapsado */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          className={styles.floatingMenuBtn}
+          onClick={() => setSidebarOpen(true)}
+          title="Mostrar menú lateral"
+          aria-label="Mostrar menú lateral"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+          </svg>
+        </button>
+      )}
+
       {/* Barra Lateral Izquierda (Sidebar) */}
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
         <div className={styles.sidebarTop}>
           <div className={styles.brand}>
-            <img src="/assets/logo.png" alt="GearCore" className={styles.brandLogo} />
-            <div className={styles.brandText}>
-              <h3>GearCore</h3>
-              <p>ERP Taller Mecánico</p>
+            <div className={styles.brandInfo}>
+              <img src="/assets/logo.png" alt="GearCore" className={styles.brandLogo} />
+              <div className={styles.brandText}>
+                <h3>GearCore</h3>
+                <p>ERP Taller Mecánico</p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              className={styles.sidebarToggleBtn}
+              onClick={() => setSidebarOpen(false)}
+              title="Ocultar menú lateral"
+              aria-label="Ocultar menú lateral"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
           </div>
 
           {/* Tarjeta de Usuario / Bienvenido en Barra Lateral */}
@@ -258,7 +307,7 @@ export default function HomePage() {
               <span>Mi Perfil</span>
             </span>
           </button>
-          <button type="button" onClick={handleLogout} className={styles.logoutBtn} title="Cerrar sesión">
+          <button type="button" onClick={() => setShowLogoutConfirm(true)} className={styles.logoutBtn} title="Cerrar sesión">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
@@ -270,12 +319,14 @@ export default function HomePage() {
       </aside>
 
       {/* Área Principal de Contenido */}
-      <main className={styles.mainContent}>
-        {/* Contenido Condicional: Dashboard, Clientes y Vehículos, u Órdenes de Trabajo */}
+      <main className={`${styles.mainContent} ${!sidebarOpen ? styles.mainContentExpanded : ''}`}>
+        {/* Contenido Condicional: Dashboard, Clientes y Vehículos, Órdenes de Trabajo, o Usuarios */}
         {activeSection === 'clientes-vehiculos' ? (
           <ClientesVehiculosView userRole={userRole} />
         ) : activeSection === 'ordenes-trabajo' ? (
           <OrdenesTrabajoView userRole={userRole} userId={user?.id} />
+        ) : activeSection === 'usuarios-seguridad' ? (
+          <UsuariosSeguridadView userRole={userRole} />
         ) : (
           <>
             {/* Encabezado de Sección en Dashboard */}
@@ -450,6 +501,83 @@ export default function HomePage() {
         </>
         )}
       </main>
+
+      {/* Modal de Confirmación de Cierre de Sesión */}
+      {showLogoutConfirm && (
+        <div className={styles.modalOverlay} onClick={() => setShowLogoutConfirm(false)}>
+          <div className={styles.confirmModalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmIconBox}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+
+            <h3 className={styles.confirmTitle}>¿Cerrar sesión?</h3>
+            <p className={styles.confirmDesc}>
+              ¿Estás seguro de que deseas salir de <strong>GearCore</strong>? Deberás ingresar tus credenciales nuevamente para acceder.
+            </p>
+
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.btnCancelConfirm}
+                onClick={() => setShowLogoutConfirm(false)}
+                autoFocus
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.btnLogoutConfirm}
+                onClick={handleLogout}
+              >
+                Sí, Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advertencia de Cierre de Sesión por Inactividad (SCRUM-42) */}
+      {showInactivityWarning && (
+        <div className={styles.modalOverlay} style={{ zIndex: 1200 }}>
+          <div className={styles.confirmModalContent} style={{ maxWidth: '440px' }}>
+            <div className={styles.confirmIconBox} style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+
+            <h3 className={styles.confirmTitle}>Sesión a punto de expirar</h3>
+            <p className={styles.confirmDesc}>
+              Por motivos de seguridad, tu sesión se cerrará automáticamente por inactividad en{' '}
+              <strong style={{ color: '#d97706' }}>{inactivitySeconds} segundos</strong>.
+            </p>
+
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.btnLogoutConfirm}
+                style={{ background: '#1e1b4b', borderColor: '#1e1b4b' }}
+                onClick={mantenerSesionActiva}
+                autoFocus
+              >
+                Mantener Sesión Activa
+              </button>
+              <button
+                type="button"
+                className={styles.btnCancelConfirm}
+                onClick={handleLogout}
+              >
+                Cerrar Sesión Ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

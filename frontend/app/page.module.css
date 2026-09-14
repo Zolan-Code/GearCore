@@ -14,6 +14,19 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 24px 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebarCollapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-right: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebarTop {
@@ -24,9 +37,81 @@
 .brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 0 8px 24px;
+  padding: 0 4px 24px 8px;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.brandInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.sidebarToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sidebarToggleBtn:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.floatingMenuBtn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 90;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e1b4b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: scaleIn 0.2s ease-out;
+}
+
+.floatingMenuBtn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.mainContentExpanded {
+  padding-left: 80px !important;
 }
 
 .brandLogo {
@@ -426,6 +511,109 @@
   line-height: 1.6;
 }
 
+/* Modal de Confirmación de Cierre de Sesión */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirmModalContent {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.confirmIconBox {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.confirmTitle {
+  margin: 0 0 8px 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.confirmDesc {
+  margin: 0 0 24px 0;
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.btnCancelConfirm {
+  flex: 1;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnCancelConfirm:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btnLogoutConfirm {
+  flex: 1;
+  padding: 10px 16px;
+  background: #ef4444;
+  border: 1px solid #dc2626;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+.btnLogoutConfirm:hover {
+  background: #dc2626;
+}
+
 /* Responsividad */
 @media (max-width: 960px) {
   .layout {
@@ -439,12 +627,21 @@
     border-bottom: 1px solid #e2e8f0;
   }
 
-  .headerBanner {
-    flex-direction: column;
-    align-items: flex-start;
+  .sidebarCollapsed {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
   }
 
   .mainContent {
     padding: 20px;
   }
+
+  .mainContentExpanded {
+    padding-top: 72px !important;
+    padding-left: 20px !important;
+  }
 }
+
