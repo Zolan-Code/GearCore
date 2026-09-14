@@ -26,7 +26,7 @@ async function bootstrap() {
     }),
   );
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`GearCore API corriendo en http://localhost:${port}/api`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`GearCore API corriendo en puerto ${port}/api`);
 }
 bootstrap();
