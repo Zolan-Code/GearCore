@@ -900,11 +900,11 @@ export default function InventarioView({ userRole }: Props) {
 
                 <div className={styles.rowTwoCols}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Precio Compra (Costo Neto) *</label>
+                    <label className={styles.formLabel}>Precio Compra Unitario (Costo por 1 litro/ud) *</label>
                     <input
                       type="number"
                       className={styles.formInput}
-                      placeholder="Ej: 18500"
+                      placeholder="Ej: 7500 (valor de 1 litro)"
                       value={formPrecioCompra}
                       onChange={(e) => setFormPrecioCompra(Math.max(0, parseFloat(e.target.value) || 0))}
                       min={0}
@@ -914,11 +914,11 @@ export default function InventarioView({ userRole }: Props) {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Precio Venta (PVP Sugerido) *</label>
+                    <label className={styles.formLabel}>Precio Venta Unitario (PVP por 1 litro/ud) *</label>
                     <input
                       type="number"
                       className={styles.formInput}
-                      placeholder="Ej: 32990"
+                      placeholder="Ej: 12990 (valor de 1 litro)"
                       value={formPrecioVenta}
                       onChange={(e) => setFormPrecioVenta(Math.max(0, parseFloat(e.target.value) || 0))}
                       min={0}
@@ -928,15 +928,24 @@ export default function InventarioView({ userRole }: Props) {
                   </div>
                 </div>
 
-                {/* Previsualización del margen comercial */}
-                <div className={styles.marginPreviewCard}>
-                  <div>
-                    <strong>Margen de Ganancia:</strong>{' '}
-                    <span style={{ color: margenEstimadoCalculado >= 0 ? '#059669' : '#dc2626', fontWeight: 700 }}>
-                      ${margenEstimadoCalculado.toLocaleString('es-CL')} ({margenPorcentajeCalculado}%)
-                    </span>
+                {/* Previsualización del margen comercial y valorización */}
+                <div className={styles.marginPreviewCard} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                      <strong>Margen Unitario:</strong>{' '}
+                      <span style={{ color: margenEstimadoCalculado >= 0 ? '#059669' : '#dc2626', fontWeight: 700 }}>
+                        ${margenEstimadoCalculado.toLocaleString('es-CL')} ({margenPorcentajeCalculado}%)
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#64748b' }}>Por cada unidad</span>
                   </div>
-                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>Calculado en tiempo real</span>
+
+                  {!editandoId && formStock > 0 && formPrecioCompra > 0 && (
+                    <div style={{ fontSize: '12px', color: '#1e40af', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Inversión total bodega ({formStock} uds):</span>
+                      <strong>${(formStock * formPrecioCompra).toLocaleString('es-CL')}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
 
