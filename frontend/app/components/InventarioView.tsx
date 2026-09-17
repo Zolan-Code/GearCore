@@ -92,16 +92,16 @@ export default function InventarioView({ userRole }: Props) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formCodigo, setFormCodigo] = useState('');
   const [formNombre, setFormNombre] = useState('');
-  const [formStock, setFormStock] = useState<number>(0);
-  const [formStockMinimo, setFormStockMinimo] = useState<number>(5);
-  const [formPrecioCompra, setFormPrecioCompra] = useState<number>(0);
-  const [formPrecioVenta, setFormPrecioVenta] = useState<number>(0);
+  const [formStock, setFormStock] = useState<string>('');
+  const [formStockMinimo, setFormStockMinimo] = useState<string>('5');
+  const [formPrecioCompra, setFormPrecioCompra] = useState<string>('');
+  const [formPrecioVenta, setFormPrecioVenta] = useState<string>('');
   const [guardandoRepuesto, setGuardandoRepuesto] = useState(false);
 
   // Modal Ajuste de Stock Físico (SCRUM-26)
   const [showAjusteModal, setShowAjusteModal] = useState(false);
   const [repuestoAjustar, setRepuestoAjustar] = useState<Repuesto | null>(null);
-  const [stockFisicoContado, setStockFisicoContado] = useState<number>(0);
+  const [stockFisicoContado, setStockFisicoContado] = useState<string>('0');
   const [motivoAjuste, setMotivoAjuste] = useState('');
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
 
@@ -147,10 +147,10 @@ export default function InventarioView({ userRole }: Props) {
     setEditandoId(null);
     setFormCodigo('');
     setFormNombre('');
-    setFormStock(0);
-    setFormStockMinimo(5);
-    setFormPrecioCompra(0);
-    setFormPrecioVenta(0);
+    setFormStock('');
+    setFormStockMinimo('5');
+    setFormPrecioCompra('');
+    setFormPrecioVenta('');
   }
 
   function abrirCrearModal() {
@@ -162,10 +162,10 @@ export default function InventarioView({ userRole }: Props) {
     setEditandoId(r.id);
     setFormCodigo(r.codigo);
     setFormNombre(r.nombre);
-    setFormStock(r.stock);
-    setFormStockMinimo(r.stockMinimo);
-    setFormPrecioCompra(r.precioCompra);
-    setFormPrecioVenta(r.precioVenta);
+    setFormStock(r.stock.toString());
+    setFormStockMinimo(r.stockMinimo.toString());
+    setFormPrecioCompra(r.precioCompra.toString());
+    setFormPrecioVenta(r.precioVenta.toString());
     setShowFormModal(true);
   }
 
@@ -183,17 +183,22 @@ export default function InventarioView({ userRole }: Props) {
 
     try {
       setGuardandoRepuesto(true);
+      const stockNum = parseInt(formStock, 10) || 0;
+      const stockMinimoNum = parseInt(formStockMinimo, 10) || 5;
+      const precioCompraNum = parseFloat(formPrecioCompra) || 0;
+      const precioVentaNum = parseFloat(formPrecioVenta) || 0;
+
       if (editandoId) {
         // Actualizar
         const payload: any = {
           codigo: formCodigo.trim(),
           nombre: formNombre.trim(),
-          stockMinimo: formStockMinimo,
+          stockMinimo: stockMinimoNum,
         };
         // Precios solo permitidos para Administrador (SCRUM-40)
         if (userRole === 'ADMINISTRADOR') {
-          payload.precioCompra = formPrecioCompra;
-          payload.precioVenta = formPrecioVenta;
+          payload.precioCompra = precioCompraNum;
+          payload.precioVenta = precioVentaNum;
         }
 
         const actualizado = await fetchWithAuth<Repuesto>(`/repuestos/${editandoId}`, {
@@ -216,10 +221,10 @@ export default function InventarioView({ userRole }: Props) {
           body: JSON.stringify({
             codigo: formCodigo.trim(),
             nombre: formNombre.trim(),
-            stock: formStock,
-            stockMinimo: formStockMinimo,
-            precioCompra: formPrecioCompra,
-            precioVenta: formPrecioVenta,
+            stock: stockNum,
+            stockMinimo: stockMinimoNum,
+            precioCompra: precioCompraNum,
+            precioVenta: precioVentaNum,
           }),
         });
 
@@ -246,7 +251,7 @@ export default function InventarioView({ userRole }: Props) {
   // Ajuste de Stock Físico (SCRUM-26)
   function abrirAjusteModal(r: Repuesto) {
     setRepuestoAjustar(r);
-    setStockFisicoContado(r.stock);
+    setStockFisicoContado(r.stock.toString());
     setMotivoAjuste('');
     setShowAjusteModal(true);
   }
@@ -265,22 +270,23 @@ export default function InventarioView({ userRole }: Props) {
 
     try {
       setGuardandoAjuste(true);
+      const stockFisicoNum = parseInt(stockFisicoContado, 10) || 0;
       await fetchWithAuth(`/repuestos/${repuestoAjustar.id}/ajuste`, {
         method: 'POST',
         body: JSON.stringify({
-          stockFisico: stockFisicoContado,
+          stockFisico: stockFisicoNum,
           motivo: motivoAjuste.trim(),
         }),
       });
 
       setShowAjusteModal(false);
-      const dif = stockFisicoContado - repuestoAjustar.stock;
+      const dif = stockFisicoNum - repuestoAjustar.stock;
       const signo = dif > 0 ? `+${dif}` : `${dif}`;
 
       await cargarInventario();
       setNotifyModal({
         title: 'Ajuste de Inventario Aplicado',
-        message: `El stock de [${repuestoAjustar.codigo}] se actualizó a ${stockFisicoContado} unidades (${signo} uds).`,
+        message: `El stock de [${repuestoAjustar.codigo}] se actualizó a ${stockFisicoNum} unidades (${signo} uds).`,
         subMessage: `Motivo registrado: "${motivoAjuste.trim()}".`,
         tipo: 'info',
       });
@@ -485,10 +491,12 @@ export default function InventarioView({ userRole }: Props) {
     return matchBusqueda && matchStock;
   });
 
-  const margenEstimadoCalculado = formPrecioVenta - formPrecioCompra;
+  const precioCompraNum = parseFloat(formPrecioCompra) || 0;
+  const precioVentaNum = parseFloat(formPrecioVenta) || 0;
+  const margenEstimadoCalculado = precioVentaNum - precioCompraNum;
   const margenPorcentajeCalculado =
-    formPrecioVenta > 0
-      ? Math.round((margenEstimadoCalculado / formPrecioVenta) * 100 * 10) / 10
+    precioVentaNum > 0
+      ? Math.round((margenEstimadoCalculado / precioVentaNum) * 100 * 10) / 10
       : 0;
 
   return (
@@ -866,7 +874,8 @@ export default function InventarioView({ userRole }: Props) {
                       type="number"
                       className={styles.formInput}
                       value={formStockMinimo}
-                      onChange={(e) => setFormStockMinimo(Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => setFormStockMinimo(e.target.value)}
+                      placeholder="Ej: 5"
                       min={0}
                       required
                     />
@@ -892,7 +901,8 @@ export default function InventarioView({ userRole }: Props) {
                       type="number"
                       className={styles.formInput}
                       value={formStock}
-                      onChange={(e) => setFormStock(Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => setFormStock(e.target.value)}
+                      placeholder="Ej: 15"
                       min={0}
                     />
                   </div>
@@ -906,7 +916,7 @@ export default function InventarioView({ userRole }: Props) {
                       className={styles.formInput}
                       placeholder="Ej: 7500 (valor de 1 litro)"
                       value={formPrecioCompra}
-                      onChange={(e) => setFormPrecioCompra(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => setFormPrecioCompra(e.target.value)}
                       min={0}
                       disabled={editandoId ? userRole !== 'ADMINISTRADOR' : false}
                       required
@@ -920,7 +930,7 @@ export default function InventarioView({ userRole }: Props) {
                       className={styles.formInput}
                       placeholder="Ej: 12990 (valor de 1 litro)"
                       value={formPrecioVenta}
-                      onChange={(e) => setFormPrecioVenta(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => setFormPrecioVenta(e.target.value)}
                       min={0}
                       disabled={editandoId ? userRole !== 'ADMINISTRADOR' : false}
                       required
@@ -940,10 +950,10 @@ export default function InventarioView({ userRole }: Props) {
                     <span style={{ fontSize: '11.5px', color: '#64748b' }}>Por cada unidad</span>
                   </div>
 
-                  {!editandoId && formStock > 0 && formPrecioCompra > 0 && (
+                  {!editandoId && (parseInt(formStock, 10) || 0) > 0 && precioCompraNum > 0 && (
                     <div style={{ fontSize: '12px', color: '#1e40af', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Inversión total bodega ({formStock} uds):</span>
-                      <strong>${(formStock * formPrecioCompra).toLocaleString('es-CL')}</strong>
+                      <span>Inversión total bodega ({parseInt(formStock, 10) || 0} uds):</span>
+                      <strong>${((parseInt(formStock, 10) || 0) * precioCompraNum).toLocaleString('es-CL')}</strong>
                     </div>
                   )}
                 </div>
@@ -1015,7 +1025,7 @@ export default function InventarioView({ userRole }: Props) {
                     type="number"
                     className={styles.formInput}
                     value={stockFisicoContado}
-                    onChange={(e) => setStockFisicoContado(Math.max(0, parseInt(e.target.value) || 0))}
+                    onChange={(e) => setStockFisicoContado(e.target.value)}
                     min={0}
                     required
                     autoFocus
@@ -1024,7 +1034,7 @@ export default function InventarioView({ userRole }: Props) {
 
                 {/* Cálculo de diferencia */}
                 {(() => {
-                  const dif = stockFisicoContado - repuestoAjustar.stock;
+                  const dif = (parseInt(stockFisicoContado, 10) || 0) - repuestoAjustar.stock;
                   return (
                     <div className={styles.marginPreviewCard}>
                       <div>Diferencia calculada:</div>
