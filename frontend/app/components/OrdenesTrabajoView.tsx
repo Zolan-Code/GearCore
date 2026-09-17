@@ -203,6 +203,21 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     onConfirm?: () => void;
   } | null>(null);
 
+  // Modal Ficha Integral / Detalle de OT
+  const [otDetalle, setOtDetalle] = useState<OrdenTrabajo | null>(null);
+
+  async function abrirDetalleOT(ot: OrdenTrabajo) {
+    setOtDetalle(ot);
+    try {
+      const fresca = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${ot.id}`);
+      if (fresca) {
+        setOtDetalle(fresca);
+      }
+    } catch {
+      // mantiene la existente si falla
+    }
+  }
+
   // Búsqueda de vehículos para modal
   useEffect(() => {
     if (!vehiculoSearch.trim()) {
@@ -227,6 +242,9 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       const updated = await cambiarEstadoOTMutation.mutateAsync({ otId, estado: nuevoEstado });
       if (selectedOT && selectedOT.id === otId) {
         setSelectedOT(updated);
+      }
+      if (otDetalle && otDetalle.id === otId) {
+        setOtDetalle(updated);
       }
     } catch (err: any) {
       setDialogo({
@@ -735,7 +753,20 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
             const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === ot.estado);
 
             return (
-              <div key={ot.id} className={styles.otCard}>
+              <div
+                key={ot.id}
+                className={styles.otCard}
+                onClick={() => abrirDetalleOT(ot)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    abrirDetalleOT(ot);
+                  }
+                }}
+                title="Haz clic para ver la ficha completa de la orden"
+              >
                 {/* Cabecera Tarjeta: Código y Estado */}
                 <div className={styles.otCardHeader}>
                   <span className={styles.otCodeBadge}>OT #{ot.id.slice(0, 8).toUpperCase()}</span>
@@ -816,7 +847,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <div
                       className={styles.repuestosOTBadge}
                       title={`${ot.detalleRepuestos.length} repuesto(s) asignados. Total: $${ot.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')}. Clic para gestionar.`}
-                      onClick={() => abrirModalTecnico(ot)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirModalTecnico(ot);
+                      }}
                       style={{ cursor: 'pointer' }}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -833,7 +867,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       className={styles.hoursPill}
                       style={{ background: '#f0fdf4', color: '#166534', cursor: 'pointer' }}
                       title={`${ot.fotosDiagnostico.length} foto(s) de diagnóstico. Clic para ver`}
-                      onClick={() => abrirModalTecnico(ot)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirModalTecnico(ot);
+                      }}
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -847,7 +884,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 {/* Acciones de la Tarjeta */}
                 <div className={styles.cardActions}>
                   {/* Selector rápido de estado con indicador de carga */}
-                  <div className={styles.selectWrapper}>
+                  <div className={styles.selectWrapper} onClick={(e) => e.stopPropagation()}>
                     <select
                       className={styles.selectInput}
                       style={{ width: '100%', padding: '6px 10px', fontSize: '12px' }}
@@ -872,7 +909,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   <button
                     type="button"
                     className={styles.btnActionSecondary}
-                    onClick={() => abrirModalTecnico(ot)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirModalTecnico(ot);
+                    }}
                     title="Diagnóstico, fotos y registro de horas"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -886,7 +926,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     type="button"
                     className={styles.btnWhatsApp}
                     disabled={cargandoWhatsappId === ot.id}
-                    onClick={() => handleGenerarWhatsapp(ot.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerarWhatsapp(ot.id);
+                    }}
                     title="Notificar avance o cotización por WhatsApp"
                   >
                     {cargandoWhatsappId === ot.id ? (
@@ -912,6 +955,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       </>
                     )}
                   </button>
+                </div>
+
+                {/* Pista visual para abrir ficha */}
+                <div className={styles.otCardHint}>
+                  <span>Ver ficha completa</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </div>
               </div>
             );
@@ -1601,6 +1652,424 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
           </div>
         </div>
       )}
+
+      {/* MODAL 5: FICHA INTEGRAL DE ORDEN DE TRABAJO (DETALLE COMPLETO) */}
+      {otDetalle && (() => {
+        const otInfo = ordenes.find((o) => o.id === otDetalle.id) || otDetalle;
+        const estadoObj = ESTADOS_OT.find((e) => e.id === otInfo.estado) || ESTADOS_OT[0];
+        const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === otInfo.estado);
+        const totalRepuestos = (otInfo.detalleRepuestos || []).reduce(
+          (acc, item) => acc + item.cantidad * item.precioUnitario,
+          0
+        );
+
+        return (
+          <div className={styles.modalOverlay} onClick={() => setOtDetalle(null)}>
+            <div className={styles.modalContentLarge} onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className={styles.modalHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e1b4b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    <h3 style={{ margin: 0 }}>Ficha Integral de Orden de Trabajo</h3>
+                  </div>
+                  <span className={styles.otCodeBadge}>OT #{otInfo.id.slice(0, 8).toUpperCase()}</span>
+                  <span className={`${styles.statusBadge} ${estadoObj.class}`}>
+                    {estadoObj.label}
+                  </span>
+                  <div className={styles.plateBadge}>
+                    <img src="/assets/chile-flag.svg" alt="CL" className={styles.plateFlag} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                    <span>{otInfo.vehiculo.patente}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.closeBtn}
+                  onClick={() => setOtDetalle(null)}
+                  title="Cerrar ficha"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={styles.modalBody}>
+                {/* Stepper de ciclo de vida */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Estado del Vehículo en Taller
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                      Etapa {estadoIdx + 1} de 7: {estadoObj.label}
+                    </span>
+                  </div>
+                  <div className={styles.stepperDetail}>
+                    {ESTADOS_OT.map((est, idx) => {
+                      const isDone = idx < estadoIdx;
+                      const isCurrent = idx === estadoIdx;
+                      return (
+                        <div key={est.id} className={styles.stepperDetailItem}>
+                          <div
+                            className={`${styles.stepperDetailBar} ${
+                              isDone
+                                ? styles.stepperDetailBarDone
+                                : isCurrent
+                                ? styles.stepperDetailBarCurrent
+                                : ''
+                            }`}
+                          />
+                          <span
+                            className={`${styles.stepperDetailText} ${
+                              isCurrent ? styles.stepperDetailTextCurrent : ''
+                            }`}
+                          >
+                            {est.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Grid 2 Columnas: Cliente/Vehículo y Checklist de Recepción */}
+                <div className={styles.detalleGrid}>
+                  {/* Tarjeta 1: Cliente & Vehículo */}
+                  <div className={styles.detalleCard}>
+                    <h4 className={styles.detalleCardTitle}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                        <circle cx="7" cy="17" r="2" />
+                        <circle cx="17" cy="17" r="2" />
+                      </svg>
+                      <span>Vehículo y Propietario</span>
+                    </h4>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Vehículo:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.vehiculo.marca} {otInfo.vehiculo.modelo} {otInfo.vehiculo.anio ? `(${otInfo.vehiculo.anio})` : ''}
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Patente:</span>
+                      <span className={styles.detalleInfoValue} style={{ fontFamily: 'monospace' }}>
+                        {otInfo.vehiculo.patente}
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Cliente / Titular:</span>
+                      <span className={styles.detalleInfoValue}>{otInfo.vehiculo.cliente.nombre}</span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>RUT:</span>
+                      <span className={styles.detalleInfoValue}>{otInfo.vehiculo.cliente.rut}</span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Teléfono:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.vehiculo.cliente.telefono ? `+${otInfo.vehiculo.cliente.telefono}` : 'Sin teléfono registrado'}
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Correo Electrónico:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.vehiculo.cliente.email || 'Sin correo registrado'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tarjeta 2: Checklist e Inspección de Recepción */}
+                  <div className={styles.detalleCard}>
+                    <h4 className={styles.detalleCardTitle}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                      <span>Checklist de Ingreso</span>
+                    </h4>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Kilometraje al Ingreso:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.kilometrajeRecepcion !== null && otInfo.kilometrajeRecepcion !== undefined
+                          ? `${otInfo.kilometrajeRecepcion.toLocaleString('es-CL')} km`
+                          : otInfo.vehiculo.kilometraje
+                          ? `${otInfo.vehiculo.kilometraje.toLocaleString('es-CL')} km`
+                          : 'No registrado'}
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Nivel de Combustible:</span>
+                      <span className={styles.fuelBadge}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 22h12M4 9h10M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
+                        </svg>
+                        <span>{otInfo.nivelCombustible || 'No indicado'}</span>
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Fecha de Recepción:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {new Date(otInfo.fechaRecepcion).toLocaleString('es-CL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+
+                    <div className={styles.detalleInfoRow}>
+                      <span className={styles.detalleInfoLabel}>Fecha de Entrega:</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.fechaEntrega
+                          ? new Date(otInfo.fechaEntrega).toLocaleString('es-CL', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'Pendiente de entrega'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                      <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
+                      <span style={{ fontSize: '12px', color: '#334155', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        {otInfo.rayonesCarroceria || 'Sin rayones ni daños declarados'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                      <span className={styles.detalleInfoLabel}>Elementos de Valor Declarados:</span>
+                      <span style={{ fontSize: '12px', color: '#334155', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        {otInfo.elementosValor || 'Sin elementos de valor declarados'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección Falla Reportada y Diagnóstico Técnico */}
+                <div className={styles.detalleCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                    <h4 className={styles.detalleCardTitle} style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                      </svg>
+                      <span>Diagnóstico y Ejecución Técnica</span>
+                    </h4>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div className={styles.mecanicoPill}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                        <span>Mecánico: <strong>{otInfo.mecanico ? otInfo.mecanico.nombre : 'Sin asignar'}</strong></span>
+                      </div>
+
+                      <div className={styles.hoursPill}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        <span>{otInfo.horasHombre || 0} hrs invertidas</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Motivo de ingreso */}
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                      Motivo de Ingreso / Falla Reportada por Cliente:
+                    </span>
+                    <div className={styles.fallaBox}>
+                      {otInfo.fallaReportada}
+                    </div>
+                  </div>
+
+                  {/* Hallazgos de Diagnóstico */}
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                      Diagnóstico del Mecánico:
+                    </span>
+                    <div className={styles.detalleTextareaBox}>
+                      {otInfo.diagnostico || 'Sin diagnóstico registrado por el momento.'}
+                    </div>
+                  </div>
+
+                  {/* Trabajos Realizados */}
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                      Trabajos y Reparaciones Efectuadas:
+                    </span>
+                    <div className={styles.detalleTextareaBox}>
+                      {otInfo.trabajoRealizado || 'Sin reparaciones registradas por el momento.'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección Desglose de Repuestos */}
+                <div className={styles.repuestosSection}>
+                  <div className={styles.repuestosHeader}>
+                    <h4 className={styles.repuestosTitle}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                      </svg>
+                      <span>Repuestos Asignados ({otInfo.detalleRepuestos?.length || 0})</span>
+                    </h4>
+                    {otInfo.detalleRepuestos && otInfo.detalleRepuestos.length > 0 && (
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e1b4b' }}>
+                        Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
+                      </span>
+                    )}
+                  </div>
+
+                  {otInfo.detalleRepuestos && otInfo.detalleRepuestos.length > 0 ? (
+                    <div className={styles.repuestosTableWrapper}>
+                      <table className={styles.repuestosTable}>
+                        <thead>
+                          <tr>
+                            <th>Código</th>
+                            <th>Descripción</th>
+                            <th style={{ textAlign: 'center' }}>Cantidad</th>
+                            <th style={{ textAlign: 'right' }}>Precio Unitario</th>
+                            <th style={{ textAlign: 'right' }}>Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {otInfo.detalleRepuestos.map((item) => {
+                            const subtotal = item.cantidad * item.precioUnitario;
+                            return (
+                              <tr key={item.id}>
+                                <td>
+                                  <span className={styles.repuestoCodeBadge}>{item.repuesto.codigo}</span>
+                                </td>
+                                <td>{item.repuesto.nombre}</td>
+                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.cantidad}</td>
+                                <td style={{ textAlign: 'right' }}>${item.precioUnitario.toLocaleString('es-CL')}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700 }}>${subtotal.toLocaleString('es-CL')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className={styles.emptyRepuestosBox}>
+                      No se han asignado repuestos o insumos a esta orden de trabajo.
+                    </div>
+                  )}
+                </div>
+
+                {/* Sección Galería de Fotografías */}
+                <div className={styles.detalleCard}>
+                  <h4 className={styles.detalleCardTitle}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <span>Evidencia Fotográfica de Diagnóstico ({otInfo.fotosDiagnostico?.length || 0})</span>
+                  </h4>
+
+                  {otInfo.fotosDiagnostico && otInfo.fotosDiagnostico.length > 0 ? (
+                    <div className={styles.photosGrid}>
+                      {otInfo.fotosDiagnostico.map((foto, idx) => (
+                        <div
+                          key={idx}
+                          className={styles.photoThumbnailWrapper}
+                          onClick={() => setFotoAmpliada(foto)}
+                          title="Clic para ampliar imagen"
+                        >
+                          <img
+                            src={foto}
+                            alt={`Evidencia ${idx + 1}`}
+                            className={styles.photoThumbnail}
+                          />
+                          <div className={styles.photoZoomBadge}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="8" />
+                              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                              <line x1="11" y1="8" x2="11" y2="14" />
+                              <line x1="8" y1="11" x2="14" y2="11" />
+                            </svg>
+                            <span>Ver</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyRepuestosBox}>
+                      No se han adjuntado fotos de diagnóstico para esta orden.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer con acciones */}
+              <div className={styles.modalFooter} style={{ justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className={styles.btnWhatsApp}
+                  disabled={cargandoWhatsappId === otInfo.id}
+                  onClick={() => handleGenerarWhatsapp(otInfo.id)}
+                  title="Generar mensaje y enviar por WhatsApp al cliente"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  </svg>
+                  <span>Notificar por WhatsApp</span>
+                </button>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className={styles.btnActionSecondary}
+                    onClick={() => {
+                      setOtDetalle(null);
+                      abrirModalTecnico(otInfo);
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    <span>Gestionar Diagnóstico / Repuestos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    style={{ padding: '8px 18px', fontSize: '13px' }}
+                    onClick={() => setOtDetalle(null)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL 4: FOTO AMPLIADA A DETALLE (LIGHTBOX) */}
       {fotoAmpliada && (

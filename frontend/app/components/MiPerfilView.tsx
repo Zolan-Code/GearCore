@@ -61,8 +61,8 @@ export default function MiPerfilView() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorPassword('La nueva contraseña debe tener al menos 6 caracteres.');
+    if (password.length < 8) {
+      setErrorPassword('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
@@ -346,8 +346,8 @@ export default function MiPerfilView() {
                   className={styles.formInput}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  minLength={6}
+                  placeholder="Mínimo 8 caracteres"
+                  minLength={8}
                   required
                 />
                 <button
@@ -379,7 +379,7 @@ export default function MiPerfilView() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repite la nueva contraseña"
-                minLength={6}
+                minLength={8}
                 required
               />
             </div>

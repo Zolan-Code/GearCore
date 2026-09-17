@@ -176,7 +176,7 @@ export default function HomePage() {
 
         try {
           // Consultar perfil real y rol asignado desde la base de datos (PostgreSQL/Prisma)
-          const perfilBD = await fetchWithAuth<UserProfile>('/auth/perfil');
+          const perfilBD = await fetchWithAuth<UserProfile>('/perfil');
           if (perfilBD && isMounted) {
             queryClient.setQueryData(['perfil'], perfilBD);
             setUser({
@@ -230,8 +230,11 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
-        <p style={{ color: '#64748b' }}>Cargando panel de GearCore...</p>
+      <div className={styles.splashContainer}>
+        <div className={styles.kineticStack}>
+          <span className={`${styles.kineticWord} ${styles.kineticWordGear}`}>GEAR</span>
+          <span className={`${styles.kineticWord} ${styles.kineticWordCore}`}>CORE</span>
+        </div>
       </div>
     );
   }

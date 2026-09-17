@@ -66,7 +66,7 @@ export function useMiPerfil(enabled = true) {
   return useQuery({
     queryKey: ['perfil'],
     queryFn: async () => {
-      const data = await fetchWithAuth<Usuario>('/auth/perfil');
+      const data = await fetchWithAuth<Usuario>('/perfil');
       return data;
     },
     enabled,
@@ -80,7 +80,7 @@ export function useActualizarMiPerfil() {
 
   return useMutation({
     mutationFn: async ({ nombre }: { nombre: string }) => {
-      const perfilActualizado = await fetchWithAuth<Usuario>('/auth/perfil', {
+      const perfilActualizado = await fetchWithAuth<Usuario>('/perfil', {
         method: 'PATCH',
         body: JSON.stringify({ nombre }),
       });

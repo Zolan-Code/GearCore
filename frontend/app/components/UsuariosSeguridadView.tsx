@@ -609,10 +609,10 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
                     <input
                       type="password"
                       className={styles.formInput}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 8 caracteres"
                       value={nuevoPassword}
                       onChange={(e) => setNuevoPassword(e.target.value)}
-                      minLength={6}
+                      minLength={8}
                       required
                     />
                   </div>

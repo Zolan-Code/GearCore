@@ -11,7 +11,7 @@ export class CrearUsuarioDto {
   email: string;
 
   @IsString()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres.' })
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   password: string;
 
   @IsEnum(RolUsuario, { message: 'El rol debe ser ADMINISTRADOR, RECEPCIONISTA o MECANICO.' })
