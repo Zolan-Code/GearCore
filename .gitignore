@@ -27,3 +27,4 @@ Thumbs.db
 # Excepción explícita para plantillas
 !.env*.example
 *.tsbuildinfo
+scratch/

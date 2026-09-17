@@ -19,6 +19,7 @@ import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 import { ActualizarDiagnosticoDto } from './dto/actualizar-diagnostico.dto';
 import { RegistrarHorasDto } from './dto/registrar-horas.dto';
+import { AgregarRepuestoOTDto } from './dto/agregar-repuesto-ot.dto';
 
 @Controller('ordenes-trabajo')
 @UseGuards(SupabaseAuthGuard, RolesGuard)
@@ -91,5 +92,25 @@ export class OrdenesTrabajoController {
   @Roles(RolUsuario.ADMINISTRADOR)
   async eliminar(@Param('id') id: string, @Req() req: any) {
     return this.ordenesService.eliminar(id, req.user.id);
+  }
+
+  @Post(':id/repuestos')
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCIONISTA, RolUsuario.MECANICO)
+  async agregarRepuesto(
+    @Param('id') id: string,
+    @Body() dto: AgregarRepuestoOTDto,
+    @Req() req: any,
+  ) {
+    return this.ordenesService.agregarRepuesto(id, dto, req.user?.id);
+  }
+
+  @Delete(':id/repuestos/:detalleId')
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCIONISTA, RolUsuario.MECANICO)
+  async quitarRepuesto(
+    @Param('id') id: string,
+    @Param('detalleId') detalleId: string,
+    @Req() req: any,
+  ) {
+    return this.ordenesService.quitarRepuesto(id, detalleId, req.user?.id);
   }
 }

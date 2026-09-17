@@ -7,6 +7,7 @@ import styles from './page.module.css';
 import ClientesVehiculosView from './components/ClientesVehiculosView';
 import OrdenesTrabajoView from './components/OrdenesTrabajoView';
 import UsuariosSeguridadView from './components/UsuariosSeguridadView';
+import InventarioView from './components/InventarioView';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 
 interface UserProfile {
@@ -325,6 +326,8 @@ export default function HomePage() {
           <ClientesVehiculosView userRole={userRole} />
         ) : activeSection === 'ordenes-trabajo' ? (
           <OrdenesTrabajoView userRole={userRole} userId={user?.id} />
+        ) : activeSection === 'inventario' ? (
+          <InventarioView userRole={userRole} />
         ) : activeSection === 'usuarios-seguridad' ? (
           <UsuariosSeguridadView userRole={userRole} />
         ) : (

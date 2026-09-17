@@ -32,8 +32,9 @@ model Perfil {
   activo   Boolean    @default(true)
   creadoEn DateTime   @default(now())
 
-  ordenesAsignadas OrdenTrabajo[] @relation("MecanicoAsignado")
-  auditorias       RegistroAuditoria[]
+  ordenesAsignadas      OrdenTrabajo[]         @relation("MecanicoAsignado")
+  auditorias            RegistroAuditoria[]
+  movimientosInventario MovimientoInventario[]
 
   @@map("perfiles")
 }
@@ -102,17 +103,47 @@ model Repuesto {
   precioVenta  Float
   creadoEn     DateTime @default(now())
 
-  usosEnOT DetalleOTRepuesto[]
+  usosEnOT    DetalleOTRepuesto[]
+  movimientos MovimientoInventario[]
+
+  @@map("repuestos")
 }
 
 model DetalleOTRepuesto {
   id             String       @id @default(uuid())
   ordenId        String
-  orden          OrdenTrabajo @relation(fields: [ordenId], references: [id])
+  orden          OrdenTrabajo @relation(fields: [ordenId], references: [id], onDelete: Cascade)
   repuestoId     String
   repuesto       Repuesto     @relation(fields: [repuestoId], references: [id])
   cantidad       Int
   precioUnitario Float
+
+  @@map("detalles_ot_repuestos")
+}
+
+enum TipoMovimientoStock {
+  ENTRADA_MANUAL
+  SALIDA_OT
+  DEVOLUCION_OT
+  AJUSTE_FISICO
+  IMPORTACION_MASIVA
+}
+
+model MovimientoInventario {
+  id             String              @id @default(uuid())
+  repuestoId     String
+  repuesto       Repuesto            @relation(fields: [repuestoId], references: [id], onDelete: Cascade)
+  tipo           TipoMovimientoStock
+  cantidad       Int
+  stockAnterior  Int
+  stockNuevo     Int
+  motivo         String?
+  ordenTrabajoId String?
+  usuarioId      String?
+  usuario        Perfil?             @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  creadoEn       DateTime            @default(now())
+
+  @@map("movimientos_inventario")
 }
 
 model RegistroAuditoria {

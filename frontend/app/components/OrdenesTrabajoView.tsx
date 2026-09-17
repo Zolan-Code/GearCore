@@ -34,6 +34,32 @@ type EstadoOT =
   | 'CONTROL_CALIDAD'
   | 'ENTREGADO';
 
+interface RepuestoCatalogo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  stock: number;
+  stockMinimo: number;
+  precioVenta: number;
+  precioCompra: number;
+}
+
+interface DetalleOTRepuestoItem {
+  id: string;
+  ordenId: string;
+  repuestoId: string;
+  cantidad: number;
+  precioUnitario: number;
+  repuesto: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    stock: number;
+    stockMinimo: number;
+    precioVenta: number;
+  };
+}
+
 interface OrdenTrabajo {
   id: string;
   vehiculoId: string;
@@ -71,6 +97,7 @@ interface OrdenTrabajo {
     nombre: string;
     email: string;
   } | null;
+  detalleRepuestos?: DetalleOTRepuestoItem[];
 }
 
 interface Props {
@@ -212,6 +239,21 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [procesandoFotos, setProcesandoFotos] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
+  // Repuestos en OT (SCRUM-23)
+  const [catalogoRepuestos, setCatalogoRepuestos] = useState<RepuestoCatalogo[]>([]);
+  const [repuestoSeleccionadoId, setRepuestoSeleccionadoId] = useState('');
+  const [cantidadRepuesto, setCantidadRepuesto] = useState('1');
+  const [guardandoRepuestoOT, setGuardandoRepuestoOT] = useState(false);
+  const [quitandoRepuestoId, setQuitandoRepuestoId] = useState<string | null>(null);
+
+  // Diálogo modal personalizado (reemplaza alert / confirm)
+  const [dialogo, setDialogo] = useState<{
+    tipo: 'success' | 'error' | 'confirm';
+    titulo: string;
+    mensaje: string;
+    onConfirm?: () => void;
+  } | null>(null);
+
   // Carga inicial
   useEffect(() => {
     cargarDatos();
@@ -221,16 +263,31 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const [otsRes, mecsRes] = await Promise.all([
+      const [otsRes, mecsRes, catRes] = await Promise.all([
         fetchWithAuth<OrdenTrabajo[]>('/ordenes-trabajo'),
         fetchWithAuth<Mecanico[]>('/ordenes-trabajo/mecanicos'),
+        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos').catch(() => null),
       ]);
       setOrdenes(otsRes || []);
       setMecanicos(mecsRes || []);
+      if (catRes && catRes.items) {
+        setCatalogoRepuestos(catRes.items);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al cargar órdenes de trabajo.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function cargarCatalogoRepuestos() {
+    try {
+      const res = await fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos');
+      if (res && res.items) {
+        setCatalogoRepuestos(res.items);
+      }
+    } catch {
+      // mantener catálogo existente
     }
   }
 
@@ -264,7 +321,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         setSelectedOT(updated);
       }
     } catch (err: any) {
-      alert(`Error al actualizar estado: ${err.message}`);
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al actualizar estado',
+        mensaje: err.message || 'No se pudo modificar el estado de la OT.',
+      });
     } finally {
       setActualizandoEstadoId(null);
     }
@@ -274,11 +335,19 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   async function handleCrearOT(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedVehiculo) {
-      alert('Debes seleccionar un vehículo para la orden.');
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Vehículo requerido',
+        mensaje: 'Debes seleccionar un vehículo para la orden.',
+      });
       return;
     }
     if (!nuevaFalla.trim()) {
-      alert('Debes ingresar la falla reportada o motivo de ingreso.');
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Falla requerida',
+        mensaje: 'Debes ingresar la falla reportada o motivo de ingreso.',
+      });
       return;
     }
 
@@ -303,7 +372,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       setShowCrearModal(false);
       resetCrearForm();
     } catch (err: any) {
-      alert(`Error al crear la OT: ${err.message}`);
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al crear la OT',
+        mensaje: err.message || 'No fue posible registrar la nueva orden de trabajo.',
+      });
     } finally {
       setGuardandoOT(false);
     }
@@ -321,7 +394,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   }
 
   // Abrir Modal Técnico
-  function abrirModalTecnico(ot: OrdenTrabajo) {
+  async function abrirModalTecnico(ot: OrdenTrabajo) {
     setSelectedOT(ot);
     setEditDiagnostico(ot.diagnostico || '');
     setEditTrabajo(ot.trabajoRealizado || '');
@@ -329,7 +402,137 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setNuevaFotoUrl('');
     setHorasInput('');
     setComentarioHoras('');
+    setRepuestoSeleccionadoId('');
+    setCantidadRepuesto('1');
     setShowTecnicoModal(true);
+
+    cargarCatalogoRepuestos();
+    try {
+      const fresca = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${ot.id}`);
+      if (fresca) {
+        setSelectedOT(fresca);
+        setOrdenes((prev) => prev.map((o) => (o.id === fresca.id ? fresca : o)));
+      }
+    } catch {
+      // mantener estado actual si falla fetch
+    }
+  }
+
+  // SCRUM-23: Agregar Repuesto a la OT con descuento automático
+  async function handleAgregarRepuestoOT() {
+    if (!selectedOT || !repuestoSeleccionadoId) return;
+    const cant = parseInt(cantidadRepuesto, 10);
+    if (isNaN(cant) || cant <= 0) {
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Cantidad inválida',
+        mensaje: 'Debes ingresar una cantidad mayor a cero.',
+      });
+      return;
+    }
+
+    const item = catalogoRepuestos.find((r) => r.id === repuestoSeleccionadoId);
+    if (!item) return;
+
+    if (item.stock < cant) {
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Stock insuficiente',
+        mensaje: `No hay suficiente stock para [${item.codigo}] "${item.nombre}". Disponible: ${item.stock} uds, Solicitado: ${cant} uds.`,
+      });
+      return;
+    }
+
+    try {
+      setGuardandoRepuestoOT(true);
+      await fetchWithAuth(`/ordenes-trabajo/${selectedOT.id}/repuestos`, {
+        method: 'POST',
+        body: JSON.stringify({
+          repuestoId: repuestoSeleccionadoId,
+          cantidad: cant,
+          precioUnitario: item.precioVenta,
+        }),
+      });
+
+      // Refrescar OT y catálogo
+      const [otActualizada, catRes] = await Promise.all([
+        fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`),
+        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos'),
+      ]);
+
+      if (otActualizada) {
+        setSelectedOT(otActualizada);
+        setOrdenes((prev) => prev.map((o) => (o.id === otActualizada.id ? otActualizada : o)));
+      }
+      if (catRes && catRes.items) {
+        setCatalogoRepuestos(catRes.items);
+      }
+
+      setRepuestoSeleccionadoId('');
+      setCantidadRepuesto('1');
+
+      setDialogo({
+        tipo: 'success',
+        titulo: 'Repuesto Asociado',
+        mensaje: `Se asociaron ${cant} ud(s) de "${item.nombre}" a la OT y se descontaron del inventario.`,
+      });
+    } catch (err: any) {
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al agregar repuesto',
+        mensaje: err.message || 'No fue posible asociar el repuesto a la OT.',
+      });
+    } finally {
+      setGuardandoRepuestoOT(false);
+    }
+  }
+
+  // SCRUM-23: Quitar Repuesto de la OT con restitución automática de stock
+  function solicitarQuitarRepuesto(detalle: DetalleOTRepuestoItem) {
+    setDialogo({
+      tipo: 'confirm',
+      titulo: 'Confirmar Devolución al Stock',
+      mensaje: `¿Deseas retirar "${detalle.repuesto.nombre}" (${detalle.cantidad} uds) de esta OT? Se reintegrarán automáticamente +${detalle.cantidad} unidades al stock del inventario.`,
+      onConfirm: () => ejecutarQuitarRepuesto(detalle.id),
+    });
+  }
+
+  async function ejecutarQuitarRepuesto(detalleId: string) {
+    if (!selectedOT) return;
+    try {
+      setQuitandoRepuestoId(detalleId);
+      await fetchWithAuth(`/ordenes-trabajo/${selectedOT.id}/repuestos/${detalleId}`, {
+        method: 'DELETE',
+      });
+
+      // Refrescar OT y catálogo
+      const [otActualizada, catRes] = await Promise.all([
+        fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`),
+        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos'),
+      ]);
+
+      if (otActualizada) {
+        setSelectedOT(otActualizada);
+        setOrdenes((prev) => prev.map((o) => (o.id === otActualizada.id ? otActualizada : o)));
+      }
+      if (catRes && catRes.items) {
+        setCatalogoRepuestos(catRes.items);
+      }
+
+      setDialogo({
+        tipo: 'success',
+        titulo: 'Stock Reintegrado',
+        mensaje: 'El repuesto fue retirado de la OT y las unidades se devolvieron exitosamente al inventario.',
+      });
+    } catch (err: any) {
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al quitar repuesto',
+        mensaje: err.message || 'No se pudo retirar el repuesto.',
+      });
+    } finally {
+      setQuitandoRepuestoId(null);
+    }
   }
 
   // Comprimir imagen localmente a HD WebP/JPEG optimizado (~70KB)
@@ -392,7 +595,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       }
       setEditFotos((prev) => [...prev, ...nuevasFotos]);
     } catch (err: any) {
-      alert('Error al procesar imágenes: ' + err.message);
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al procesar fotos',
+        mensaje: 'Error al procesar imágenes: ' + err.message,
+      });
     } finally {
       setProcesandoFotos(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -429,7 +636,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       setSelectedOT(finalOT);
       setShowTecnicoModal(false);
     } catch (err: any) {
-      alert(`Error al actualizar diagnóstico: ${err.message}`);
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error al guardar diagnóstico',
+        mensaje: err.message || 'No fue posible guardar los cambios.',
+      });
     } finally {
       setGuardandoTecnico(false);
     }
@@ -445,7 +656,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       setWhatsappData(data);
       setShowWhatsappModal(true);
     } catch (err: any) {
-      alert(`Error al preparar WhatsApp: ${err.message}`);
+      setDialogo({
+        tipo: 'error',
+        titulo: 'Error de WhatsApp',
+        mensaje: err.message || 'No se pudo generar el enlace de WhatsApp.',
+      });
     } finally {
       setCargandoWhatsappId(null);
     }
@@ -686,6 +901,22 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     </svg>
                     <span>{ot.horasHombre || 0} hrs</span>
                   </div>
+
+                  {ot.detalleRepuestos && ot.detalleRepuestos.length > 0 && (
+                    <div
+                      className={styles.repuestosOTBadge}
+                      title={`${ot.detalleRepuestos.length} repuesto(s) asignados. Total: $${ot.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')}. Clic para gestionar.`}
+                      onClick={() => abrirModalTecnico(ot)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                      </svg>
+                      <span>
+                        {ot.detalleRepuestos.length} rep. (${ot.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')})
+                      </span>
+                    </div>
+                  )}
 
                   {ot.fotosDiagnostico && ot.fotosDiagnostico.length > 0 && (
                     <div
@@ -1102,6 +1333,168 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 />
               </div>
 
+              {/* Repuestos y Materiales Utilizados (SCRUM-23) */}
+              <div className={styles.repuestosSection}>
+                <div className={styles.repuestosHeader}>
+                  <h4 className={styles.repuestosTitle}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                    </svg>
+                    <span>Repuestos y Materiales Utilizados ({selectedOT.detalleRepuestos?.length || 0})</span>
+                  </h4>
+                  {selectedOT.detalleRepuestos && selectedOT.detalleRepuestos.length > 0 && (
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af' }}>
+                      Total: ${selectedOT.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Tabla de repuestos ya asignados */}
+                {selectedOT.detalleRepuestos && selectedOT.detalleRepuestos.length > 0 ? (
+                  <div className={styles.repuestosTableWrapper}>
+                    <table className={styles.repuestosTable}>
+                      <thead>
+                        <tr>
+                          <th>Código</th>
+                          <th>Descripción</th>
+                          <th style={{ textAlign: 'center' }}>Cant.</th>
+                          <th style={{ textAlign: 'right' }}>P. Unitario</th>
+                          <th style={{ textAlign: 'right' }}>Subtotal</th>
+                          <th style={{ textAlign: 'center', width: '50px' }}>Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOT.detalleRepuestos.map((d) => (
+                          <tr key={d.id}>
+                            <td>
+                              <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
+                            </td>
+                            <td>
+                              <strong>{d.repuesto.nombre}</strong>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>{d.cantidad}</td>
+                            <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                              ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className={styles.btnDeleteRepuesto}
+                                disabled={quitandoRepuestoId === d.id}
+                                onClick={() => solicitarQuitarRepuesto(d)}
+                                title="Quitar repuesto y reintegrar al inventario"
+                              >
+                                {quitandoRepuestoId === d.id ? (
+                                  <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                                ) : (
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', padding: '8px 0' }}>
+                    Aún no se han asociado repuestos a esta orden de trabajo.
+                  </div>
+                )}
+
+                {/* Formulario para asociar repuesto desde el inventario */}
+                <div className={styles.repuestoAddForm}>
+                  <div className={styles.repuestoSelectWrapper}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                      Seleccionar Repuesto del Almacén:
+                    </label>
+                    <select
+                      className={styles.formSelect}
+                      value={repuestoSeleccionadoId}
+                      onChange={(e) => {
+                        setRepuestoSeleccionadoId(e.target.value);
+                        setCantidadRepuesto('1');
+                      }}
+                      style={{ fontSize: '13px' }}
+                    >
+                      <option value="">-- Seleccione un repuesto para asociar --</option>
+                      {catalogoRepuestos.map((r) => {
+                        const disponible = r.stock > 0;
+                        return (
+                          <option key={r.id} value={r.id} disabled={!disponible}>
+                            [{r.codigo}] {r.nombre} — {disponible ? `Stock: ${r.stock} uds` : 'AGOTADO'} — ${r.precioVenta.toLocaleString('es-CL')}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className={styles.repuestoQtyWrapper}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                      Cantidad:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      className={styles.formInput}
+                      value={cantidadRepuesto}
+                      onChange={(e) => setCantidadRepuesto(e.target.value)}
+                      style={{ fontSize: '13px', textAlign: 'center' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.btnAddRepuesto}
+                    disabled={
+                      !repuestoSeleccionadoId ||
+                      guardandoRepuestoOT ||
+                      parseInt(cantidadRepuesto, 10) <= 0 ||
+                      isNaN(parseInt(cantidadRepuesto, 10))
+                    }
+                    onClick={handleAgregarRepuestoOT}
+                  >
+                    {guardandoRepuestoOT ? (
+                      <>
+                        <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                        <span>Descontando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        <span>Añadir a OT</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Subtotal estimado en vivo */}
+                {repuestoSeleccionadoId && (() => {
+                  const sel = catalogoRepuestos.find((r) => r.id === repuestoSeleccionadoId);
+                  const cant = parseInt(cantidadRepuesto, 10) || 0;
+                  if (!sel) return null;
+                  const superado = cant > sel.stock;
+                  return (
+                    <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: superado ? '#dc2626' : '#475569', marginTop: '2px' }}>
+                      <span>
+                        Stock en almacén: <strong>{sel.stock} uds</strong>
+                        {superado && ' (¡Excede el stock disponible!)'}
+                      </span>
+                      <span>
+                        Subtotal a sumar: <strong>${(cant * sel.precioVenta).toLocaleString('es-CL')}</strong>
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Fotografías del Diagnóstico (SCRUM-19) */}
               <div className={styles.formGroup}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1331,6 +1724,75 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 </svg>
                 <span>Abrir en pestaña nueva / Descargar</span>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DIALOGO / CONFIRMACIÓN PERSONALIZADO (CERO ALERT NATIVO) */}
+      {dialogo && (
+        <div className={styles.dialogOverlay} onClick={() => setDialogo(null)}>
+          <div className={styles.dialogModal} onClick={(e) => e.stopPropagation()}>
+            {dialogo.tipo === 'success' && (
+              <div className={styles.dialogIconSuccess}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            )}
+            {dialogo.tipo === 'error' && (
+              <div className={styles.dialogIconError}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              </div>
+            )}
+            {dialogo.tipo === 'confirm' && (
+              <div className={styles.dialogIconConfirm}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+            )}
+
+            <h4 className={styles.dialogTitle}>{dialogo.titulo}</h4>
+            <p className={styles.dialogText}>{dialogo.mensaje}</p>
+
+            <div className={styles.dialogActions}>
+              {dialogo.tipo === 'confirm' ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.btnDialogCancel}
+                    onClick={() => setDialogo(null)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnDialogDanger}
+                    onClick={() => {
+                      const fn = dialogo.onConfirm;
+                      setDialogo(null);
+                      if (fn) fn();
+                    }}
+                  >
+                    Confirmar
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.btnDialogConfirm}
+                  onClick={() => setDialogo(null)}
+                >
+                  Entendido
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -4,14 +4,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoOT, RolUsuario } from '@prisma/client';
+import { EstadoOT, Prisma, RolUsuario, TipoMovimientoStock } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 import { ActualizarDiagnosticoDto } from './dto/actualizar-diagnostico.dto';
 import { RegistrarHorasDto } from './dto/registrar-horas.dto';
+import { AgregarRepuestoOTDto } from './dto/agregar-repuesto-ot.dto';
 import { NotificadorWhatsAppService } from './notificadores/notificador-whatsapp.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+
+const ordenInclude = Prisma.validator<Prisma.OrdenTrabajoInclude>()({
+  vehiculo: {
+    include: { cliente: true },
+  },
+  mecanico: {
+    select: { id: true, nombre: true, email: true },
+  },
+  detalleRepuestos: {
+    include: { repuesto: true },
+  },
+});
 
 @Injectable()
 export class OrdenesTrabajoService {
@@ -89,14 +102,7 @@ export class OrdenesTrabajoService {
         kilometrajeRecepcion: dto.kilometrajeRecepcion ?? vehiculo.kilometraje,
         fotosDiagnostico: dto.fotosDiagnostico || [],
       },
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-      },
+      include: ordenInclude,
     });
   }
 
@@ -148,14 +154,7 @@ export class OrdenesTrabajoService {
 
     return this.prisma.ordenTrabajo.findMany({
       where,
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-      },
+      include: ordenInclude,
       orderBy: { creadoEn: 'desc' },
     });
   }
@@ -166,17 +165,7 @@ export class OrdenesTrabajoService {
   async buscarPorId(id: string, usuarioId?: string) {
     const orden = await this.prisma.ordenTrabajo.findUnique({
       where: { id },
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-        detalleRepuestos: {
-          include: { repuesto: true },
-        },
-      },
+      include: ordenInclude,
     });
 
     if (!orden) {
@@ -210,14 +199,7 @@ export class OrdenesTrabajoService {
     return this.prisma.ordenTrabajo.update({
       where: { id },
       data,
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-      },
+      include: ordenInclude,
     });
   }
 
@@ -260,14 +242,7 @@ export class OrdenesTrabajoService {
     return this.prisma.ordenTrabajo.update({
       where: { id },
       data,
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-      },
+      include: ordenInclude,
     });
   }
 
@@ -292,14 +267,7 @@ export class OrdenesTrabajoService {
         horasHombre: Math.round(horasActualizadas * 10) / 10,
         trabajoRealizado: trabajo,
       },
-      include: {
-        vehiculo: {
-          include: { cliente: true },
-        },
-        mecanico: {
-          select: { id: true, nombre: true, email: true },
-        },
-      },
+      include: ordenInclude,
     });
   }
 
@@ -347,5 +315,110 @@ export class OrdenesTrabajoService {
     });
 
     return { ok: true, mensaje: 'Orden de trabajo eliminada exitosamente.' };
+  }
+
+  /**
+   * Asociar repuesto a una Orden de Trabajo con descuento automático de stock (SCRUM-23)
+   */
+  async agregarRepuesto(ordenId: string, dto: AgregarRepuestoOTDto, usuarioId?: string) {
+    const orden = await this.buscarPorId(ordenId, usuarioId);
+
+    const repuesto = await this.prisma.repuesto.findUnique({
+      where: { id: dto.repuestoId },
+    });
+    if (!repuesto) {
+      throw new NotFoundException(`Repuesto con ID ${dto.repuestoId} no encontrado.`);
+    }
+
+    if (repuesto.stock < dto.cantidad) {
+      throw new BadRequestException(
+        `Stock insuficiente para [${repuesto.codigo}] "${repuesto.nombre}". Solicitado: ${dto.cantidad}, Disponible en inventario: ${repuesto.stock}.`,
+      );
+    }
+
+    const precioUnitario = dto.precioUnitario ?? repuesto.precioVenta;
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Descontar automáticamente el stock
+      const repuestoActualizado = await tx.repuesto.update({
+        where: { id: dto.repuestoId },
+        data: { stock: { decrement: dto.cantidad } },
+      });
+
+      // 2. Asociar a la OT
+      const detalle = await tx.detalleOTRepuesto.create({
+        data: {
+          ordenId,
+          repuestoId: dto.repuestoId,
+          cantidad: dto.cantidad,
+          precioUnitario,
+        },
+        include: {
+          repuesto: true,
+        },
+      });
+
+      // 3. Registrar movimiento de salida
+      await tx.movimientoInventario.create({
+        data: {
+          repuestoId: dto.repuestoId,
+          tipo: TipoMovimientoStock.SALIDA_OT,
+          cantidad: -dto.cantidad,
+          stockAnterior: repuesto.stock,
+          stockNuevo: repuestoActualizado.stock,
+          motivo: `Utilizado en OT #${orden.id.slice(0, 8).toUpperCase()} (Patente ${orden.vehiculo.patente})`,
+          ordenTrabajoId: ordenId,
+          usuarioId: usuarioId || null,
+        },
+      });
+
+      return detalle;
+    });
+  }
+
+  /**
+   * Quitar repuesto de una Orden de Trabajo y reintegrar stock automáticamente (SCRUM-23)
+   */
+  async quitarRepuesto(ordenId: string, detalleId: string, usuarioId?: string) {
+    const detalle = await this.prisma.detalleOTRepuesto.findUnique({
+      where: { id: detalleId },
+      include: { repuesto: true },
+    });
+
+    if (!detalle || detalle.ordenId !== ordenId) {
+      throw new NotFoundException(`El repuesto no está asociado a la OT #${ordenId}.`);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Reintegrar stock al inventario
+      const repuestoActualizado = await tx.repuesto.update({
+        where: { id: detalle.repuestoId },
+        data: { stock: { increment: detalle.cantidad } },
+      });
+
+      // 2. Registrar movimiento de devolución
+      await tx.movimientoInventario.create({
+        data: {
+          repuestoId: detalle.repuestoId,
+          tipo: TipoMovimientoStock.DEVOLUCION_OT,
+          cantidad: detalle.cantidad,
+          stockAnterior: detalle.repuesto.stock,
+          stockNuevo: repuestoActualizado.stock,
+          motivo: `Reintegrado desde OT #${ordenId.slice(0, 8).toUpperCase()}`,
+          ordenTrabajoId: ordenId,
+          usuarioId: usuarioId || null,
+        },
+      });
+
+      // 3. Eliminar detalle de la OT
+      await tx.detalleOTRepuesto.delete({
+        where: { id: detalleId },
+      });
+
+      return {
+        ok: true,
+        mensaje: `Repuesto [${detalle.repuesto.codigo}] reintegrado exitosamente al inventario (+${detalle.cantidad} uds).`,
+      };
+    });
   }
 }
