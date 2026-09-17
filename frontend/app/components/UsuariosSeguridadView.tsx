@@ -1,38 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { fetchWithAuth } from '../../lib/api';
+import { useState } from 'react';
 import styles from './usuarios-seguridad.module.css';
-
-type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
-
-interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-  rol: Rol;
-  activo: boolean;
-  creadoEn: string;
-  _count?: {
-    ordenesAsignadas: number;
-  };
-}
-
-interface RegistroAuditoria {
-  id: string;
-  usuarioId: string | null;
-  accion: string;
-  entidad: string;
-  entidadId: string | null;
-  detalles: string | null;
-  creadoEn: string;
-  usuario: {
-    id: string;
-    nombre: string;
-    email: string;
-    rol: Rol;
-  } | null;
-}
+import {
+  useUsuarios,
+  useAuditoria,
+  useCrearUsuario,
+  useCambiarRolUsuario,
+  useToggleEstadoUsuario,
+  Usuario,
+  RegistroAuditoria,
+  Rol,
+} from '../../hooks/usuarios/useUsuarios';
 
 interface ConfirmModalState {
   title: string;
@@ -57,9 +36,32 @@ interface Props {
 
 export default function UsuariosSeguridadView({ userRole }: Props) {
   const [activeTab, setActiveTab] = useState<'usuarios' | 'auditoria'>('usuarios');
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [auditorias, setAuditorias] = useState<RegistroAuditoria[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const {
+    data: usuarios = [],
+    isLoading: loadingUsuarios,
+    isFetching: fetchingUsuarios,
+    isError: errorUsuarios,
+    error: errUsuarios,
+    refetch: refetchUsuarios,
+  } = useUsuarios();
+
+  const {
+    data: auditorias = [],
+    isLoading: loadingAuditoria,
+    isFetching: fetchingAuditoria,
+    isError: errorAuditoria,
+    error: errAuditoria,
+    refetch: refetchAuditoria,
+  } = useAuditoria();
+
+  const crearUsuarioMutation = useCrearUsuario();
+  const cambiarRolMutation = useCambiarRolUsuario();
+  const toggleEstadoMutation = useToggleEstadoUsuario();
+
+  const loadingCurrent = activeTab === 'usuarios' ? loadingUsuarios : loadingAuditoria;
+  const fetchingCurrent = activeTab === 'usuarios' ? fetchingUsuarios : fetchingAuditoria;
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState<string>('TODOS');
   const [actualizandoId, setActualizandoId] = useState<string | null>(null);
@@ -77,31 +79,6 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
   const [nuevoRol, setNuevoRol] = useState<Rol>('MECANICO');
   const [guardandoUsuario, setGuardandoUsuario] = useState(false);
 
-  useEffect(() => {
-    cargarDatos();
-  }, [activeTab]);
-
-  async function cargarDatos() {
-    try {
-      setLoading(true);
-      if (activeTab === 'usuarios') {
-        const data = await fetchWithAuth<Usuario[]>('/usuarios');
-        setUsuarios(data || []);
-      } else {
-        const data = await fetchWithAuth<RegistroAuditoria[]>('/auditoria');
-        setAuditorias(data || []);
-      }
-    } catch (err: any) {
-      setNotifyModal({
-        title: 'Error de Conexión',
-        message: `No se pudo obtener la información: ${err.message}`,
-        tipo: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Crear Usuario (SCRUM-39)
   async function handleCrearUsuario(e: React.FormEvent) {
     e.preventDefault();
@@ -116,17 +93,13 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
 
     try {
       setGuardandoUsuario(true);
-      const creado = await fetchWithAuth<Usuario>('/usuarios', {
-        method: 'POST',
-        body: JSON.stringify({
-          nombre: nuevoNombre.trim(),
-          email: nuevoEmail.trim().toLowerCase(),
-          password: nuevoPassword,
-          rol: nuevoRol,
-        }),
+      const creado = await crearUsuarioMutation.mutateAsync({
+        nombre: nuevoNombre.trim(),
+        email: nuevoEmail.trim().toLowerCase(),
+        password: nuevoPassword,
+        rol: nuevoRol,
       });
 
-      setUsuarios((prev) => [creado, ...prev]);
       setShowCrearModal(false);
       resetCrearForm();
       setNotifyModal({
@@ -157,11 +130,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
   async function handleCambiarRol(usuarioId: string, rol: Rol) {
     try {
       setActualizandoId(usuarioId);
-      const actualizado = await fetchWithAuth<Usuario>(`/usuarios/${usuarioId}/rol`, {
-        method: 'PATCH',
-        body: JSON.stringify({ rol }),
-      });
-      setUsuarios((prev) => prev.map((u) => (u.id === usuarioId ? actualizado : u)));
+      const actualizado = await cambiarRolMutation.mutateAsync({ usuarioId, rol });
       setNotifyModal({
         title: 'Rol Actualizado',
         message: `El rol de ${actualizado.nombre} fue actualizado a [${actualizado.rol}].`,
@@ -173,7 +142,6 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         message: err.message || 'No fue posible modificar el rol del usuario.',
         tipo: 'error',
       });
-      cargarDatos(); // Recargar para revertir selector si falló
     } finally {
       setActualizandoId(null);
     }
@@ -197,11 +165,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         try {
           setConfirmLoading(true);
           setActualizandoId(u.id);
-          const actualizado = await fetchWithAuth<Usuario>(`/usuarios/${u.id}/estado`, {
-            method: 'PATCH',
-            body: JSON.stringify({ activo: !u.activo }),
-          });
-          setUsuarios((prev) => prev.map((item) => (item.id === u.id ? actualizado : item)));
+          await toggleEstadoMutation.mutateAsync({ usuarioId: u.id, activo: !u.activo });
           setConfirmModal(null);
           setNotifyModal({
             title: esDesactivar ? 'Cuenta Desactivada' : 'Cuenta Reactivada',
@@ -272,7 +236,14 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
       {/* Encabezado del Módulo */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.headerTitle}>Usuarios, Roles y Seguridad</h2>
+          <h2 className={styles.headerTitle}>
+            Usuarios, Roles y Seguridad
+            {fetchingCurrent && !loadingCurrent && (
+              <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#64748b', marginLeft: '12px' }}>
+                Actualizando...
+              </span>
+            )}
+          </h2>
           <p className={styles.headerSubtitle}>
             Control de acceso basado en roles (RBAC), gestión de cuentas y auditoría de eventos críticos
           </p>
@@ -382,7 +353,30 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {errorUsuarios ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}>
+                    <div style={{ color: '#ef4444', marginBottom: '10px' }}>
+                      Error al cargar los usuarios: {(errUsuarios as any)?.message || 'Error de conexión'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => refetchUsuarios()}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        background: '#3b82f6',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      Reintentar
+                    </button>
+                  </td>
+                </tr>
+              ) : loadingUsuarios ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     Cargando usuarios...
@@ -485,7 +479,30 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {errorAuditoria ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px' }}>
+                    <div style={{ color: '#ef4444', marginBottom: '10px' }}>
+                      Error al cargar los registros de auditoría: {(errAuditoria as any)?.message || 'Error de conexión'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => refetchAuditoria()}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        background: '#3b82f6',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      Reintentar
+                    </button>
+                  </td>
+                </tr>
+              ) : loadingAuditoria ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     Cargando registros de auditoría...

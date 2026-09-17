@@ -10,6 +10,11 @@ import {
   formatearPatente,
 } from '../../lib/validators';
 import VehiclePhoto from './VehiclePhoto';
+import {
+  useClientes,
+  useCrearCliente,
+  useCrearVehiculo,
+} from '../../hooks/clientes/useClientes';
 
 interface Cliente {
   id: string;
@@ -118,9 +123,22 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [otHistory, setOtHistory] = useState<OrdenTrabajoHistorial[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Lista general de clientes
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loadingClientes, setLoadingClientes] = useState(true);
+  // Buscador de clientes y queries TanStack
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const clientSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const {
+    data: clientes = [],
+    isLoading: loadingClientes,
+    isFetching: fetchingClientes,
+    isError: errorClientes,
+    error: errClientes,
+    refetch: refetchClientes,
+  } = useClientes(debouncedSearch);
+
+  const crearClienteMutation = useCrearCliente();
+  const crearVehiculoMutation = useCrearVehiculo();
 
   // Modales
   const [showModalCliente, setShowModalCliente] = useState(false);
@@ -151,10 +169,6 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [vehiculoSuccess, setVehiculoSuccess] = useState<string | null>(null);
   const [savingVehiculo, setSavingVehiculo] = useState(false);
 
-  // Buscador de clientes
-  const [clientSearchTerm, setClientSearchTerm] = useState('');
-  const clientSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   // Ficha de detalle de cliente y sus vehículos (Modal)
   const [selectedClienteModal, setSelectedClienteModal] = useState<Cliente | null>(null);
   const [loadingClienteModal, setLoadingClienteModal] = useState(false);
@@ -174,31 +188,13 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     }
   }
 
-  // Cargar lista inicial de clientes
-  useEffect(() => {
-    cargarClientes();
-  }, []);
-
-  async function cargarClientes(filtro?: string) {
-    setLoadingClientes(true);
-    try {
-      const query = filtro && filtro.trim() ? `?q=${encodeURIComponent(filtro.trim())}` : '';
-      const data = await fetchWithAuth<Cliente[]>(`/clientes${query}`);
-      setClientes(data || []);
-    } catch (err: any) {
-      console.error('Error cargando clientes:', err);
-    } finally {
-      setLoadingClientes(false);
-    }
-  }
-
   function handleClientSearchChange(term: string) {
     setClientSearchTerm(term);
     if (clientSearchTimeoutRef.current) {
       clearTimeout(clientSearchTimeoutRef.current);
     }
     clientSearchTimeoutRef.current = setTimeout(() => {
-      cargarClientes(term);
+      setDebouncedSearch(term);
     }, 250);
   }
 
@@ -282,19 +278,15 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
     setSavingCliente(true);
     try {
-      const nuevoCliente = await fetchWithAuth<Cliente>('/clientes', {
-        method: 'POST',
-        body: JSON.stringify({
-          nombre: formCliente.nombre.trim(),
-          rut: formatearRut(formCliente.rut),
-          telefono: formCliente.telefono.trim() || undefined,
-          email: formCliente.email.trim() || undefined,
-        }),
+      const nuevoCliente = await crearClienteMutation.mutateAsync({
+        nombre: formCliente.nombre.trim(),
+        rut: formatearRut(formCliente.rut),
+        telefono: formCliente.telefono.trim() || undefined,
+        email: formCliente.email.trim() || undefined,
       });
 
       setClienteSuccess(`Cliente ${nuevoCliente.nombre} registrado con éxito.`);
       setFormCliente({ nombre: '', rut: '', telefono: '', email: '' });
-      await cargarClientes();
 
       setTimeout(() => {
         setShowModalCliente(false);
@@ -342,10 +334,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           : undefined,
       };
 
-      const nuevoVehiculo = await fetchWithAuth<Vehiculo>('/vehiculos', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const nuevoVehiculo = await crearVehiculoMutation.mutateAsync(payload);
 
       setVehiculoSuccess(`Vehículo patente ${nuevoVehiculo.patente} registrado con éxito.`);
       setFormVehiculo({
@@ -357,10 +346,9 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         anio: '',
         kilometraje: '',
       });
-      await cargarClientes();
 
       // Seleccionar automáticamente el vehículo creado para ver su ficha
-      await handleSelectVehiculo(nuevoVehiculo);
+      await handleSelectVehiculo(nuevoVehiculo as any);
 
       setTimeout(() => {
         setShowModalVehiculo(false);
@@ -655,6 +643,11 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           <h4>
             <span>Directorio de Clientes Registrados</span>
             <span className={styles.historyCountBadge}>{clientes.length} Clientes</span>
+            {fetchingClientes && !loadingClientes && (
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
+                Actualizando...
+              </span>
+            )}
           </h4>
         </div>
 
@@ -685,7 +678,25 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           )}
         </div>
 
-        {loadingClientes ? (
+        {errorClientes ? (
+          <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c', fontSize: '13px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>Error al cargar clientes: {(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchClientes()}
+              style={{ padding: '6px 12px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : loadingClientes ? (
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>
             Buscando clientes...
           </p>

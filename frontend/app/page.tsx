@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { fetchWithAuth } from '../lib/api';
 import styles from './page.module.css';
@@ -8,7 +9,9 @@ import ClientesVehiculosView from './components/ClientesVehiculosView';
 import OrdenesTrabajoView from './components/OrdenesTrabajoView';
 import UsuariosSeguridadView from './components/UsuariosSeguridadView';
 import InventarioView from './components/InventarioView';
+import MiPerfilView from './components/MiPerfilView';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
+import { useMiPerfil } from '../hooks/usuarios/useUsuarios';
 
 interface UserProfile {
   id: string;
@@ -103,6 +106,7 @@ const NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'general' | 'mision' | 'politicas'>('general');
@@ -121,6 +125,35 @@ export default function HomePage() {
     onTimeout: handleLogout,
     enabled: !!user,
   });
+
+  // Perfil reactivo con TanStack Query (se actualiza automáticamente al cambiar el rol propio)
+  const { data: perfilActual } = useMiPerfil(!loading && !!user?.id);
+
+  // Sincronizar reactivamente el usuario del sidebar cuando el perfil cambia en el backend
+  useEffect(() => {
+    if (perfilActual) {
+      setUser((prev) => {
+        if (!prev) return null;
+        if (prev.rol === perfilActual.rol && prev.nombre === perfilActual.nombre) return prev;
+        return {
+          ...prev,
+          nombre: perfilActual.nombre || prev.nombre,
+          rol: perfilActual.rol as Rol,
+        };
+      });
+    }
+  }, [perfilActual]);
+
+  // Si el usuario cambia a un rol sin permisos para la sección activa, redirigir a dashboard
+  useEffect(() => {
+    if (user?.rol) {
+      const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(user.rol as Rol));
+      const isAllowed = activeSection === 'mi-perfil' || visibleItems.some((item) => item.id === activeSection);
+      if (!isAllowed && activeSection !== 'dashboard') {
+        setActiveSection('dashboard');
+      }
+    }
+  }, [user?.rol, activeSection]);
 
   useEffect(() => {
     let isMounted = true;
@@ -145,6 +178,7 @@ export default function HomePage() {
           // Consultar perfil real y rol asignado desde la base de datos (PostgreSQL/Prisma)
           const perfilBD = await fetchWithAuth<UserProfile>('/auth/perfil');
           if (perfilBD && isMounted) {
+            queryClient.setQueryData(['perfil'], perfilBD);
             setUser({
               id: perfilBD.id,
               email: perfilBD.email,
@@ -188,6 +222,8 @@ export default function HomePage() {
   }, []);
 
   async function handleLogout() {
+    // Vaciar todo el caché de TanStack Query para evitar filtración de datos entre roles en el mismo equipo
+    queryClient.clear();
     await supabase.auth.signOut();
     window.location.href = '/login';
   }
@@ -319,7 +355,11 @@ export default function HomePage() {
         </div>
 
         <div className={styles.sidebarFooter}>
-          <button type="button" className={styles.navItem}>
+          <button
+            type="button"
+            className={`${styles.navItem} ${activeSection === 'mi-perfil' ? styles.navItemActive : ''}`}
+            onClick={() => setActiveSection('mi-perfil')}
+          >
             <span className={styles.navItemContent}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -327,6 +367,7 @@ export default function HomePage() {
               </svg>
               <span>Mi Perfil</span>
             </span>
+            {activeSection === 'mi-perfil' && <span className={styles.activeDot} />}
           </button>
           <button type="button" onClick={() => setShowLogoutConfirm(true)} className={styles.logoutBtn} title="Cerrar sesión">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -350,6 +391,8 @@ export default function HomePage() {
           <InventarioView userRole={userRole} />
         ) : activeSection === 'usuarios-seguridad' ? (
           <UsuariosSeguridadView userRole={userRole} />
+        ) : activeSection === 'mi-perfil' ? (
+          <MiPerfilView />
         ) : (
           <>
             {/* Encabezado de Sección en Dashboard */}

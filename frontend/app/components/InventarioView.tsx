@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './inventario.module.css';
+import {
+  useRepuestos,
+  useCrearRepuesto,
+  useActualizarRepuesto,
+  useEliminarRepuesto,
+  useRegistrarMovimiento,
+  useAjusteFisicoRepuesto,
+  useImportarCsvRepuestos,
+} from '../../hooks/repuestos/useRepuestos';
 
 type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
 
@@ -71,14 +80,30 @@ interface Props {
 }
 
 export default function InventarioView({ userRole }: Props) {
-  const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
-  const [kpis, setKpis] = useState<KPIs>({
+  const {
+    data: inventarioData,
+    isLoading: loadingInventario,
+    isFetching: fetchingInventario,
+    isError: errorInventario,
+    error: errInventario,
+    refetch: refetchInventario,
+  } = useRepuestos();
+
+  const repuestos = (inventarioData?.items || []) as any as Repuesto[];
+  const kpis = inventarioData?.kpis || {
     totalRepuestos: 0,
     valorTotalInventario: 0,
     totalStockBajo: 0,
     totalAgotados: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  };
+
+  const crearRepuestoMutation = useCrearRepuesto();
+  const actualizarRepuestoMutation = useActualizarRepuesto();
+  const eliminarRepuestoMutation = useEliminarRepuesto();
+  const registrarMovimientoMutation = useRegistrarMovimiento();
+  const ajusteFisicoMutation = useAjusteFisicoRepuesto();
+  const importarCsvMutation = useImportarCsvRepuestos();
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroStock, setFiltroStock] = useState<string>('TODOS');
 
@@ -114,34 +139,6 @@ export default function InventarioView({ userRole }: Props) {
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [repuestoHistorial, setRepuestoHistorial] = useState<Repuesto | null>(null);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
-
-  useEffect(() => {
-    cargarInventario();
-  }, []);
-
-  async function cargarInventario() {
-    try {
-      setLoading(true);
-      const data = await fetchWithAuth<{ items: Repuesto[]; kpis: KPIs }>('/repuestos');
-      setRepuestos(data.items || []);
-      setKpis(
-        data.kpis || {
-          totalRepuestos: 0,
-          valorTotalInventario: 0,
-          totalStockBajo: 0,
-          totalAgotados: 0,
-        },
-      );
-    } catch (err: any) {
-      setNotifyModal({
-        title: 'Error de Conexión',
-        message: `No se pudo obtener el inventario: ${err.message}`,
-        tipo: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function resetForm() {
     setEditandoId(null);
@@ -201,14 +198,13 @@ export default function InventarioView({ userRole }: Props) {
           payload.precioVenta = precioVentaNum;
         }
 
-        const actualizado = await fetchWithAuth<Repuesto>(`/repuestos/${editandoId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
+        const actualizado = await actualizarRepuestoMutation.mutateAsync({
+          id: editandoId,
+          data: payload,
         });
 
         setShowFormModal(false);
         resetForm();
-        await cargarInventario();
         setNotifyModal({
           title: 'Repuesto Actualizado',
           message: `El repuesto [${actualizado.codigo}] ha sido modificado exitosamente.`,
@@ -216,21 +212,17 @@ export default function InventarioView({ userRole }: Props) {
         });
       } else {
         // Crear
-        const nuevo = await fetchWithAuth<Repuesto>('/repuestos', {
-          method: 'POST',
-          body: JSON.stringify({
-            codigo: formCodigo.trim(),
-            nombre: formNombre.trim(),
-            stock: stockNum,
-            stockMinimo: stockMinimoNum,
-            precioCompra: precioCompraNum,
-            precioVenta: precioVentaNum,
-          }),
+        const nuevo = await crearRepuestoMutation.mutateAsync({
+          codigo: formCodigo.trim(),
+          nombre: formNombre.trim(),
+          stock: stockNum,
+          stockMinimo: stockMinimoNum,
+          precioCompra: precioCompraNum,
+          precioVenta: precioVentaNum,
         });
 
         setShowFormModal(false);
         resetForm();
-        await cargarInventario();
         setNotifyModal({
           title: '¡Repuesto Registrado!',
           message: `Repuesto [${nuevo.codigo}] "${nuevo.nombre}" añadido al inventario.`,
@@ -271,19 +263,16 @@ export default function InventarioView({ userRole }: Props) {
     try {
       setGuardandoAjuste(true);
       const stockFisicoNum = parseInt(stockFisicoContado, 10) || 0;
-      await fetchWithAuth(`/repuestos/${repuestoAjustar.id}/ajuste`, {
-        method: 'POST',
-        body: JSON.stringify({
-          stockFisico: stockFisicoNum,
-          motivo: motivoAjuste.trim(),
-        }),
+      await ajusteFisicoMutation.mutateAsync({
+        repuestoId: repuestoAjustar.id,
+        stockFisico: stockFisicoNum,
+        motivo: motivoAjuste.trim(),
       });
 
       setShowAjusteModal(false);
       const dif = stockFisicoNum - repuestoAjustar.stock;
       const signo = dif > 0 ? `+${dif}` : `${dif}`;
 
-      await cargarInventario();
       setNotifyModal({
         title: 'Ajuste de Inventario Aplicado',
         message: `El stock de [${repuestoAjustar.codigo}] se actualizó a ${stockFisicoNum} unidades (${signo} uds).`,
@@ -331,9 +320,8 @@ export default function InventarioView({ userRole }: Props) {
       onConfirm: async () => {
         try {
           setConfirmLoading(true);
-          await fetchWithAuth(`/repuestos/${r.id}`, { method: 'DELETE' });
+          await eliminarRepuestoMutation.mutateAsync(r.id);
           setConfirmModal(null);
-          await cargarInventario();
           setNotifyModal({
             title: 'Repuesto Eliminado',
             message: `El repuesto [${r.codigo}] fue removido exitosamente del catálogo.`,
@@ -492,14 +480,10 @@ export default function InventarioView({ userRole }: Props) {
 
     try {
       setImportando(true);
-      const res = await fetchWithAuth<any>('/repuestos/importar', {
-        method: 'POST',
-        body: JSON.stringify({ repuestos: csvPreview }),
-      });
+      const res: any = await importarCsvMutation.mutateAsync(csvPreview);
 
       setShowImportarModal(false);
       setCsvPreview([]);
-      await cargarInventario();
 
       setNotifyModal({
         title: '¡Importación Completada!',
@@ -548,7 +532,14 @@ export default function InventarioView({ userRole }: Props) {
       {/* Encabezado del Módulo */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.headerTitle}>Inventario de Repuestos</h2>
+          <h2 className={styles.headerTitle}>
+            <span>Inventario de Repuestos</span>
+            {fetchingInventario && !loadingInventario && (
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal', marginLeft: '10px' }}>
+                Actualizando...
+              </span>
+            )}
+          </h2>
           <p className={styles.headerSubtitle}>
             Control de stock, alertas automáticas de reposición, precios y trazabilidad física en taller
           </p>
@@ -745,7 +736,29 @@ export default function InventarioView({ userRole }: Props) {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {errorInventario ? (
+              <tr>
+                <td colSpan={8} style={{ padding: '24px' }}>
+                  <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c', fontSize: '13px' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>Error al cargar inventario: {(errInventario as any)?.message || 'Error de conexión con el servidor.'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => refetchInventario()}
+                      style={{ padding: '6px 12px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ) : loadingInventario ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                   Cargando inventario de repuestos...

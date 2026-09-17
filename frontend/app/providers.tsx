@@ -1,0 +1,27 @@
+'use client';
+
+import React, { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000, // 60 segundos de validez antes de marcar stale
+            refetchOnWindowFocus: false, // Evitar refetchs al cambiar de ventana
+            retry: 1, // 1 reintento antes de fallar
+          },
+        },
+      }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}

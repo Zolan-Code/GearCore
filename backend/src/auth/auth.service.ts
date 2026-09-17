@@ -16,4 +16,13 @@ export class AuthService {
 
     return perfil;
   }
+
+  async actualizarMiPerfil(userId: string, dto: { nombre: string }) {
+    const perfil = await this.prisma.perfil.update({
+      where: { id: userId },
+      data: { nombre: dto.nombre.trim() },
+    });
+
+    return perfil;
+  }
 }

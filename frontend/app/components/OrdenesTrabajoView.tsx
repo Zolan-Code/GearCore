@@ -3,12 +3,21 @@
 import { useEffect, useState, useRef } from 'react';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './ordenes-trabajo.module.css';
-
-interface Mecanico {
-  id: string;
-  nombre: string;
-  email: string;
-}
+import {
+  useOrdenesTrabajo,
+  useMecanicos,
+  useCrearOT,
+  useCambiarEstadoOT,
+  useActualizarOT,
+  useRegistrarHorasOT,
+  useAgregarRepuestoOT,
+  useQuitarRepuestoOT,
+  OrdenTrabajo,
+  EstadoOT,
+  Mecanico,
+  DetalleOTRepuestoItem,
+} from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
+import { useRepuestos, Repuesto } from '../../hooks/repuestos/useRepuestos';
 
 interface VehiculoSimple {
   id: string;
@@ -23,81 +32,6 @@ interface VehiculoSimple {
     rut: string;
     telefono: string | null;
   };
-}
-
-type EstadoOT =
-  | 'RECIBIDO'
-  | 'DIAGNOSTICO'
-  | 'COTIZACION'
-  | 'APROBADO'
-  | 'EN_REPARACION'
-  | 'CONTROL_CALIDAD'
-  | 'ENTREGADO';
-
-interface RepuestoCatalogo {
-  id: string;
-  codigo: string;
-  nombre: string;
-  stock: number;
-  stockMinimo: number;
-  precioVenta: number;
-  precioCompra: number;
-}
-
-interface DetalleOTRepuestoItem {
-  id: string;
-  ordenId: string;
-  repuestoId: string;
-  cantidad: number;
-  precioUnitario: number;
-  repuesto: {
-    id: string;
-    codigo: string;
-    nombre: string;
-    stock: number;
-    stockMinimo: number;
-    precioVenta: number;
-  };
-}
-
-interface OrdenTrabajo {
-  id: string;
-  vehiculoId: string;
-  mecanicoId: string | null;
-  fallaReportada: string;
-  estado: EstadoOT;
-  horasHombre: number;
-  fechaRecepcion: string;
-  fechaEntrega: string | null;
-  nivelCombustible: string | null;
-  rayonesCarroceria: string | null;
-  elementosValor: string | null;
-  kilometrajeRecepcion: number | null;
-  diagnostico: string | null;
-  trabajoRealizado: string | null;
-  fotosDiagnostico: string[];
-  creadoEn: string;
-  vehiculo: {
-    id: string;
-    patente: string;
-    marca: string;
-    modelo: string;
-    anio: number | null;
-    kilometraje: number | null;
-    cliente: {
-      id: string;
-      nombre: string;
-      rut: string;
-      telefono: string | null;
-      email: string | null;
-    };
-  };
-  mecanico: {
-    id: string;
-    nombre: string;
-    email: string;
-  } | null;
-  detalleRepuestos?: DetalleOTRepuestoItem[];
 }
 
 interface Props {
@@ -194,10 +128,26 @@ function renderFallaIcon(id: string) {
 const NIVELES_COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno'];
 
 export default function OrdenesTrabajoView({ userRole, userId }: Props) {
-  const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
-  const [mecanicos, setMecanicos] = useState<Mecanico[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const {
+    data: ordenes = [],
+    isLoading: loadingOTs,
+    isFetching: fetchingOTs,
+    isError: errorOTs,
+    error: errOTs,
+    refetch: refetchOTs,
+  } = useOrdenesTrabajo();
+
+  const { data: mecanicos = [] } = useMecanicos();
+  const { data: repuestosData } = useRepuestos();
+  const catalogoRepuestos = repuestosData?.items || [];
+
+  const crearOTMutation = useCrearOT();
+  const cambiarEstadoOTMutation = useCambiarEstadoOT();
+  const actualizarOTMutation = useActualizarOT();
+  const registrarHorasMutation = useRegistrarHorasOT();
+  const agregarRepuestoMutation = useAgregarRepuestoOT();
+  const quitarRepuestoMutation = useQuitarRepuestoOT();
+
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
 
   // Filtros
@@ -240,7 +190,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   // Repuestos en OT (SCRUM-23)
-  const [catalogoRepuestos, setCatalogoRepuestos] = useState<RepuestoCatalogo[]>([]);
   const [repuestoSeleccionadoId, setRepuestoSeleccionadoId] = useState('');
   const [cantidadRepuesto, setCantidadRepuesto] = useState('1');
   const [guardandoRepuestoOT, setGuardandoRepuestoOT] = useState(false);
@@ -253,43 +202,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     mensaje: string;
     onConfirm?: () => void;
   } | null>(null);
-
-  // Carga inicial
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  async function cargarDatos() {
-    try {
-      setLoading(true);
-      setErrorMsg(null);
-      const [otsRes, mecsRes, catRes] = await Promise.all([
-        fetchWithAuth<OrdenTrabajo[]>('/ordenes-trabajo'),
-        fetchWithAuth<Mecanico[]>('/ordenes-trabajo/mecanicos'),
-        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos').catch(() => null),
-      ]);
-      setOrdenes(otsRes || []);
-      setMecanicos(mecsRes || []);
-      if (catRes && catRes.items) {
-        setCatalogoRepuestos(catRes.items);
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al cargar órdenes de trabajo.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function cargarCatalogoRepuestos() {
-    try {
-      const res = await fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos');
-      if (res && res.items) {
-        setCatalogoRepuestos(res.items);
-      }
-    } catch {
-      // mantener catálogo existente
-    }
-  }
 
   // Búsqueda de vehículos para modal
   useEffect(() => {
@@ -312,11 +224,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   async function handleCambiarEstado(otId: string, nuevoEstado: EstadoOT) {
     try {
       setActualizandoEstadoId(otId);
-      const updated = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${otId}/estado`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado: nuevoEstado }),
-      });
-      setOrdenes((prev) => prev.map((ot) => (ot.id === otId ? updated : ot)));
+      const updated = await cambiarEstadoOTMutation.mutateAsync({ otId, estado: nuevoEstado });
       if (selectedOT && selectedOT.id === otId) {
         setSelectedOT(updated);
       }
@@ -363,12 +271,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         kilometrajeRecepcion: nuevoKm ? parseInt(nuevoKm, 10) : undefined,
       };
 
-      const nuevaOt = await fetchWithAuth<OrdenTrabajo>('/ordenes-trabajo', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      setOrdenes((prev) => [nuevaOt, ...prev]);
+      await crearOTMutation.mutateAsync(payload);
       setShowCrearModal(false);
       resetCrearForm();
     } catch (err: any) {
@@ -406,12 +309,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setCantidadRepuesto('1');
     setShowTecnicoModal(true);
 
-    cargarCatalogoRepuestos();
     try {
       const fresca = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${ot.id}`);
       if (fresca) {
         setSelectedOT(fresca);
-        setOrdenes((prev) => prev.map((o) => (o.id === fresca.id ? fresca : o)));
       }
     } catch {
       // mantener estado actual si falla fetch
@@ -445,27 +346,16 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
     try {
       setGuardandoRepuestoOT(true);
-      await fetchWithAuth(`/ordenes-trabajo/${selectedOT.id}/repuestos`, {
-        method: 'POST',
-        body: JSON.stringify({
-          repuestoId: repuestoSeleccionadoId,
-          cantidad: cant,
-          precioUnitario: item.precioVenta,
-        }),
+      await agregarRepuestoMutation.mutateAsync({
+        otId: selectedOT.id,
+        repuestoId: repuestoSeleccionadoId,
+        cantidad: cant,
       });
 
-      // Refrescar OT y catálogo
-      const [otActualizada, catRes] = await Promise.all([
-        fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`),
-        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos'),
-      ]);
-
+      // Refrescar OT seleccionada en modal
+      const otActualizada = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
       if (otActualizada) {
         setSelectedOT(otActualizada);
-        setOrdenes((prev) => prev.map((o) => (o.id === otActualizada.id ? otActualizada : o)));
-      }
-      if (catRes && catRes.items) {
-        setCatalogoRepuestos(catRes.items);
       }
 
       setRepuestoSeleccionadoId('');
@@ -501,22 +391,15 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     if (!selectedOT) return;
     try {
       setQuitandoRepuestoId(detalleId);
-      await fetchWithAuth(`/ordenes-trabajo/${selectedOT.id}/repuestos/${detalleId}`, {
-        method: 'DELETE',
+      await quitarRepuestoMutation.mutateAsync({
+        otId: selectedOT.id,
+        repuestoId: detalleId,
       });
 
-      // Refrescar OT y catálogo
-      const [otActualizada, catRes] = await Promise.all([
-        fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`),
-        fetchWithAuth<{ items: RepuestoCatalogo[] }>('/repuestos'),
-      ]);
-
+      // Refrescar OT seleccionada en modal
+      const otActualizada = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
       if (otActualizada) {
         setSelectedOT(otActualizada);
-        setOrdenes((prev) => prev.map((o) => (o.id === otActualizada.id ? otActualizada : o)));
-      }
-      if (catRes && catRes.items) {
-        setCatalogoRepuestos(catRes.items);
       }
 
       setDialogo({
@@ -611,29 +494,28 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     if (!selectedOT) return;
     try {
       setGuardandoTecnico(true);
-      const updated = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}/diagnostico`, {
-        method: 'PATCH',
-        body: JSON.stringify({
+      await actualizarOTMutation.mutateAsync({
+        otId: selectedOT.id,
+        data: {
           diagnostico: editDiagnostico,
           trabajoRealizado: editTrabajo,
           fotosDiagnostico: editFotos,
-        }),
+        },
       });
 
       // Si se ingresaron horas
-      let finalOT = updated;
       if (horasInput && parseFloat(horasInput) > 0) {
-        finalOT = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}/horas`, {
-          method: 'POST',
-          body: JSON.stringify({
-            horas: parseFloat(horasInput),
-            comentario: comentarioHoras || undefined,
-          }),
+        await registrarHorasMutation.mutateAsync({
+          otId: selectedOT.id,
+          horas: parseFloat(horasInput),
+          comentario: comentarioHoras || undefined,
         });
       }
 
-      setOrdenes((prev) => prev.map((ot) => (ot.id === finalOT.id ? finalOT : ot)));
-      setSelectedOT(finalOT);
+      const finalOT = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
+      if (finalOT) {
+        setSelectedOT(finalOT);
+      }
       setShowTecnicoModal(false);
     } catch (err: any) {
       setDialogo({
@@ -689,7 +571,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       {/* Encabezado y Acciones */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.headerTitle}>Órdenes de Trabajo (OT)</h2>
+          <h2 className={styles.headerTitle}>
+            <span>Órdenes de Trabajo (OT)</span>
+            {fetchingOTs && !loadingOTs && (
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal', marginLeft: '10px' }}>
+                Actualizando...
+              </span>
+            )}
+          </h2>
           <p className={styles.headerSubtitle}>
             {userRole === 'MECANICO'
               ? 'Bandeja de órdenes asignadas: diagnóstico técnico, fotos y registro de horas hombre'
@@ -802,7 +691,28 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       </div>
 
       {/* Contenido Principal: Listado de Tarjetas */}
-      {loading ? (
+      {errorOTs ? (
+        <div style={{ padding: '20px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#b91c1c' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div>
+              <strong style={{ display: 'block', fontSize: '14px' }}>Error al cargar Órdenes de Trabajo</strong>
+              <span style={{ fontSize: '12px' }}>{(errOTs as any)?.message || 'No fue posible conectar con el servidor.'}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetchOTs()}
+            style={{ padding: '8px 16px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : loadingOTs ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
           Cargando órdenes de trabajo...
         </div>
