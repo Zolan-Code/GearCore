@@ -21,19 +21,27 @@ function buildRequestUrl(endpoint: string): string {
  * Obtiene un token de acceso válido de Supabase, refrescándolo si ya expiró o está por expirar.
  */
 async function getFreshAccessToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  let session = data.session;
+  try {
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 3000)
+    );
+    const { data } = await Promise.race([sessionPromise, timeoutPromise]);
+    let session = data.session;
 
-  // Si no hay sesión o el token expira en menos de 60 segundos, refrescar
-  const nowInSeconds = Math.floor(Date.now() / 1000);
-  if (session && session.expires_at && session.expires_at - nowInSeconds < 60) {
-    const { data: refreshData, error } = await supabase.auth.refreshSession();
-    if (!error && refreshData.session) {
-      session = refreshData.session;
+    // Si no hay sesión o el token expira en menos de 60 segundos, refrescar
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    if (session && session.expires_at && session.expires_at - nowInSeconds < 60) {
+      const { data: refreshData, error } = await supabase.auth.refreshSession();
+      if (!error && refreshData.session) {
+        session = refreshData.session;
+      }
     }
-  }
 
-  return session?.access_token || null;
+    return session?.access_token || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchWithAuth<T = any>(
@@ -53,10 +61,21 @@ export async function fetchWithAuth<T = any>(
   }
 
   const url = buildRequestUrl(endpoint);
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  
+  // Timeout de 8 segundos para no bloquear la aplicación si la conexión se cuelga
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Si el backend responde 401 por token expirado, intentar refrescar una vez y reintentar
   if (response.status === 401 && !isRetry) {

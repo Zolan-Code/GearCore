@@ -355,19 +355,59 @@ export default function InventarioView({ userRole }: Props) {
 
   // Descargar Plantilla CSV (SCRUM-25)
   function descargarPlantillaCSV() {
-    const encabezados = 'codigo,nombre,stock,stockMinimo,precioCompra,precioVenta\n';
+    // Usar punto y coma (;) para que Excel en español (Chile/Latam) separe automáticamente en columnas
+    const encabezados = 'codigo;nombre;stock;stockMinimo;precioCompra;precioVenta\n';
     const filasEjemplo = [
-      'ACE-001,Aceite de Motor Sintético 5W30 Castrol 1L,24,6,6500,10990',
-      'FIL-002,Filtro de Aceite Mann W712/52,15,4,4200,8500',
-      'PAS-003,Pastillas de Freno Delanteras Bosch Cerámica,10,3,17500,29990',
-      'BUJ-004,Bujía de Encendido NGK Iridio,32,8,5500,9990',
+      'ACE-001;Aceite de Motor Sintético 5W30 Castrol 1L;24;6;6500;10990',
+      'FIL-002;Filtro de Aceite Mann W712/52;15;4;4200;8500',
+      'PAS-003;Pastillas de Freno Delanteras Bosch Cerámica;10;3;17500;29990',
+      'BUJ-004;Bujía de Encendido NGK Iridio;32;8;5500;9990',
     ].join('\n');
 
-    const blob = new Blob([encabezados + filasEjemplo], { type: 'text/csv;charset=utf-8;' });
+    // \uFEFF es el BOM (Byte Order Mark) que le indica a Excel que use UTF-8 y no rompa tildes (á, é, í, etc.)
+    const blob = new Blob(['\uFEFF' + encabezados + filasEjemplo], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'plantilla_inventario_gearcore.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Exportar Inventario Actual Real a CSV
+  function exportarInventarioCSV() {
+    if (repuestos.length === 0) {
+      setNotifyModal({
+        title: 'Inventario Vacío',
+        message: 'No hay repuestos registrados en el sistema para exportar.',
+        tipo: 'warning',
+      });
+      return;
+    }
+
+    // Usar punto y coma (;) como delimitador estándar para Excel en español
+    const encabezados = 'codigo;nombre;stock;stockMinimo;precioCompra;precioVenta;margenBruto\n';
+    const filas = repuestos
+      .map((r) =>
+        [
+          `"${r.codigo}"`,
+          `"${r.nombre.replace(/"/g, '""')}"`,
+          r.stock,
+          r.stockMinimo,
+          r.precioCompra,
+          r.precioVenta,
+          r.precioVenta - r.precioCompra,
+        ].join(';')
+      )
+      .join('\n');
+
+    // \uFEFF fuerza a Excel en Windows a reconocer UTF-8 sin corromper tildes
+    const blob = new Blob(['\uFEFF' + encabezados + filas], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `inventario_gearcore_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -396,17 +436,21 @@ export default function InventarioView({ userRole }: Props) {
           return;
         }
 
+        // Detectar si el CSV viene delimitado por punto y coma (;) o por coma (,)
+        const separador = lineas[0].includes(';') ? ';' : ',';
+
         const items: any[] = [];
         // Ignorar encabezado (fila 0)
         for (let i = 1; i < lineas.length; i++) {
-          const cols = lineas[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+          const cols = lineas[i].split(separador).map((c) => c.trim().replace(/^"|"$/g, ''));
           if (cols.length >= 6) {
             const codigo = cols[0];
             const nombre = cols[1];
             const stock = parseInt(cols[2], 10) || 0;
             const stockMinimo = parseInt(cols[3], 10) || 5;
-            const precioCompra = parseFloat(cols[4]) || 0;
-            const precioVenta = parseFloat(cols[5]) || 0;
+            // Soporta números con coma decimal (ej: 12,50) o punto decimal (12.50)
+            const precioCompra = parseFloat(cols[4].replace(',', '.')) || 0;
+            const precioVenta = parseFloat(cols[5].replace(',', '.')) || 0;
 
             if (codigo && nombre) {
               items.push({
@@ -511,6 +555,20 @@ export default function InventarioView({ userRole }: Props) {
         </div>
 
         <div className={styles.toolbarActions}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={exportarInventarioCSV}
+            title="Descargar catálogo actual con stock y precios en formato CSV"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Exportar CSV</span>
+          </button>
+
           <button
             type="button"
             className={styles.btnSecondary}
@@ -1126,15 +1184,19 @@ export default function InventarioView({ userRole }: Props) {
 
             <div className={styles.modalBody}>
               <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
-                Carga un archivo CSV con tu catálogo de inventario inicial. Si el código ya existe, su stock y precios serán actualizados.
+                Carga un archivo CSV para ingresar o actualizar repuestos de forma masiva.
               </p>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  Columnas: <code>codigo, nombre, stock, stockMinimo, precioCompra, precioVenta</code>
+                </span>
                 <button
                   type="button"
                   className={styles.btnSecondary}
                   style={{ fontSize: '12.5px', padding: '6px 12px' }}
                   onClick={descargarPlantillaCSV}
+                  title="Descarga un archivo de muestra con el formato de columnas para rellenar"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

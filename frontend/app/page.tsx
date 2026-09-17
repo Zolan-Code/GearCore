@@ -123,48 +123,68 @@ export default function HomePage() {
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadUser() {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session?.user) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const authUser = data.session.user;
-
       try {
-        // Consultar perfil real y rol asignado desde la base de datos (PostgreSQL/Prisma)
-        const perfilBD = await fetchWithAuth<UserProfile>('/auth/perfil');
-        if (perfilBD) {
-          setUser({
-            id: perfilBD.id,
-            email: perfilBD.email,
-            nombre: perfilBD.nombre || authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
-            rol: (perfilBD.rol || 'MECANICO') as Rol,
-          });
-          setActiveSection('dashboard');
-          setLoading(false);
+        // Timeout de seguridad: no dejar pegada la pantalla si la red o Supabase tardan
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 3000)
+        );
+        const { data } = await Promise.race([sessionPromise, timeoutPromise]);
+
+        if (!data.session?.user) {
+          window.location.href = '/login';
           return;
         }
+
+        const authUser = data.session.user;
+
+        try {
+          // Consultar perfil real y rol asignado desde la base de datos (PostgreSQL/Prisma)
+          const perfilBD = await fetchWithAuth<UserProfile>('/auth/perfil');
+          if (perfilBD && isMounted) {
+            setUser({
+              id: perfilBD.id,
+              email: perfilBD.email,
+              nombre: perfilBD.nombre || authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
+              rol: (perfilBD.rol || 'MECANICO') as Rol,
+            });
+            setActiveSection('dashboard');
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.warn('No se pudo cargar perfil desde API, usando metadata:', err);
+        }
+
+        if (isMounted) {
+          // Fallback a metadata de Supabase Auth
+          const rol = (authUser.user_metadata?.rol || 'MECANICO') as Rol;
+          setUser({
+            id: authUser.id,
+            email: authUser.email || '',
+            nombre: authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
+            rol: rol,
+          });
+
+          setActiveSection('dashboard');
+          setLoading(false);
+        }
       } catch (err) {
-        console.warn('No se pudo cargar perfil desde API, usando metadata:', err);
+        console.error('Error al inicializar sesión:', err);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-
-      // Fallback a metadata de Supabase Auth
-      const rol = (authUser.user_metadata?.rol || 'MECANICO') as Rol;
-      setUser({
-        id: authUser.id,
-        email: authUser.email || '',
-        nombre: authUser.user_metadata?.nombre || authUser.email?.split('@')[0],
-        rol: rol,
-      });
-
-      // El dashboard es la vista por defecto
-      setActiveSection('dashboard');
-      setLoading(false);
     }
 
     loadUser();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   async function handleLogout() {
