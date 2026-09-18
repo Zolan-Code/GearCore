@@ -26,6 +26,21 @@ Regla 6. Modo offline (PWA): cuando trabajes en los requerimientos de modo offli
 
 Regla 7. Nombres en español para entidades de dominio (Cliente, Vehiculo, OrdenTrabajo, Repuesto), en inglés/estándar para infraestructura (Module, Controller, Service, Guard).
 
+## Manejo de estado de datos (frontend)
+
+Todo el frontend usa TanStack Query (@tanstack/react-query) para fetching y cache de datos del servidor. Reglas obligatorias para cualquier módulo nuevo o existente:
+
+- Cada dominio tiene su propio hook en frontend/hooks/<dominio>/, nunca fetch directo en un useEffect dentro de un componente de vista.
+- Las queries de lectura usan useQuery con una queryKey descriptiva del recurso (ej: ['clientes'], ['ordenes-trabajo']).
+- Las mutaciones usan useMutation e invalidan SOLO las queryKeys afectadas en su onSuccess — nunca invalidan todo el cache. Si una mutación afecta más de un dominio (ej: asignar un repuesto a una OT afecta tanto ordenes-trabajo como repuestos), invalida ambas keys explícitamente.
+- Las vistas distinguen isLoading (primera carga, sin datos aún) de isFetching (revalidación en segundo plano, no debe bloquear la UI).
+- Las vistas manejan isError mostrando un mensaje claro, nunca dejan la UI en blanco silenciosamente.
+- El QueryClientProvider está en frontend/app/providers.tsx con staleTime de 60 segundos y refetchOnWindowFocus en false.
+- Al cerrar sesión, se ejecuta queryClient.clear() para evitar fugas de datos entre sesiones de distintos roles en el mismo equipo.
+- El rol/perfil del usuario logueado (el que decide qué se muestra en el sidebar) se lee del hook useMiPerfil() (queryKey ['perfil']), no de un estado local aislado — así cualquier cambio de rol propio se refleja sin necesidad de recargar la página.
+
+Cualquier módulo nuevo que se agregue debe seguir este mismo patrón desde el principio, no como un ajuste posterior.
+
 Orden de desarrollo — respétalo salvo indicación contraria
 
 Primero Clientes y Vehículos (RF-01 a RF-05). Segundo Órdenes de Trabajo (RF-06 a RF-12). Tercero Inventario de Repuestos (RF-13 a RF-17). Cuarto Cotizaciones (RF-18 a RF-21) — depende de OT e Inventario, no adelantar. Quinto Modo Offline / PWA (RF-30 a RF-32). Sexto Dashboard / Business Intelligence (RF-22 a RF-25) — depende de que los módulos anteriores ya generen datos reales. Séptimo, hardening final de roles y seguridad (RF-26 a RF-29 completos, RNF-05/06).
