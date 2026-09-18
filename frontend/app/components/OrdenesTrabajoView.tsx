@@ -892,11 +892,32 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       disabled={actualizandoEstadoId === ot.id}
                       onChange={(e) => handleCambiarEstado(ot.id, e.target.value as EstadoOT)}
                     >
-                      {ESTADOS_OT.map((est) => (
-                        <option key={est.id} value={est.id}>
-                          {est.label}
-                        </option>
-                      ))}
+                      {ESTADOS_OT.map((est) => {
+                        // Reglas de Negocio / RBAC:
+                        // 1. Un MECANICO no puede aprobar cotizaciones ni saltar a APROBADO (la aprobación es comercial por cliente/recepcionista).
+                        // 2. Si la OT está en COTIZACION, el mecánico no puede avanzar a EN_REPARACION ni posteriores sin aprobación previa.
+                        // 3. Si la cotización existe y no está APROBADA, nadie puede saltar a EN_REPARACION.
+                        const cotNoAprobada =
+                          (ot as any).cotizacion && (ot as any).cotizacion.estado !== 'APROBADA';
+
+                        const disabledPorMecanico =
+                          userRole === 'MECANICO' &&
+                          (est.id === 'APROBADO' ||
+                            (ot.estado === 'COTIZACION' && est.id !== 'COTIZACION' && est.id !== 'DIAGNOSTICO'));
+
+                        const disabledPorCotizacion =
+                          cotNoAprobada &&
+                          (est.id === 'APROBADO' || est.id === 'EN_REPARACION') &&
+                          est.id !== ot.estado;
+
+                        const disabledOption = disabledPorMecanico || disabledPorCotizacion;
+
+                        return (
+                          <option key={est.id} value={est.id} disabled={disabledOption}>
+                            {est.label} {disabledOption && est.id !== ot.estado ? '🔒' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {actualizandoEstadoId === ot.id && (
                       <div className={styles.selectLoadingOverlay}>

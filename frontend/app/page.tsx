@@ -10,6 +10,7 @@ import OrdenesTrabajoView from './components/OrdenesTrabajoView';
 import UsuariosSeguridadView from './components/UsuariosSeguridadView';
 import InventarioView from './components/InventarioView';
 import MiPerfilView from './components/MiPerfilView';
+import CotizacionesView from './components/CotizacionesView';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 import { useMiPerfil } from '../hooks/usuarios/useUsuarios';
 
@@ -392,6 +393,8 @@ export default function HomePage() {
           <OrdenesTrabajoView userRole={userRole} userId={user?.id} />
         ) : activeSection === 'inventario' ? (
           <InventarioView userRole={userRole} />
+        ) : activeSection === 'cotizaciones' ? (
+          <CotizacionesView userRole={userRole} />
         ) : activeSection === 'usuarios-seguridad' ? (
           <UsuariosSeguridadView userRole={userRole} />
         ) : activeSection === 'mi-perfil' ? (

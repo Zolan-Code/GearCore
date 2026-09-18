@@ -35,6 +35,7 @@ model Perfil {
   ordenesAsignadas      OrdenTrabajo[]         @relation("MecanicoAsignado")
   auditorias            RegistroAuditoria[]
   movimientosInventario MovimientoInventario[]
+  historialCotizaciones HistorialPrecioCotizacion[]
 
   @@map("perfiles")
 }
@@ -91,6 +92,7 @@ model OrdenTrabajo {
   creadoEn              DateTime  @default(now())
 
   detalleRepuestos DetalleOTRepuesto[]
+  cotizacion       Cotizacion?
 }
 
 model Repuesto {
@@ -160,3 +162,94 @@ model RegistroAuditoria {
   @@map("registros_auditoria")
 }
 
+enum EstadoCotizacion {
+  BORRADOR
+  ENVIADA
+  APROBADA
+  RECHAZADA
+  VENCIDA
+}
+
+enum TipoItemCotizacion {
+  REPUESTO
+  MANO_DE_OBRA
+  SERVICIO_EXTERNO
+  OTRO
+}
+
+model Cotizacion {
+  id                String            @id @default(uuid())
+  numero            Int               @default(autoincrement())
+  ordenTrabajoId    String            @unique
+  ordenTrabajo      OrdenTrabajo      @relation(fields: [ordenTrabajoId], references: [id], onDelete: Restrict)
+  
+  estado            EstadoCotizacion  @default(BORRADOR)
+  validezDias       Int               @default(15)
+  fechaVencimiento  DateTime?
+  observaciones     String?
+
+  // Snapshot Mano de Obra
+  horasHombre       Float             @default(0)
+  valorHoraHombre   Float             @default(0)
+  costoHoraHombre   Float             @default(0)
+
+  // Snapshot Cobro Cliente
+  subtotalRepuestos Float             @default(0)
+  subtotalManoObra  Float             @default(0)
+  subtotalOtros     Float             @default(0)
+  descuento         Float             @default(0)
+  subtotalNeto      Float             @default(0)
+  aplicaIva         Boolean           @default(true)
+  iva               Float             @default(0)
+  total             Float             @default(0)
+
+  // Snapshot Rentabilidad Interna (Admin)
+  costoRepuestos    Float             @default(0)
+  costoManoObra     Float             @default(0)
+  costoOtros        Float             @default(0)
+  costoTotal        Float             @default(0)
+  margenNeto        Float             @default(0)
+  porcentajeMargen  Float             @default(0)
+
+  items             ItemCotizacion[]
+  historialPrecios  HistorialPrecioCotizacion[]
+
+  creadoEn          DateTime          @default(now())
+  actualizadoEn     DateTime          @updatedAt
+
+  @@map("cotizaciones")
+}
+
+model ItemCotizacion {
+  id              String             @id @default(uuid())
+  cotizacionId    String
+  cotizacion      Cotizacion         @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  tipo            TipoItemCotizacion @default(REPUESTO)
+  referenciaId    String?
+  descripcion     String
+  cantidad        Float              @default(1)
+  precioUnitario  Float
+  costoUnitario   Float              @default(0)
+  subtotal        Float
+
+  @@map("items_cotizacion")
+}
+
+model HistorialPrecioCotizacion {
+  id               String      @id @default(uuid())
+  cotizacionId     String
+  cotizacion       Cotizacion  @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  usuarioId        String?
+  usuario          Perfil?     @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  
+  totalAnterior    Float
+  subtotalAnterior Float
+  totalNuevo       Float
+  subtotalNuevo    Float
+  
+  motivo           String
+  detalles         String?     // Snapshot JSON completo de ítems y valores anteriores
+  creadoEn         DateTime    @default(now())
+
+  @@map("historial_precios_cotizaciones")
+}

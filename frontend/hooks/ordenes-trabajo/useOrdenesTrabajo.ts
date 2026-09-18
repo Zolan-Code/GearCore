@@ -72,6 +72,12 @@ export interface OrdenTrabajo {
     email: string;
   } | null;
   detalleRepuestos?: DetalleOTRepuestoItem[];
+  cotizacion?: {
+    id: string;
+    numero: number;
+    estado: 'BORRADOR' | 'ENVIADA' | 'APROBADA' | 'RECHAZADA' | 'VENCIDA';
+    total: number;
+  } | null;
 }
 
 export interface CrearOTPayload {

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EstadoOT, Prisma, RolUsuario, TipoMovimientoStock } from '@prisma/client';
+import { EstadoCotizacion, EstadoOT, Prisma, RolUsuario, TipoMovimientoStock } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
@@ -24,6 +24,7 @@ const ordenInclude = Prisma.validator<Prisma.OrdenTrabajoInclude>()({
   detalleRepuestos: {
     include: { repuesto: true },
   },
+  cotizacion: true,
 });
 
 @Injectable()
@@ -188,7 +189,34 @@ export class OrdenesTrabajoService {
    * Cambiar estado de la OT (flujo de ciclo de vida)
    */
   async cambiarEstado(id: string, dto: CambiarEstadoDto, usuarioId?: string) {
-    await this.buscarPorId(id, usuarioId);
+    const orden = await this.buscarPorId(id, usuarioId);
+
+    // 1. Bloqueo si la cotización no está aprobada por el cliente
+    if (dto.estado === EstadoOT.APROBADO || dto.estado === EstadoOT.EN_REPARACION) {
+      const cot = (orden as any).cotizacion;
+      if (cot && cot.estado !== EstadoCotizacion.APROBADA) {
+        throw new BadRequestException(
+          `No se puede avanzar la orden a ${dto.estado} porque la cotización COT-${String(cot.numero).padStart(5, '0')} está en estado ${cot.estado}. Debe ser aprobada previamente por el cliente.`,
+        );
+      }
+    }
+
+    // 2. Control de permisos para rol MECANICO
+    if (usuarioId) {
+      const perfil = await this.prisma.perfil.findUnique({ where: { id: usuarioId } });
+      if (perfil?.rol === RolUsuario.MECANICO) {
+        if (dto.estado === EstadoOT.APROBADO) {
+          throw new ForbiddenException(
+            'Los mecánicos no tienen permisos para dar aprobación a cotizaciones. La aprobación comercial corresponde al cliente y recepción.',
+          );
+        }
+        if (orden.estado === EstadoOT.COTIZACION && dto.estado !== EstadoOT.DIAGNOSTICO) {
+          throw new ForbiddenException(
+            'La orden está en etapa de Cotización. Espera a que el cliente la apruebe antes de iniciar los trabajos.',
+          );
+        }
+      }
+    }
 
     const data: any = { estado: dto.estado };
 

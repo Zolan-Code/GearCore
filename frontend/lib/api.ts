@@ -62,9 +62,9 @@ export async function fetchWithAuth<T = any>(
 
   const url = buildRequestUrl(endpoint);
   
-  // Timeout de 8 segundos para no bloquear la aplicación si la conexión se cuelga
+  // Timeout de 30 segundos para soportar operaciones transaccionales hacia Supabase
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   let response: Response;
   try {
@@ -73,6 +73,11 @@ export async function fetchWithAuth<T = any>(
       headers,
       signal: options.signal || controller.signal,
     });
+  } catch (fetchErr: any) {
+    if (fetchErr?.name === 'AbortError' || fetchErr?.message?.includes('aborted')) {
+      throw new Error('Tiempo de espera agotado al conectar con el servidor (timeout de 30s). Por favor reintente.');
+    }
+    throw fetchErr;
   } finally {
     clearTimeout(timeoutId);
   }
