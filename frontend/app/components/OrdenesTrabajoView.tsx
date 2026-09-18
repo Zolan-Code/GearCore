@@ -182,6 +182,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   // Modal WhatsApp
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappData, setWhatsappData] = useState<{ url: string; texto: string; telefono: string } | null>(null);
+  const [textoWhatsappEditado, setTextoWhatsappEditado] = useState('');
   const [cargandoWhatsappId, setCargandoWhatsappId] = useState<string | null>(null);
 
   // Subida de archivos y visualización a detalle (Lightbox)
@@ -554,6 +555,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         `/ordenes-trabajo/${otId}/whatsapp`
       );
       setWhatsappData(data);
+      setTextoWhatsappEditado(data.texto || '');
       setShowWhatsappModal(true);
     } catch (err: any) {
       setDialogo({
@@ -1627,25 +1629,35 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
             <div className={styles.modalBody}>
               <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '14px', borderRadius: '12px' }}>
-                <div style={{ fontSize: '13px', color: '#065f46', marginBottom: '8px' }}>
-                  <strong>Destinatario:</strong> +{whatsappData.telefono || 'Sin número definido'}
+                <div style={{ fontSize: '13px', color: '#065f46', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span><strong>Destinatario:</strong> +{whatsappData.telefono || 'Sin número definido'}</span>
+                  <span style={{ fontSize: '11px', color: '#047857', background: '#d1fae5', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                    Mensaje Editable
+                  </span>
                 </div>
-                <div style={{
-                  background: '#ffffff',
-                  padding: '14px',
-                  borderRadius: '10px',
-                  border: '1px solid #d1fae5',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                  whiteSpace: 'pre-wrap',
-                  color: '#1f2937',
-                  lineHeight: '1.5',
-                }}>
-                  {whatsappData.texto}
-                </div>
+                <textarea
+                  value={textoWhatsappEditado}
+                  onChange={(e) => setTextoWhatsappEditado(e.target.value)}
+                  rows={8}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #86efac',
+                    fontFamily: 'inherit',
+                    fontSize: '13.5px',
+                    lineHeight: '1.5',
+                    color: '#1f2937',
+                    background: '#ffffff',
+                    resize: 'vertical',
+                    outline: 'none',
+                  }}
+                  placeholder="Redacta o ajusta el mensaje para el cliente..."
+                />
               </div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                Al hacer clic en el botón, se abrirá WhatsApp Web o la aplicación móvil de WhatsApp con el mensaje ya redactado y listo para enviar.
+              <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+                Puedes editar directamente el texto antes de enviar. Al pulsar el botón se abrirá WhatsApp con el mensaje personalizado.
               </p>
             </div>
 
@@ -1661,7 +1673,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 type="button"
                 className={styles.btnWhatsApp}
                 style={{ padding: '10px 18px', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                onClick={() => window.open(whatsappData.url, '_blank')}
+                onClick={() => {
+                  const fonoLimpio = (whatsappData.telefono || '').replace(/\D/g, '');
+                  const encoded = encodeURIComponent(textoWhatsappEditado);
+                  const urlFinal = fonoLimpio
+                    ? `https://wa.me/${fonoLimpio}?text=${encoded}`
+                    : `https://wa.me/?text=${encoded}`;
+                  window.open(urlFinal, '_blank');
+                }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />

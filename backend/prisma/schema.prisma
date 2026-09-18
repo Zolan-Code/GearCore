@@ -253,3 +253,18 @@ model HistorialPrecioCotizacion {
 
   @@map("historial_precios_cotizaciones")
 }
+
+model ConfiguracionTaller {
+  id                    String   @id @default("taller-config")
+  nombreComercial       String
+  rut                   String
+  direccion             String?
+  telefono              String?
+  email                 String?
+  logoUrl               String?
+  ivaPorDefecto         Float    @default(19)
+  validezDiasPorDefecto Int      @default(15)
+  actualizadoEn         DateTime @updatedAt
+
+  @@map("configuracion_taller")
+}

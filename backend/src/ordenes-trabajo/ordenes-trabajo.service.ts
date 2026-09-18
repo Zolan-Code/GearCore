@@ -312,6 +312,16 @@ export class OrdenesTrabajoService {
       );
     }
 
+    let configTaller: any = null;
+    try {
+      configTaller = await this.prisma.configuracionTaller.findUnique({
+        where: { id: 'taller-config' },
+      });
+    } catch {
+      // Fallback defensivo
+    }
+    const nombreTaller = configTaller?.nombreComercial || 'GearCore Taller Mecánico';
+
     const detalle = orden.diagnostico || orden.trabajoRealizado || undefined;
 
     return this.notificadorWhatsApp.generarNotificacion(
@@ -321,6 +331,7 @@ export class OrdenesTrabajoService {
       orden.vehiculo.patente,
       orden.estado,
       detalle,
+      nombreTaller,
     );
   }
 

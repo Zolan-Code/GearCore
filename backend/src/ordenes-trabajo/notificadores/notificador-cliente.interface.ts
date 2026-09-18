@@ -12,5 +12,6 @@ export interface NotificadorCliente {
     patente: string,
     estado: string,
     detalle?: string,
+    nombreTaller?: string,
   ): MensajeNotificacion;
 }

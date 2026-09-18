@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface ItemPdfData {
   descripcion: string;
@@ -45,7 +46,26 @@ export interface CotizacionPdfData {
 
 @Injectable()
 export class CotizacionesPdfService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async generarPdf(data: CotizacionPdfData): Promise<Buffer> {
+    let configTaller: any = null;
+    try {
+      configTaller = await this.prisma.configuracionTaller.findUnique({
+        where: { id: 'taller-config' },
+      });
+    } catch (err) {
+      console.error('Error al leer configuracion en PDF:', err);
+    }
+    // console.log('DEBUG_PDF_CONFIG:', configTaller?.nombreComercial);
+
+    const nombreTaller = configTaller?.nombreComercial || 'GEARCORE';
+    const rutTaller = configTaller?.rut ? `RUT: ${configTaller.rut}` : '';
+    const dirTaller = configTaller?.direccion || '';
+    const telTaller = configTaller?.telefono ? `Tel: ${configTaller.telefono}` : '';
+    const emailTaller = configTaller?.email ? `Email: ${configTaller.email}` : '';
+    const ivaPorc = configTaller?.ivaPorDefecto ?? 19;
+
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
@@ -66,8 +86,9 @@ export class CotizacionesPdfService {
         });
 
         // ================= ENCABEZADO =================
-        doc.fillColor('#1e293b').fontSize(20).font('Helvetica-Bold').text('GEARCORE', 40, 40);
-        doc.fontSize(10).font('Helvetica').fillColor('#64748b').text('ERP de Gestión para Talleres Mecánicos', 40, 65);
+        doc.fillColor('#1e293b').fontSize(18).font('Helvetica-Bold').text(nombreTaller, 40, 40);
+        const subtitulo = [rutTaller, dirTaller, telTaller, emailTaller].filter(Boolean).join(' • ');
+        doc.fontSize(8.5).font('Helvetica').fillColor('#64748b').text(subtitulo || 'Servicio Mecánico y Mantención Automotriz', 40, 62, { width: 330 });
 
         // Caja de Folio y Fecha (Derecha)
         doc.rect(380, 35, 190, 55).lineWidth(1).strokeColor('#cbd5e1').fillAndStroke('#f8fafc', '#cbd5e1');
@@ -174,7 +195,7 @@ export class CotizacionesPdfService {
         }
 
         if (data.aplicaIva) {
-          doc.text('IVA (19%):', 370, offset);
+          doc.text(`IVA (${ivaPorc}%):`, 370, offset);
           doc.text(formatoMoneda(data.iva), 470, offset, { width: 90, align: 'right' });
           offset += 15;
         }
@@ -192,7 +213,7 @@ export class CotizacionesPdfService {
         doc.moveTo(370, yFirmas + 40).lineTo(530, yFirmas + 40).lineWidth(0.8).strokeColor('#94a3b8').stroke();
 
         doc.fillColor('#64748b').fontSize(8).font('Helvetica');
-        doc.text('Firma y Timbre Taller', 70, yFirmas + 45, { width: 160, align: 'center' });
+        doc.text(`Firma y Timbre ${nombreTaller}`, 70, yFirmas + 45, { width: 160, align: 'center' });
         doc.text('Aprobación y Firma Cliente', 370, yFirmas + 45, { width: 160, align: 'center' });
 
         doc.end();

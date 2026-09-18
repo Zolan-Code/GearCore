@@ -44,7 +44,7 @@ export class ItemCotizacionEdicionDto {
 
 export class ActualizarCotizacionDto {
   @IsString()
-  @IsNotEmpty({ message: 'El motivo del cambio es obligatorio para trazabilidad de precios (SCRUM-32).' })
+  @IsNotEmpty({ message: 'El motivo del cambio es obligatorio para trazabilidad de precios.' })
   motivo: string;
 
   @IsEnum(EstadoCotizacion)

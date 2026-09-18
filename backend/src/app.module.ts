@@ -9,6 +9,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { RepuestosModule } from './repuestos/repuestos.module';
 import { PerfilModule } from './perfil/perfil.module';
 import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
+import { AjustesModule } from './ajustes/ajustes.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CotizacionesModule } from './cotizaciones/cotizaciones.module';
     RepuestosModule,
     PerfilModule,
     CotizacionesModule,
+    AjustesModule,
   ],
 })
 export class AppModule {}

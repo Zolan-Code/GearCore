@@ -127,7 +127,7 @@ export default function CotizacionesView({ userRole }: Props) {
     .filter((c) => c.estado === 'APROBADA')
     .reduce((acc, c) => acc + (c.total || 0), 0);
 
-  // Métricas exclusivas para ADMINISTRADOR (SCRUM-30)
+  // Métricas exclusivas para ADMINISTRADOR
   const promedioMargenNeto =
     userRole === 'ADMINISTRADOR'
       ? cotizaciones
@@ -135,7 +135,7 @@ export default function CotizacionesView({ userRole }: Props) {
           .reduce((acc, c, _, arr) => acc + (c.porcentajeMargen || 0) / arr.length, 0)
       : 0;
 
-  // Manejador: Descarga PDF (SCRUM-31)
+  // Manejador: Descarga PDF
   const handleDescargarPdf = async (c: Cotizacion) => {
     try {
       setDescargandoPdfId(c.id);
@@ -161,13 +161,13 @@ export default function CotizacionesView({ userRole }: Props) {
     setModalDetalleAbierto(true);
   };
 
-  // Manejador: Guardar Edición con Motivo Obligatorio (SCRUM-32)
+  // Manejador: Guardar Edición con Motivo Obligatorio
   const handleGuardarEdicion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cotizacionSeleccionada) return;
 
     if (!editMotivo.trim()) {
-      setErrorAccion('El motivo de la modificación es obligatorio para registrar la trazabilidad de precios (SCRUM-32).');
+      setErrorAccion('El motivo de la modificación es obligatorio para registrar la trazabilidad de precios.');
       return;
     }
 
@@ -305,7 +305,7 @@ export default function CotizacionesView({ userRole }: Props) {
         <div>
           <h2 className={styles.title}>Cotizaciones y Facturación</h2>
           <p className={styles.subtitle}>
-            Generación de presupuestos, cálculo de margen neto y exportación de cotizaciones (RF-18 a RF-21)
+            Generación de presupuestos, cálculo de margen neto y exportación de cotizaciones
           </p>
         </div>
         {userRole !== 'MECANICO' && (
@@ -364,7 +364,7 @@ export default function CotizacionesView({ userRole }: Props) {
           <div className={styles.kpiDetail}>Facturación total comprometida</div>
         </div>
 
-        {/* Tarjeta de Rentabilidad Interna (Solo ADMINISTRADOR - SCRUM-30) */}
+        {/* Tarjeta de Rentabilidad Interna (Solo ADMINISTRADOR) */}
         {userRole === 'ADMINISTRADOR' && (
           <div className={`${styles.kpiCard} ${styles.kpiCardAdmin}`}>
             <div className={styles.kpiHeader}>
@@ -513,7 +513,7 @@ export default function CotizacionesView({ userRole }: Props) {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
-                        {/* Exportar PDF (SCRUM-31) */}
+                        {/* Exportar PDF */}
                         <button
                           type="button"
                           className={`${styles.iconBtn} ${styles.iconBtnPdf}`}
@@ -545,7 +545,7 @@ export default function CotizacionesView({ userRole }: Props) {
                           </svg>
                         </button>
 
-                        {/* Historial de Trazabilidad (SCRUM-32) */}
+                        {/* Historial de Trazabilidad */}
                         <button
                           type="button"
                           className={styles.iconBtn}
@@ -596,7 +596,7 @@ export default function CotizacionesView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL 1: DETALLE Y EDICIÓN (con trazabilidad SCRUM-32) */}
+      {/* MODAL 1: DETALLE Y EDICIÓN (con trazabilidad) */}
       {modalDetalleAbierto && cotizacionSeleccionada && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -646,7 +646,7 @@ export default function CotizacionesView({ userRole }: Props) {
                   </div>
                 </div>
 
-                {/* Panel de Rentabilidad Interna (Solo ADMINISTRADOR - SCRUM-30) */}
+                {/* Panel de Rentabilidad Interna (Solo ADMINISTRADOR) */}
                 {userRole === 'ADMINISTRADOR' && (
                   <div className={styles.profitPanel}>
                     <h4 className={styles.profitTitle}>
@@ -812,10 +812,10 @@ export default function CotizacionesView({ userRole }: Props) {
                   />
                 </div>
 
-                {/* Campo Obligatorio de Trazabilidad (SCRUM-32) */}
+                {/* Campo Obligatorio de Trazabilidad */}
                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.85rem', borderRadius: '0.5rem' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.25rem' }}>
-                    Motivo de la Modificación (Obligatorio para Trazabilidad SCRUM-32) *
+                    Motivo de la Modificación (Obligatorio para Trazabilidad) *
                   </label>
                   <input
                     type="text"
@@ -852,7 +852,7 @@ export default function CotizacionesView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL 2: HISTORIAL DE TRAZABILIDAD (SCRUM-32) */}
+      {/* MODAL 2: HISTORIAL DE TRAZABILIDAD */}
       {modalHistorialAbierto && cotizacionSeleccionada && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -970,7 +970,7 @@ export default function CotizacionesView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL 3: CREAR COTIZACIÓN (SCRUM-29) */}
+      {/* MODAL 3: CREAR COTIZACIÓN */}
       {modalNuevoAbierto && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>

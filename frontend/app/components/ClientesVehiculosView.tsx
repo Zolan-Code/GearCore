@@ -198,7 +198,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     }, 250);
   }
 
-  // Autocompletado de patente predictivo (SCRUM-16)
+  // Autocompletado de patente predictivo
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -237,7 +237,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     };
   }, [searchTerm]);
 
-  // Seleccionar vehículo y cargar su historial de OTs (SCRUM-17)
+  // Seleccionar vehículo y cargar su historial de OTs
   async function handleSelectVehiculo(vehiculo: Vehiculo) {
     skipSearchRef.current = true;
     setSelectedVehiculo(vehiculo);
@@ -260,7 +260,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     }
   }
 
-  // Guardar nuevo cliente (SCRUM-14 & SCRUM-18)
+  // Guardar nuevo cliente
   async function handleSubmitCliente(e: React.FormEvent) {
     e.preventDefault();
     setClienteError(null);
@@ -299,7 +299,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     }
   }
 
-  // Guardar nuevo vehículo (SCRUM-15 & SCRUM-18)
+  // Guardar nuevo vehículo
   async function handleSubmitVehiculo(e: React.FormEvent) {
     e.preventDefault();
     setVehiculoError(null);
@@ -406,7 +406,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
             </button>
           )}
 
-          {/* Menú de Autocompletado Predictivo (SCRUM-16) */}
+          {/* Menú de Autocompletado Predictivo */}
           {showDropdown && suggestions.length > 0 && (
             <div className={styles.autocompleteDropdown}>
               {suggestions.map((v) => (
@@ -478,7 +478,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         </div>
       </div>
 
-      {/* Detalle del Vehículo Seleccionado (SCRUM-15, SCRUM-16, SCRUM-17) */}
+      {/* Detalle del Vehículo Seleccionado */}
       {selectedVehiculo ? (
         <div className={styles.vehicleHeroCard}>
           <div className={styles.heroHeader}>
@@ -542,7 +542,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
             </div>
           </div>
 
-          {/* Historial Completo de Órdenes de Trabajo (SCRUM-17) */}
+          {/* Historial Completo de Órdenes de Trabajo */}
           <div className={styles.historySection}>
             <div className={styles.sectionHeader}>
               <h4>
@@ -757,7 +757,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         )}
       </div>
 
-      {/* Modal Registrar Cliente (SCRUM-14 & SCRUM-18) */}
+      {/* Modal Registrar Cliente */}
       {showModalCliente && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalCard}>
@@ -871,7 +871,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         </div>
       )}
 
-      {/* Modal Registrar Vehículo (SCRUM-15 & SCRUM-18) */}
+      {/* Modal Registrar Vehículo */}
       {showModalVehiculo && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalCard}>

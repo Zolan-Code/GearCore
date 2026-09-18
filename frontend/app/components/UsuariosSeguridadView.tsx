@@ -79,7 +79,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
   const [nuevoRol, setNuevoRol] = useState<Rol>('MECANICO');
   const [guardandoUsuario, setGuardandoUsuario] = useState(false);
 
-  // Crear Usuario (SCRUM-39)
+  // Crear Usuario
   async function handleCrearUsuario(e: React.FormEvent) {
     e.preventDefault();
     if (!nuevoNombre.trim() || !nuevoEmail.trim() || !nuevoPassword.trim()) {
@@ -126,7 +126,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     setNuevoRol('MECANICO');
   }
 
-  // Cambiar Rol de Usuario (SCRUM-39)
+  // Cambiar Rol de Usuario
   async function handleCambiarRol(usuarioId: string, rol: Rol) {
     try {
       setActualizandoId(usuarioId);
@@ -147,7 +147,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     }
   }
 
-  // Activar / Desactivar Usuario (SCRUM-39)
+  // Activar / Desactivar Usuario
   function handleToggleEstado(u: Usuario) {
     const esDesactivar = u.activo;
     setConfirmModal({
@@ -338,7 +338,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         )}
       </div>
 
-      {/* TABLA 1: DIRECTORIO DE USUARIOS (SCRUM-39) */}
+      {/* TABLA 1: DIRECTORIO DE USUARIOS */}
       {activeTab === 'usuarios' && (
         <div className={styles.tableContainer}>
           <table className={styles.table}>
@@ -465,7 +465,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         </div>
       )}
 
-      {/* TABLA 2: LOG DE AUDITORÍA (SCRUM-41) */}
+      {/* TABLA 2: LOG DE AUDITORÍA */}
       {activeTab === 'auditoria' && (
         <div className={styles.tableContainer}>
           <table className={styles.table}>
@@ -561,7 +561,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL: CREAR NUEVO USUARIO (SCRUM-39) */}
+      {/* MODAL: CREAR NUEVO USUARIO */}
       {showCrearModal && (
         <div className={styles.modalOverlay} onClick={() => setShowCrearModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>

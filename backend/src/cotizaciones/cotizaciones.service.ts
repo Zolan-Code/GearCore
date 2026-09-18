@@ -201,16 +201,29 @@ export class CotizacionesService {
       }
     }
 
-    // 4. Totales y descuentos
+    // 4. Configuración del Taller (IVA y validez iniciales)
+    let configTaller: any = null;
+    try {
+      configTaller = await this.prisma.configuracionTaller.findUnique({
+        where: { id: 'taller-config' },
+      });
+    } catch {
+      // Fallback defensivo a valores por defecto
+    }
+
+    const ivaPorDefecto = configTaller?.ivaPorDefecto ?? 19;
+    const validezDiasPorDefecto = configTaller?.validezDiasPorDefecto ?? 15;
+
+    // 5. Totales y descuentos
     const descuento = Number(dto.descuento) || 0;
     const subtotalBruto = subtotalRepuestos + subtotalManoObra + subtotalOtros;
     const subtotalNeto = Math.max(0, Math.round((subtotalBruto - descuento) * 100) / 100);
 
     const aplicaIva = dto.aplicaIva !== undefined ? dto.aplicaIva : true;
-    const iva = aplicaIva ? Math.round(subtotalNeto * 0.19) : 0;
+    const iva = aplicaIva ? Math.round(subtotalNeto * (ivaPorDefecto / 100)) : 0;
     const total = subtotalNeto + iva;
 
-    // 5. Cálculo SOLID de rentabilidad
+    // 6. Cálculo SOLID de rentabilidad
     const rentabilidad = this.calculadorMargen.calcular({
       costoRepuestos,
       costoManoObra,
@@ -218,7 +231,7 @@ export class CotizacionesService {
       subtotalNeto,
     });
 
-    const validezDias = dto.validezDias || 15;
+    const validezDias = dto.validezDias !== undefined ? Number(dto.validezDias) : validezDiasPorDefecto;
     const fechaVencimiento = new Date();
     fechaVencimiento.setDate(fechaVencimiento.getDate() + validezDias);
 

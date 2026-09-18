@@ -112,7 +112,7 @@ export default function InventarioView({ userRole }: Props) {
   const [notifyModal, setNotifyModal] = useState<NotifyModalState | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
-  // Modal Crear / Editar Repuesto (SCRUM-22, SCRUM-40)
+  // Modal Crear / Editar Repuesto
   const [showFormModal, setShowFormModal] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formCodigo, setFormCodigo] = useState('');
@@ -123,14 +123,14 @@ export default function InventarioView({ userRole }: Props) {
   const [formPrecioVenta, setFormPrecioVenta] = useState<string>('');
   const [guardandoRepuesto, setGuardandoRepuesto] = useState(false);
 
-  // Modal Ajuste de Stock Físico (SCRUM-26)
+  // Modal Ajuste de Stock Físico
   const [showAjusteModal, setShowAjusteModal] = useState(false);
   const [repuestoAjustar, setRepuestoAjustar] = useState<Repuesto | null>(null);
   const [stockFisicoContado, setStockFisicoContado] = useState<string>('0');
   const [motivoAjuste, setMotivoAjuste] = useState('');
   const [guardandoAjuste, setGuardandoAjuste] = useState(false);
 
-  // Modal Importación CSV (SCRUM-25)
+  // Modal Importación CSV
   const [showImportarModal, setShowImportarModal] = useState(false);
   const [csvPreview, setCsvPreview] = useState<any[]>([]);
   const [importando, setImportando] = useState(false);
@@ -166,7 +166,7 @@ export default function InventarioView({ userRole }: Props) {
     setShowFormModal(true);
   }
 
-  // Guardar (Crear o Editar) Repuesto (SCRUM-22)
+  // Guardar (Crear o Editar) Repuesto
   async function handleGuardarRepuesto(e: React.FormEvent) {
     e.preventDefault();
     if (!formCodigo.trim() || !formNombre.trim()) {
@@ -192,7 +192,7 @@ export default function InventarioView({ userRole }: Props) {
           nombre: formNombre.trim(),
           stockMinimo: stockMinimoNum,
         };
-        // Precios solo permitidos para Administrador (SCRUM-40)
+        // Precios solo permitidos para Administrador
         if (userRole === 'ADMINISTRADOR') {
           payload.precioCompra = precioCompraNum;
           payload.precioVenta = precioVentaNum;
@@ -240,7 +240,7 @@ export default function InventarioView({ userRole }: Props) {
     }
   }
 
-  // Ajuste de Stock Físico (SCRUM-26)
+  // Ajuste de Stock Físico
   function abrirAjusteModal(r: Repuesto) {
     setRepuestoAjustar(r);
     setStockFisicoContado(r.stock.toString());
@@ -341,7 +341,7 @@ export default function InventarioView({ userRole }: Props) {
     });
   }
 
-  // Descargar Plantilla CSV (SCRUM-25)
+  // Descargar Plantilla CSV
   function descargarPlantillaCSV() {
     // Usar punto y coma (;) para que Excel en español (Chile/Latam) separe automáticamente en columnas
     const encabezados = 'codigo;nombre;stock;stockMinimo;precioCompra;precioVenta\n';
@@ -401,7 +401,7 @@ export default function InventarioView({ userRole }: Props) {
     document.body.removeChild(link);
   }
 
-  // Parsear archivo CSV (SCRUM-25)
+  // Parsear archivo CSV
   function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -474,7 +474,7 @@ export default function InventarioView({ userRole }: Props) {
     reader.readAsText(file, 'UTF-8');
   }
 
-  // Ejecutar Importación Masiva (SCRUM-25)
+  // Ejecutar Importación Masiva
   async function handleConfirmarImportacion() {
     if (csvPreview.length === 0) return;
 
@@ -664,7 +664,7 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       </div>
 
-      {/* Banner de Alerta de Reposición (SCRUM-24) */}
+      {/* Banner de Alerta de Reposición */}
       {(kpis.totalStockBajo > 0 || kpis.totalAgotados > 0) && (
         <div className={styles.alertBanner}>
           <div className={styles.alertBannerContent}>
@@ -720,7 +720,7 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       </div>
 
-      {/* TABLA PRINCIPAL DE REPUESTOS (SCRUM-22, SCRUM-24) */}
+      {/* TABLA PRINCIPAL DE REPUESTOS */}
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead className={styles.thead}>
@@ -844,11 +844,11 @@ export default function InventarioView({ userRole }: Props) {
 
                     <td className={styles.td} style={{ textAlign: 'right' }}>
                       <div className={styles.rowActions}>
-                        {/* Botón Ajuste Físico (SCRUM-26) */}
+                        {/* Botón Ajuste Físico */}
                         <button
                           type="button"
                           className={styles.btnActionIcon}
-                          title="Auditoría / Ajuste manual de stock físico (SCRUM-26)"
+                          title="Auditoría / Ajuste manual de stock físico"
                           onClick={() => abrirAjusteModal(r)}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -909,7 +909,7 @@ export default function InventarioView({ userRole }: Props) {
         </table>
       </div>
 
-      {/* MODAL: CREAR / EDITAR REPUESTO (SCRUM-22, SCRUM-40) */}
+      {/* MODAL: CREAR / EDITAR REPUESTO */}
       {showFormModal && (
         <div className={styles.modalOverlay} onClick={() => setShowFormModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -1058,7 +1058,7 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL: AJUSTE DE STOCK FÍSICO (SCRUM-26) */}
+      {/* MODAL: AJUSTE DE STOCK FÍSICO */}
       {showAjusteModal && repuestoAjustar && (
         <div className={styles.modalOverlay} onClick={() => setShowAjusteModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -1180,7 +1180,7 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       )}
 
-      {/* MODAL: IMPORTACIÓN CSV (SCRUM-25) */}
+      {/* MODAL: IMPORTACIÓN CSV */}
       {showImportarModal && (
         <div className={styles.modalOverlay} onClick={() => setShowImportarModal(false)}>
           <div className={styles.modalContent} style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
