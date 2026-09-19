@@ -34,9 +34,13 @@ export class UsuariosService {
   /**
    * Listar todos los perfiles de usuario con métricas operativas
    */
-  async listarTodos() {
+  async listarTodos(sortBy?: string, sortOrder: 'asc' | 'desc' = 'desc') {
+    const validSortFields = ['nombre', 'email', 'rol', 'activo', 'creadoEn'];
+    const orderField = sortBy && validSortFields.includes(sortBy) ? sortBy : 'creadoEn';
+    const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+
     return this.prisma.perfil.findMany({
-      orderBy: { creadoEn: 'desc' },
+      orderBy: { [orderField]: orderDirection },
       include: {
         _count: {
           select: { ordenesAsignadas: true },

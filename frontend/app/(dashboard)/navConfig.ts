@@ -1,0 +1,70 @@
+export type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
+
+export interface NavItemConfig {
+  id: string;
+  href: string;
+  label: string;
+  roles: Rol[];
+}
+
+export const NAV_ITEMS: NavItemConfig[] = [
+  {
+    id: 'dashboard',
+    href: '/',
+    label: 'Dashboard',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+  },
+  {
+    id: 'clientes-vehiculos',
+    href: '/clientes',
+    label: 'Gestión de Clientes y Vehículos',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
+  },
+  {
+    id: 'ordenes-trabajo',
+    href: '/ordenes',
+    label: 'Órdenes de Trabajo (OT)',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+  },
+  {
+    id: 'inventario',
+    href: '/inventario',
+    label: 'Inventario de Repuestos',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+  },
+  {
+    id: 'cotizaciones',
+    href: '/cotizaciones',
+    label: 'Cotizaciones y Facturación',
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
+  },
+  {
+    id: 'usuarios-seguridad',
+    href: '/usuarios',
+    label: 'Usuarios, Roles y Seguridad',
+    roles: ['ADMINISTRADOR'],
+  },
+  {
+    id: 'ajustes',
+    href: '/ajustes',
+    label: 'Ajustes',
+    roles: ['ADMINISTRADOR'],
+  },
+];
+
+export function getVisibleNavItems(rol: Rol): NavItemConfig[] {
+  return NAV_ITEMS.filter((item) => item.roles.includes(rol));
+}
+
+export function isRouteAllowed(pathname: string, rol: Rol): boolean {
+  if (pathname === '/' || pathname === '/perfil') return true;
+  const match = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
+  if (!match) return true; // Rutas no listadas en sidebar (ej. perfil) se permiten si está autenticado
+  return match.roles.includes(rol);
+}
+
+export function getActiveNavHref(pathname: string): string {
+  if (pathname === '/') return '/';
+  const match = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
+  return match ? match.href : pathname;
+}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './usuarios-seguridad.module.css';
+import DataTable from './DataTable';
 import {
   useUsuarios,
   useAuditoria,
@@ -37,6 +38,15 @@ interface Props {
 export default function UsuariosSeguridadView({ userRole }: Props) {
   const [activeTab, setActiveTab] = useState<'usuarios' | 'auditoria'>('usuarios');
 
+  const [sortUsuarios, setSortUsuarios] = useState<{ id: string; direction: 'asc' | 'desc' }>({
+    id: 'creadoEn',
+    direction: 'desc',
+  });
+  const [sortAuditoria, setSortAuditoria] = useState<{ id: string; direction: 'asc' | 'desc' }>({
+    id: 'creadoEn',
+    direction: 'desc',
+  });
+
   const {
     data: usuarios = [],
     isLoading: loadingUsuarios,
@@ -44,7 +54,10 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     isError: errorUsuarios,
     error: errUsuarios,
     refetch: refetchUsuarios,
-  } = useUsuarios();
+  } = useUsuarios({
+    sortBy: sortUsuarios.id,
+    sortOrder: sortUsuarios.direction,
+  });
 
   const {
     data: auditorias = [],
@@ -53,7 +66,10 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     isError: errorAuditoria,
     error: errAuditoria,
     refetch: refetchAuditoria,
-  } = useAuditoria();
+  } = useAuditoria({
+    sortBy: sortAuditoria.id,
+    sortOrder: sortAuditoria.direction,
+  });
 
   const crearUsuarioMutation = useCrearUsuario();
   const cambiarRolMutation = useCambiarRolUsuario();
@@ -340,225 +356,186 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
 
       {/* TABLA 1: DIRECTORIO DE USUARIOS */}
       {activeTab === 'usuarios' && (
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead className={styles.thead}>
-              <tr>
-                <th className={styles.th}>Usuario</th>
-                <th className={styles.th}>Rol en Sistema</th>
-                <th className={styles.th}>Estado</th>
-                <th className={styles.th}>OTs Asignadas</th>
-                <th className={styles.th}>Fecha Registro</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {errorUsuarios ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}>
-                    <div style={{ color: '#ef4444', marginBottom: '10px' }}>
-                      Error al cargar los usuarios: {(errUsuarios as any)?.message || 'Error de conexión'}
+        <DataTable<Usuario>
+          data={usuariosFiltrados}
+          keyExtractor={(u) => u.id}
+          storageKey="usuarios-table-layout"
+          searchPlaceholder="Buscar por nombre, correo o rol..."
+          sort={sortUsuarios}
+          onSortChange={setSortUsuarios}
+          loading={loadingUsuarios}
+          loadingMessage="Cargando usuarios..."
+          error={errorUsuarios ? errUsuarios : null}
+          errorMessage={`Error al cargar los usuarios: ${(errUsuarios as any)?.message || 'Error de conexión'}`}
+          onRetry={() => refetchUsuarios()}
+          emptyMessage="No se encontraron usuarios coincidentes."
+          columns={[
+            {
+              id: 'nombre',
+              accessor: 'nombre',
+              header: 'Usuario',
+              cell: (u) => {
+                const initial = (u.nombre || u.email || 'U').charAt(0).toUpperCase();
+                return (
+                  <div className={styles.userCell}>
+                    <div className={styles.userAvatar}>{initial}</div>
+                    <div>
+                      <p className={styles.userName}>{u.nombre}</p>
+                      <p className={styles.userEmail}>{u.email}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => refetchUsuarios()}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        background: '#3b82f6',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                      }}
-                    >
-                      Reintentar
-                    </button>
-                  </td>
-                </tr>
-              ) : loadingUsuarios ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    Cargando usuarios...
-                  </td>
-                </tr>
-              ) : usuariosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    No se encontraron usuarios coincidentes.
-                  </td>
-                </tr>
-              ) : (
-                usuariosFiltrados.map((u) => {
-                  const initial = (u.nombre || u.email || 'U').charAt(0).toUpperCase();
-                  return (
-                    <tr key={u.id} className={styles.tr}>
-                      <td className={styles.td}>
-                        <div className={styles.userCell}>
-                          <div className={styles.userAvatar}>{initial}</div>
-                          <div>
-                            <p className={styles.userName}>{u.nombre}</p>
-                            <p className={styles.userEmail}>{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className={styles.td}>
-                        <select
-                          className={`${styles.roleSelector} ${
-                            u.rol === 'ADMINISTRADOR'
-                              ? styles.roleAdmin
-                              : u.rol === 'RECEPCIONISTA'
-                              ? styles.roleRecepcion
-                              : styles.roleMecanico
-                          }`}
-                          value={u.rol}
-                          disabled={actualizandoId === u.id}
-                          onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
-                          title="Cambiar rol de usuario"
-                        >
-                          <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-                          <option value="RECEPCIONISTA">RECEPCIONISTA</option>
-                          <option value="MECANICO">MECANICO</option>
-                        </select>
-                      </td>
-
-                      <td className={styles.td}>
-                        <span className={`${styles.statusBadge} ${u.activo ? styles.statusActive : styles.statusInactive}`}>
-                          <span className={styles.statusDot} />
-                          <span>{u.activo ? 'Activo' : 'Suspendido'}</span>
-                        </span>
-                      </td>
-
-                      <td className={styles.td}>
-                        <span style={{ fontWeight: 600 }}>
-                          {u._count?.ordenesAsignadas || 0}
-                        </span>
-                      </td>
-
-                      <td className={styles.td}>
-                        {new Date(u.creadoEn).toLocaleDateString('es-CL', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-
-                      <td className={styles.td} style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className={`${styles.btnToggleStatus} ${
-                            u.activo ? styles.btnToggleStatusDeactivate : styles.btnToggleStatusActivate
-                          }`}
-                          disabled={actualizandoId === u.id}
-                          onClick={() => handleToggleEstado(u)}
-                        >
-                          {u.activo ? 'Desactivar' : 'Reactivar'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                );
+              },
+            },
+            {
+              id: 'rol',
+              accessor: 'rol',
+              header: 'Rol en Sistema',
+              cell: (u) => (
+                <select
+                  className={`${styles.roleSelector} ${
+                    u.rol === 'ADMINISTRADOR'
+                      ? styles.roleAdmin
+                      : u.rol === 'RECEPCIONISTA'
+                      ? styles.roleRecepcion
+                      : styles.roleMecanico
+                  }`}
+                  value={u.rol}
+                  disabled={actualizandoId === u.id}
+                  onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
+                  title="Cambiar rol de usuario"
+                >
+                  <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+                  <option value="RECEPCIONISTA">RECEPCIONISTA</option>
+                  <option value="MECANICO">MECANICO</option>
+                </select>
+              ),
+            },
+            {
+              id: 'activo',
+              accessor: 'activo',
+              header: 'Estado',
+              cell: (u) => (
+                <span className={`${styles.statusBadge} ${u.activo ? styles.statusActive : styles.statusInactive}`}>
+                  <span className={styles.statusDot} />
+                  <span>{u.activo ? 'Activo' : 'Suspendido'}</span>
+                </span>
+              ),
+            },
+            {
+              header: 'OTs Asignadas',
+              sortable: false,
+              cell: (u) => (
+                <span style={{ fontWeight: 600 }}>
+                  {u._count?.ordenesAsignadas || 0}
+                </span>
+              ),
+            },
+            {
+              id: 'creadoEn',
+              accessor: 'creadoEn',
+              header: 'Fecha Registro',
+              cell: (u) =>
+                new Date(u.creadoEn).toLocaleDateString('es-CL', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                }),
+            },
+            {
+              header: 'Acciones',
+              align: 'right',
+              sortable: false,
+              filterable: false,
+              cell: (u) => (
+                <button
+                  type="button"
+                  className={`${styles.btnToggleStatus} ${
+                    u.activo ? styles.btnToggleStatusDeactivate : styles.btnToggleStatusActivate
+                  }`}
+                  disabled={actualizandoId === u.id}
+                  onClick={() => handleToggleEstado(u)}
+                >
+                  {u.activo ? 'Desactivar' : 'Reactivar'}
+                </button>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* TABLA 2: LOG DE AUDITORÍA */}
       {activeTab === 'auditoria' && (
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead className={styles.thead}>
-              <tr>
-                <th className={styles.th}>Fecha / Hora</th>
-                <th className={styles.th}>Acción Crítica</th>
-                <th className={styles.th}>Autor</th>
-                <th className={styles.th}>Entidad</th>
-                <th className={styles.th}>Detalles del Registro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {errorAuditoria ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px' }}>
-                    <div style={{ color: '#ef4444', marginBottom: '10px' }}>
-                      Error al cargar los registros de auditoría: {(errAuditoria as any)?.message || 'Error de conexión'}
+        <DataTable<RegistroAuditoria>
+          data={auditoriasFiltradas}
+          keyExtractor={(a) => a.id}
+          storageKey="auditoria-table-layout"
+          searchPlaceholder="Buscar por acción, autor, entidad o detalles..."
+          sort={sortAuditoria}
+          onSortChange={setSortAuditoria}
+          loading={loadingAuditoria}
+          loadingMessage="Cargando registros de auditoría..."
+          error={errorAuditoria ? errAuditoria : null}
+          errorMessage={`Error al cargar los registros de auditoría: ${(errAuditoria as any)?.message || 'Error de conexión'}`}
+          onRetry={() => refetchAuditoria()}
+          emptyMessage="No hay registros de auditoría aún."
+          columns={[
+            {
+              id: 'creadoEn',
+              accessor: 'creadoEn',
+              header: 'Fecha / Hora',
+              cell: (a) => (
+                <span className={styles.auditDateText}>
+                  {new Date(a.creadoEn).toLocaleString('es-CL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              ),
+            },
+            {
+              id: 'accion',
+              accessor: 'accion',
+              header: 'Acción Crítica',
+              cell: (a) => renderAuditBadge(a.accion),
+            },
+            {
+              header: 'Autor',
+              sortable: false,
+              cell: (a) => (
+                <>
+                  <strong>{a.usuario ? a.usuario.nombre : 'Sistema'}</strong>
+                  {a.usuario && (
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      [{a.usuario.rol}]
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => refetchAuditoria()}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        background: '#3b82f6',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                      }}
-                    >
-                      Reintentar
-                    </button>
-                  </td>
-                </tr>
-              ) : loadingAuditoria ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    Cargando registros de auditoría...
-                  </td>
-                </tr>
-              ) : auditoriasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    No hay registros de auditoría aún.
-                  </td>
-                </tr>
-              ) : (
-                auditoriasFiltradas.map((a) => (
-                  <tr key={a.id} className={styles.tr}>
-                    <td className={styles.td}>
-                      <span className={styles.auditDateText}>
-                        {new Date(a.creadoEn).toLocaleString('es-CL', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </td>
-
-                    <td className={styles.td}>
-                      {renderAuditBadge(a.accion)}
-                    </td>
-
-                    <td className={styles.td}>
-                      <strong>{a.usuario ? a.usuario.nombre : 'Sistema'}</strong>
-                      {a.usuario && (
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>
-                          [{a.usuario.rol}]
-                        </div>
-                      )}
-                    </td>
-
-                    <td className={styles.td}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
-                        {a.entidad}
-                      </span>
-                    </td>
-
-                    <td className={styles.td}>
-                      <span className={styles.auditDetailsText}>
-                        {a.detalles || 'Sin detalles especificados'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'entidad',
+              accessor: 'entidad',
+              header: 'Entidad',
+              cell: (a) => (
+                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
+                  {a.entidad}
+                </span>
+              ),
+            },
+            {
+              header: 'Detalles del Registro',
+              cell: (a) => (
+                <span className={styles.auditDetailsText}>
+                  {a.detalles || 'Sin detalles especificados'}
+                </span>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* MODAL: CREAR NUEVO USUARIO */}

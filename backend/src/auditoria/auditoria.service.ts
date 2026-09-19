@@ -36,10 +36,14 @@ export class AuditoriaService {
   /**
    * Listar eventos de auditoría (exclusivo para Administrador)
    */
-  async listar(limite = 100) {
+  async listar(limite = 100, sortBy?: string, sortOrder: 'asc' | 'desc' = 'desc') {
+    const validSortFields = ['creadoEn', 'accion', 'entidad'];
+    const orderField = sortBy && validSortFields.includes(sortBy) ? sortBy : 'creadoEn';
+    const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+
     return this.prisma.registroAuditoria.findMany({
       take: Math.min(limite, 200),
-      orderBy: { creadoEn: 'desc' },
+      orderBy: { [orderField]: orderDirection },
       include: {
         usuario: {
           select: {

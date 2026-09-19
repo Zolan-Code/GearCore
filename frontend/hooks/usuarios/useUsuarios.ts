@@ -40,22 +40,31 @@ export interface CrearUsuarioDto {
 }
 
 // Hook para consultar lista de usuarios del sistema
-export function useUsuarios() {
+export function useUsuarios(params?: { sortBy?: string; sortOrder?: 'asc' | 'desc' }) {
   return useQuery({
-    queryKey: ['usuarios'],
+    queryKey: ['usuarios', params?.sortBy, params?.sortOrder],
     queryFn: async () => {
-      const data = await fetchWithAuth<Usuario[]>('/usuarios');
+      const q = new URLSearchParams();
+      if (params?.sortBy) q.set('sortBy', params.sortBy);
+      if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
+      const url = q.toString() ? `/usuarios?${q}` : '/usuarios';
+      const data = await fetchWithAuth<Usuario[]>(url);
       return data || [];
     },
   });
 }
 
 // Hook para consultar bitácora de auditoría
-export function useAuditoria() {
+export function useAuditoria(params?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limite?: number }) {
   return useQuery({
-    queryKey: ['auditoria'],
+    queryKey: ['auditoria', params?.sortBy, params?.sortOrder, params?.limite],
     queryFn: async () => {
-      const data = await fetchWithAuth<RegistroAuditoria[]>('/auditoria');
+      const q = new URLSearchParams();
+      if (params?.sortBy) q.set('sortBy', params.sortBy);
+      if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
+      if (params?.limite) q.set('limite', String(params.limite));
+      const url = q.toString() ? `/auditoria?${q}` : '/auditoria';
+      const data = await fetchWithAuth<RegistroAuditoria[]>(url);
       return data || [];
     },
   });

@@ -12,8 +12,12 @@ export class AuditoriaController {
 
   @Get()
   @Roles(RolUsuario.ADMINISTRADOR)
-  async listar(@Query('limite') limite?: string) {
+  async listar(
+    @Query('limite') limite?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
     const lim = limite ? parseInt(limite, 10) : 100;
-    return this.auditoriaService.listar(lim);
+    return this.auditoriaService.listar(lim, sortBy, sortOrder);
   }
 }

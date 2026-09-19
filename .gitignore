@@ -28,3 +28,7 @@ Thumbs.db
 !.env*.example
 *.tsbuildinfo
 scratch/
+
+
+# planes de agente
+backend/planes
