@@ -101,3 +101,56 @@ export async function fetchWithAuth<T = any>(
 
   return responseData;
 }
+
+export async function fetchBlobWithAuth(
+  endpoint: string,
+  options: RequestInit = {},
+  isRetry = false,
+): Promise<Blob> {
+  let token = await getFreshAccessToken();
+
+  const headers = new Headers(options.headers || {});
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const url = buildRequestUrl(endpoint);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } catch (fetchErr: any) {
+    if (fetchErr?.name === 'AbortError' || fetchErr?.message?.includes('aborted')) {
+      throw new Error('Tiempo de espera agotado al descargar el documento (timeout de 30s). Por favor reintente.');
+    }
+    throw fetchErr;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  // Si el backend responde 401 por token expirado, intentar refrescar una vez y reintentar
+  if (response.status === 401 && !isRetry) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshData.session?.access_token) {
+      return fetchBlobWithAuth(endpoint, options, true);
+    }
+  }
+
+  if (!response.ok) {
+    const errorJson = await response.json().catch(() => null);
+    const message = Array.isArray(errorJson?.message)
+      ? errorJson.message.join(' | ')
+      : errorJson?.message || `Error al descargar el archivo (${response.status} ${response.statusText})`;
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+

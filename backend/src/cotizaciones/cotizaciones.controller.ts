@@ -91,60 +91,66 @@ export class CotizacionesController {
   @Get(':id/pdf')
   @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.RECEPCIONISTA)
   async descargarPdf(@Param('id') id: string, @Req() req: any, @Res() res: Response) {
-    // 1. Obtener entidad sanitizada para cliente (sin costos internos)
-    const cotizacion = await this.cotizacionesService.obtenerPorId(id, RolUsuario.RECEPCIONISTA);
+    try {
+      // 1. Obtener entidad sanitizada para cliente (sin costos internos)
+      const cotizacion = await this.cotizacionesService.obtenerPorId(id, RolUsuario.RECEPCIONISTA);
 
-    // 2. Mapear estrictamente solo los datos comerciales para el cliente
-    const pdfPayload: CotizacionPdfData = {
-      numero: cotizacion.numero,
-      creadoEn: cotizacion.creadoEn,
-      validezDias: cotizacion.validezDias,
-      fechaVencimiento: cotizacion.fechaVencimiento,
-      observaciones: cotizacion.observaciones,
-      ordenTrabajo: {
-        id: cotizacion.ordenTrabajo.id,
-        fallaReportada: cotizacion.ordenTrabajo.fallaReportada,
-        vehiculo: {
-          patente: cotizacion.ordenTrabajo.vehiculo.patente,
-          marca: cotizacion.ordenTrabajo.vehiculo.marca,
-          modelo: cotizacion.ordenTrabajo.vehiculo.modelo,
-          anio: cotizacion.ordenTrabajo.vehiculo.anio,
-          kilometraje: cotizacion.ordenTrabajo.vehiculo.kilometraje,
-          cliente: {
-            nombre: cotizacion.ordenTrabajo.vehiculo.cliente.nombre,
-            rut: cotizacion.ordenTrabajo.vehiculo.cliente.rut,
-            telefono: cotizacion.ordenTrabajo.vehiculo.cliente.telefono,
-            email: cotizacion.ordenTrabajo.vehiculo.cliente.email,
+      // 2. Mapear estrictamente solo los datos comerciales para el cliente
+      const pdfPayload: CotizacionPdfData = {
+        numero: cotizacion.numero,
+        creadoEn: cotizacion.creadoEn,
+        validezDias: cotizacion.validezDias,
+        fechaVencimiento: cotizacion.fechaVencimiento,
+        observaciones: cotizacion.observaciones,
+        ordenTrabajo: {
+          id: cotizacion.ordenTrabajo.id,
+          fallaReportada: cotizacion.ordenTrabajo.fallaReportada,
+          vehiculo: {
+            patente: cotizacion.ordenTrabajo.vehiculo.patente,
+            marca: cotizacion.ordenTrabajo.vehiculo.marca,
+            modelo: cotizacion.ordenTrabajo.vehiculo.modelo,
+            anio: cotizacion.ordenTrabajo.vehiculo.anio,
+            kilometraje: cotizacion.ordenTrabajo.vehiculo.kilometraje,
+            cliente: {
+              nombre: cotizacion.ordenTrabajo.vehiculo.cliente.nombre,
+              rut: cotizacion.ordenTrabajo.vehiculo.cliente.rut,
+              telefono: cotizacion.ordenTrabajo.vehiculo.cliente.telefono,
+              email: cotizacion.ordenTrabajo.vehiculo.cliente.email,
+            },
           },
         },
-      },
-      subtotalRepuestos: cotizacion.subtotalRepuestos,
-      subtotalManoObra: cotizacion.subtotalManoObra,
-      subtotalOtros: cotizacion.subtotalOtros,
-      descuento: cotizacion.descuento,
-      subtotalNeto: cotizacion.subtotalNeto,
-      aplicaIva: cotizacion.aplicaIva,
-      iva: cotizacion.iva,
-      total: cotizacion.total,
-      items: (cotizacion.items || []).map((item: any) => ({
-        tipo: item.tipo,
-        descripcion: item.descripcion,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario,
-        subtotal: item.subtotal,
-      })),
-    };
+        subtotalRepuestos: cotizacion.subtotalRepuestos,
+        subtotalManoObra: cotizacion.subtotalManoObra,
+        subtotalOtros: cotizacion.subtotalOtros,
+        descuento: cotizacion.descuento,
+        subtotalNeto: cotizacion.subtotalNeto,
+        aplicaIva: cotizacion.aplicaIva,
+        iva: cotizacion.iva,
+        total: cotizacion.total,
+        items: (cotizacion.items || []).map((item: any) => ({
+          tipo: item.tipo,
+          descripcion: item.descripcion,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.subtotal,
+        })),
+      };
 
-    // 3. Generar buffer binario
-    const pdfBuffer = await this.pdfService.generarPdf(pdfPayload);
+      // 3. Generar buffer binario
+      const pdfBuffer = await this.pdfService.generarPdf(pdfPayload);
 
-    // 4. Enviar archivo
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="cotizacion-${String(cotizacion.numero).padStart(5, '0')}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-    });
+      // 4. Enviar archivo
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="cotizacion-${String(cotizacion.numero).padStart(5, '0')}.pdf"`,
+        'Content-Length': pdfBuffer.length,
+      });
 
-    res.end(pdfBuffer);
+      res.end(pdfBuffer);
+    } catch (err: any) {
+      const status = err.status || (typeof err.getStatus === 'function' ? err.getStatus() : 500);
+      const message = err.message || 'Error al generar el PDF de la cotización';
+      res.status(status).json({ message, statusCode: status });
+    }
   }
 }

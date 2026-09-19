@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithAuth } from '../../lib/api';
+import { fetchWithAuth, fetchBlobWithAuth } from '../../lib/api';
 
 export type EstadoCotizacion =
   | 'BORRADOR'
@@ -283,27 +283,10 @@ export function useCambiarEstadoCotizacion() {
 
 // Utilidad: Descargar PDF de cotización autenticado
 export async function descargarCotizacionPdf(cotizacionId: string, numero: number): Promise<void> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-  
-  // Obtener sesión de supabase para token JWT
-  const { supabase } = await import('../../lib/supabaseClient');
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  const headers: HeadersInit = {};
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
-
-  const response = await fetch(`${apiUrl}/cotizaciones/${cotizacionId}/pdf`, {
+  const blob = await fetchBlobWithAuth(`/cotizaciones/${cotizacionId}/pdf`, {
     method: 'GET',
-    headers,
   });
 
-  if (!response.ok) {
-    throw new Error('Error al descargar el PDF de la cotización');
-  }
-
-  const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -313,3 +296,4 @@ export async function descargarCotizacionPdf(cotizacionId: string, numero: numbe
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 }
+
