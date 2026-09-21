@@ -2,33 +2,47 @@
 node_modules/
 .pnpm-store/
 
-# Builds
+# Builds y Bundles
 dist/
 .next/
 out/
+build/
+*.tsbuildinfo
+.turbo/
 
-# Entorno y credenciales locales
+# Entornos y credenciales locales (evita fugas accidentales de secretos)
 .env
-.env.local
-.env.*.local
+.env.*
 *.env
+!.env.example
+!.env*.example
+
+# Certificados y llaves privadas
+*.pem
+*.key
+*.cert
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# IDE / OS
+# Cobertura y Pruebas
+coverage/
+.nyc_output/
+
+# IDE / Editores / Sistema Operativo (Windows & macOS)
 .vscode/
 .idea/
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
 
-# Excepción explícita para plantillas
-!.env*.example
-*.tsbuildinfo
+# Archivos temporales y de planificación local
 scratch/
-
-
-# planes de agente
-backend/planes
+backend/planes/
