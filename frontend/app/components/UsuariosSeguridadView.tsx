@@ -5,12 +5,10 @@ import styles from './usuarios-seguridad.module.css';
 import DataTable from './DataTable';
 import {
   useUsuarios,
-  useAuditoria,
   useCrearUsuario,
   useCambiarRolUsuario,
   useToggleEstadoUsuario,
   Usuario,
-  RegistroAuditoria,
   Rol,
 } from '../../hooks/usuarios/useUsuarios';
 
@@ -36,13 +34,7 @@ interface Props {
 }
 
 export default function UsuariosSeguridadView({ userRole }: Props) {
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'auditoria'>('usuarios');
-
   const [sortUsuarios, setSortUsuarios] = useState<{ id: string; direction: 'asc' | 'desc' }>({
-    id: 'creadoEn',
-    direction: 'desc',
-  });
-  const [sortAuditoria, setSortAuditoria] = useState<{ id: string; direction: 'asc' | 'desc' }>({
     id: 'creadoEn',
     direction: 'desc',
   });
@@ -59,27 +51,10 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     sortOrder: sortUsuarios.direction,
   });
 
-  const {
-    data: auditorias = [],
-    isLoading: loadingAuditoria,
-    isFetching: fetchingAuditoria,
-    isError: errorAuditoria,
-    error: errAuditoria,
-    refetch: refetchAuditoria,
-  } = useAuditoria({
-    sortBy: sortAuditoria.id,
-    sortOrder: sortAuditoria.direction,
-  });
-
   const crearUsuarioMutation = useCrearUsuario();
   const cambiarRolMutation = useCambiarRolUsuario();
   const toggleEstadoMutation = useToggleEstadoUsuario();
 
-  const loadingCurrent = activeTab === 'usuarios' ? loadingUsuarios : loadingAuditoria;
-  const fetchingCurrent = activeTab === 'usuarios' ? fetchingUsuarios : fetchingAuditoria;
-
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroRol, setFiltroRol] = useState<string>('TODOS');
   const [actualizandoId, setActualizandoId] = useState<string | null>(null);
 
   // Modales de Confirmación y Notificación (reemplazo de alert() y confirm() del navegador)
@@ -119,7 +94,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
       setShowCrearModal(false);
       resetCrearForm();
       setNotifyModal({
-        title: '¡Usuario Creado con Éxito!',
+        title: 'Usuario Creado con Éxito',
         message: `Usuario ${creado.nombre} creado con éxito con rol [${creado.rol}].`,
         subMessage: `El usuario ya puede ingresar al sistema utilizando el correo ${creado.email}.`,
         tipo: 'success',
@@ -203,41 +178,6 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
     });
   }
 
-  // Filtrado de usuarios
-  const usuariosFiltrados = usuarios.filter((u) => {
-    const matchesBusqueda =
-      u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      u.email.toLowerCase().includes(busqueda.toLowerCase());
-    const matchesRol = filtroRol === 'TODOS' || u.rol === filtroRol;
-    return matchesBusqueda && matchesRol;
-  });
-
-  // Filtrado de auditoría
-  const auditoriasFiltradas = auditorias.filter((a) => {
-    const q = busqueda.toLowerCase();
-    const matchesAccion = a.accion.toLowerCase().includes(q);
-    const matchesUsuario = a.usuario?.nombre.toLowerCase().includes(q) || a.usuario?.email.toLowerCase().includes(q);
-    const matchesDetalles = a.detalles?.toLowerCase().includes(q);
-    return matchesAccion || matchesUsuario || matchesDetalles;
-  });
-
-  function renderAuditBadge(accion: string) {
-    switch (accion) {
-      case 'CREACION_USUARIO':
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionCreate}`}>+ Usuario Creado</span>;
-      case 'CAMBIO_ROL':
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionRole}`}>Rol Modificado</span>;
-      case 'CAMBIO_ESTADO_USUARIO':
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionStatus}`}>Estado Actualizado</span>;
-      case 'CAMBIO_PRECIO':
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionPrice}`}>Edición de Precio</span>;
-      case 'ELIMINACION_OT':
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionDelete}`}>Eliminación OT</span>;
-      default:
-        return <span className={`${styles.auditActionBadge} ${styles.auditActionRole}`}>{accion}</span>;
-    }
-  }
-
   if (userRole !== 'ADMINISTRADOR') {
     return (
       <div className={styles.emptyState}>
@@ -253,290 +193,140 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
       <div className={styles.headerSection}>
         <div>
           <h2 className={styles.headerTitle}>
-            Usuarios, Roles y Seguridad
-            {fetchingCurrent && !loadingCurrent && (
+            Usuarios y Roles
+            {fetchingUsuarios && !loadingUsuarios && (
               <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#64748b', marginLeft: '12px' }}>
                 Actualizando...
               </span>
             )}
           </h2>
           <p className={styles.headerSubtitle}>
-            Control de acceso basado en roles (RBAC), gestión de cuentas y auditoría de eventos críticos
+            Control de acceso basado en roles (RBAC) y gestión de cuentas del taller
           </p>
         </div>
+      </div>
 
-        <div className={styles.toolbarActions}>
+      {/* TABLA DE USUARIOS CON DATATABLE INTEGRADO */}
+      <DataTable<Usuario>
+        data={usuarios}
+        keyExtractor={(u) => u.id}
+        storageKey="usuarios-table-layout"
+        actions={
           <button
             type="button"
-            className={styles.btnPrimary}
+            className={styles.btnTablePrimary}
             onClick={() => setShowCrearModal(true)}
+            title="Registrar nuevo usuario en el sistema"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             <span>Nuevo Usuario</span>
           </button>
-        </div>
-      </div>
-
-      {/* Pestañas: Directorio vs Auditoría */}
-      <div className={styles.tabsContainer}>
-        <button
-          type="button"
-          className={`${styles.tabBtn} ${activeTab === 'usuarios' ? styles.tabBtnActive : ''}`}
-          onClick={() => {
-            setActiveTab('usuarios');
-            setBusqueda('');
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          <span>Directorio de Usuarios</span>
-          <span className={styles.tabBadge}>{usuarios.length}</span>
-        </button>
-
-        <button
-          type="button"
-          className={`${styles.tabBtn} ${activeTab === 'auditoria' ? styles.tabBtnActive : ''}`}
-          onClick={() => {
-            setActiveTab('auditoria');
-            setBusqueda('');
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-          <span>Log de Auditoría</span>
-          <span className={styles.tabBadge}>{auditorias.length}</span>
-        </button>
-      </div>
-
-      {/* Barra de Filtro */}
-      <div className={styles.filterBar}>
-        <div className={styles.searchWrapper}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder={
-              activeTab === 'usuarios'
-                ? 'Buscar usuario por nombre o correo...'
-                : 'Buscar en auditoría por acción, autor o detalle...'
-            }
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-        </div>
-
-        {activeTab === 'usuarios' && (
-          <select
-            className={styles.filterSelect}
-            value={filtroRol}
-            onChange={(e) => setFiltroRol(e.target.value)}
-          >
-            <option value="TODOS">Todos los roles</option>
-            <option value="ADMINISTRADOR">Administrador</option>
-            <option value="RECEPCIONISTA">Recepcionista</option>
-            <option value="MECANICO">Mecánico</option>
-          </select>
-        )}
-      </div>
-
-      {/* TABLA 1: DIRECTORIO DE USUARIOS */}
-      {activeTab === 'usuarios' && (
-        <DataTable<Usuario>
-          data={usuariosFiltrados}
-          keyExtractor={(u) => u.id}
-          storageKey="usuarios-table-layout"
-          searchPlaceholder="Buscar por nombre, correo o rol..."
-          sort={sortUsuarios}
-          onSortChange={setSortUsuarios}
-          loading={loadingUsuarios}
-          loadingMessage="Cargando usuarios..."
-          error={errorUsuarios ? errUsuarios : null}
-          errorMessage={`Error al cargar los usuarios: ${(errUsuarios as any)?.message || 'Error de conexión'}`}
-          onRetry={() => refetchUsuarios()}
-          emptyMessage="No se encontraron usuarios coincidentes."
-          columns={[
-            {
-              id: 'nombre',
-              accessor: 'nombre',
-              header: 'Usuario',
-              cell: (u) => {
-                const initial = (u.nombre || u.email || 'U').charAt(0).toUpperCase();
-                return (
-                  <div className={styles.userCell}>
-                    <div className={styles.userAvatar}>{initial}</div>
-                    <div>
-                      <p className={styles.userName}>{u.nombre}</p>
-                      <p className={styles.userEmail}>{u.email}</p>
-                    </div>
+        }
+        searchPlaceholder="Buscar por nombre, correo o rol..."
+        sort={sortUsuarios}
+        onSortChange={setSortUsuarios}
+        loading={loadingUsuarios}
+        loadingMessage="Cargando usuarios..."
+        error={errorUsuarios ? errUsuarios : null}
+        errorMessage={`Error al cargar los usuarios: ${(errUsuarios as any)?.message || 'Error de conexión'}`}
+        onRetry={() => refetchUsuarios()}
+        emptyMessage="No se encontraron usuarios coincidentes."
+        columns={[
+          {
+            id: 'nombre',
+            accessor: 'nombre',
+            header: 'Usuario',
+            cell: (u) => {
+              const initial = (u.nombre || u.email || 'U').charAt(0).toUpperCase();
+              return (
+                <div className={styles.userCell}>
+                  <div className={styles.userAvatar}>{initial}</div>
+                  <div>
+                    <p className={styles.userName}>{u.nombre}</p>
+                    <p className={styles.userEmail}>{u.email}</p>
                   </div>
-                );
-              },
+                </div>
+              );
             },
-            {
-              id: 'rol',
-              accessor: 'rol',
-              header: 'Rol en Sistema',
-              cell: (u) => (
-                <select
-                  className={`${styles.roleSelector} ${
-                    u.rol === 'ADMINISTRADOR'
-                      ? styles.roleAdmin
-                      : u.rol === 'RECEPCIONISTA'
-                      ? styles.roleRecepcion
-                      : styles.roleMecanico
-                  }`}
-                  value={u.rol}
-                  disabled={actualizandoId === u.id}
-                  onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
-                  title="Cambiar rol de usuario"
-                >
-                  <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-                  <option value="RECEPCIONISTA">RECEPCIONISTA</option>
-                  <option value="MECANICO">MECANICO</option>
-                </select>
-              ),
-            },
-            {
-              id: 'activo',
-              accessor: 'activo',
-              header: 'Estado',
-              cell: (u) => (
-                <span className={`${styles.statusBadge} ${u.activo ? styles.statusActive : styles.statusInactive}`}>
-                  <span className={styles.statusDot} />
-                  <span>{u.activo ? 'Activo' : 'Suspendido'}</span>
-                </span>
-              ),
-            },
-            {
-              header: 'OTs Asignadas',
-              sortable: false,
-              cell: (u) => (
-                <span style={{ fontWeight: 600 }}>
-                  {u._count?.ordenesAsignadas || 0}
-                </span>
-              ),
-            },
-            {
-              id: 'creadoEn',
-              accessor: 'creadoEn',
-              header: 'Fecha Registro',
-              cell: (u) =>
-                new Date(u.creadoEn).toLocaleDateString('es-CL', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                }),
-            },
-            {
-              header: 'Acciones',
-              align: 'right',
-              sortable: false,
-              filterable: false,
-              cell: (u) => (
-                <button
-                  type="button"
-                  className={`${styles.btnToggleStatus} ${
-                    u.activo ? styles.btnToggleStatusDeactivate : styles.btnToggleStatusActivate
-                  }`}
-                  disabled={actualizandoId === u.id}
-                  onClick={() => handleToggleEstado(u)}
-                >
-                  {u.activo ? 'Desactivar' : 'Reactivar'}
-                </button>
-              ),
-            },
-          ]}
-        />
-      )}
-
-      {/* TABLA 2: LOG DE AUDITORÍA */}
-      {activeTab === 'auditoria' && (
-        <DataTable<RegistroAuditoria>
-          data={auditoriasFiltradas}
-          keyExtractor={(a) => a.id}
-          storageKey="auditoria-table-layout"
-          searchPlaceholder="Buscar por acción, autor, entidad o detalles..."
-          sort={sortAuditoria}
-          onSortChange={setSortAuditoria}
-          loading={loadingAuditoria}
-          loadingMessage="Cargando registros de auditoría..."
-          error={errorAuditoria ? errAuditoria : null}
-          errorMessage={`Error al cargar los registros de auditoría: ${(errAuditoria as any)?.message || 'Error de conexión'}`}
-          onRetry={() => refetchAuditoria()}
-          emptyMessage="No hay registros de auditoría aún."
-          columns={[
-            {
-              id: 'creadoEn',
-              accessor: 'creadoEn',
-              header: 'Fecha / Hora',
-              cell: (a) => (
-                <span className={styles.auditDateText}>
-                  {new Date(a.creadoEn).toLocaleString('es-CL', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              ),
-            },
-            {
-              id: 'accion',
-              accessor: 'accion',
-              header: 'Acción Crítica',
-              cell: (a) => renderAuditBadge(a.accion),
-            },
-            {
-              header: 'Autor',
-              sortable: false,
-              cell: (a) => (
-                <>
-                  <strong>{a.usuario ? a.usuario.nombre : 'Sistema'}</strong>
-                  {a.usuario && (
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
-                      [{a.usuario.rol}]
-                    </div>
-                  )}
-                </>
-              ),
-            },
-            {
-              id: 'entidad',
-              accessor: 'entidad',
-              header: 'Entidad',
-              cell: (a) => (
-                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
-                  {a.entidad}
-                </span>
-              ),
-            },
-            {
-              header: 'Detalles del Registro',
-              cell: (a) => (
-                <span className={styles.auditDetailsText}>
-                  {a.detalles || 'Sin detalles especificados'}
-                </span>
-              ),
-            },
-          ]}
-        />
-      )}
+          },
+          {
+            id: 'rol',
+            accessor: 'rol',
+            header: 'Rol en Sistema',
+            cell: (u) => (
+              <select
+                className={`${styles.roleSelector} ${
+                  u.rol === 'ADMINISTRADOR'
+                    ? styles.roleAdmin
+                    : u.rol === 'RECEPCIONISTA'
+                    ? styles.roleRecepcion
+                    : styles.roleMecanico
+                }`}
+                value={u.rol}
+                disabled={actualizandoId === u.id}
+                onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
+                title="Cambiar rol de usuario"
+              >
+                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+                <option value="RECEPCIONISTA">RECEPCIONISTA</option>
+                <option value="MECANICO">MECANICO</option>
+              </select>
+            ),
+          },
+          {
+            id: 'activo',
+            accessor: 'activo',
+            header: 'Estado',
+            cell: (u) => (
+              <span className={`${styles.statusBadge} ${u.activo ? styles.statusActive : styles.statusInactive}`}>
+                <span className={styles.statusDot} />
+                <span>{u.activo ? 'Activo' : 'Suspendido'}</span>
+              </span>
+            ),
+          },
+          {
+            header: 'OTs Asignadas',
+            sortable: false,
+            cell: (u) => (
+              <span style={{ fontWeight: 600 }}>
+                {u._count?.ordenesAsignadas || 0}
+              </span>
+            ),
+          },
+          {
+            id: 'creadoEn',
+            accessor: 'creadoEn',
+            header: 'Fecha Registro',
+            cell: (u) =>
+              new Date(u.creadoEn).toLocaleDateString('es-CL', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              }),
+          },
+          {
+            header: 'Acciones',
+            align: 'right',
+            sortable: false,
+            filterable: false,
+            cell: (u) => (
+              <button
+                type="button"
+                className={`${styles.btnToggleStatus} ${
+                  u.activo ? styles.btnToggleStatusDeactivate : styles.btnToggleStatusActivate
+                }`}
+                disabled={actualizandoId === u.id}
+                onClick={() => handleToggleEstado(u)}
+              >
+                {u.activo ? 'Desactivar' : 'Reactivar'}
+              </button>
+            ),
+          },
+        ]}
+      />
 
       {/* MODAL: CREAR NUEVO USUARIO */}
       {showCrearModal && (

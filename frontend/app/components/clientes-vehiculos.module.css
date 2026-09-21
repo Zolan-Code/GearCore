@@ -456,6 +456,73 @@
 }
 
 /* Tabla de Clientes */
+.clientsHeaderSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: -4px;
+}
+
+.clientsSectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clientsSectionSubtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.btnTablePrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  background: #1e1b4b;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(30, 27, 75, 0.18);
+}
+
+.btnTablePrimary:hover {
+  background: #312e81;
+  transform: translateY(-1px);
+}
+
+.clientActionBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clientActionBtn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
 .clientsSection {
   background: #ffffff;
   border-radius: 18px;

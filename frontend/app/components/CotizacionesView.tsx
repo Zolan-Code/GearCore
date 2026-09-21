@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './cotizaciones.module.css';
+import DataTable, { Column } from './DataTable';
 import {
   useCotizaciones,
   useCrearCotizacion,
@@ -29,7 +30,6 @@ const ESTADOS_FILTRO: { id: EstadoCotizacion | 'TODAS'; label: string }[] = [
 
 export default function CotizacionesView({ userRole }: Props) {
   const [filtroEstado, setFiltroEstado] = useState<EstadoCotizacion | 'TODAS'>('TODAS');
-  const [busqueda, setBusqueda] = useState('');
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState<Cotizacion | null>(null);
   const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
@@ -62,6 +62,7 @@ export default function CotizacionesView({ userRole }: Props) {
     isFetching,
     isError,
     error,
+    refetch,
   } = useCotizaciones(filtroEstado === 'TODAS' ? undefined : { estado: filtroEstado });
 
   const { data: ordenes = [] } = useOrdenesTrabajo();
@@ -97,27 +98,6 @@ export default function CotizacionesView({ userRole }: Props) {
   const formatoMoneda = (val?: number) => {
     return `$${Math.round(val || 0).toLocaleString('es-CL')} CLP`;
   };
-
-  // Filtrado en memoria por búsqueda
-  const cotizacionesFiltradas = cotizaciones.filter((c) => {
-    const q = busqueda.toLowerCase().trim();
-    if (!q) return true;
-    const num = `cot-${String(c.numero).padStart(5, '0')}`.toLowerCase();
-    const cliente = c.ordenTrabajo?.vehiculo?.cliente?.nombre?.toLowerCase() || '';
-    const rut = c.ordenTrabajo?.vehiculo?.cliente?.rut?.toLowerCase() || '';
-    const patente = c.ordenTrabajo?.vehiculo?.patente?.toLowerCase() || '';
-    const modelo = `${c.ordenTrabajo?.vehiculo?.marca} ${c.ordenTrabajo?.vehiculo?.modelo}`.toLowerCase();
-    const otRef = c.ordenTrabajo?.id?.toLowerCase() || '';
-
-    return (
-      num.includes(q) ||
-      cliente.includes(q) ||
-      rut.includes(q) ||
-      patente.includes(q) ||
-      modelo.includes(q) ||
-      otRef.includes(q)
-    );
-  });
 
   // KPIs
   const totalCotizaciones = cotizaciones.length;
@@ -308,22 +288,6 @@ export default function CotizacionesView({ userRole }: Props) {
             Generación de presupuestos, cálculo de margen neto y exportación de cotizaciones
           </p>
         </div>
-        {userRole !== 'MECANICO' && (
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => {
-              setErrorAccion(null);
-              setModalNuevoAbierto(true);
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Emitir Nueva Cotización
-          </button>
-        )}
       </div>
 
       {/* KPIs de Resumen */}
@@ -380,30 +344,8 @@ export default function CotizacionesView({ userRole }: Props) {
         )}
       </div>
 
-      {/* Barra de Filtros y Búsqueda */}
-      <div className={styles.controlsBar}>
-        <div className={styles.searchBox}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Buscar por Folio, Cliente, RUT, Patente u OT..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-          {busqueda && (
-            <button
-              type="button"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
-              onClick={() => setBusqueda('')}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
+      {/* Pestañas Rápidas de Estado de Cotización */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '-8px' }}>
         <div className={styles.tabsGroup}>
           {ESTADOS_FILTRO.map((tab) => (
             <button
@@ -418,183 +360,240 @@ export default function CotizacionesView({ userRole }: Props) {
         </div>
       </div>
 
-      {/* Manejo de Estados TanStack Query */}
-      {isLoading ? (
-        <div className={styles.loadingSpinner}>Cargando cotizaciones...</div>
-      ) : isError ? (
-        <div className={styles.emptyState}>
-          <p style={{ color: '#dc2626' }}>
-            Error al consultar cotizaciones: {(error as any)?.message || 'Error del servidor'}
-          </p>
-        </div>
-      ) : cotizacionesFiltradas.length === 0 ? (
-        <div className={styles.emptyState}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-          </svg>
-          <p>No se encontraron cotizaciones con los criterios seleccionados.</p>
-        </div>
-      ) : (
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Folio</th>
-                <th>OT Asociada</th>
-                <th>Cliente y Vehículo</th>
-                <th>Subtotal Neto</th>
-                <th>IVA (19%)</th>
-                <th>Total Cliente</th>
-                {userRole === 'ADMINISTRADOR' && <th>Margen Taller</th>}
-                <th>Estado</th>
-                <th style={{ textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cotizacionesFiltradas.map((c) => {
-                const badgeClass =
-                  c.estado === 'APROBADA'
-                    ? styles.statusAprobada
-                    : c.estado === 'RECHAZADA'
-                    ? styles.statusRechazada
-                    : c.estado === 'ENVIADA'
-                    ? styles.statusEnviada
-                    : c.estado === 'VENCIDA'
-                    ? styles.statusVencida
-                    : styles.statusBorrador;
+      {/* TABLA PRINCIPAL DE COTIZACIONES (DATATABLE) */}
+      <DataTable<Cotizacion>
+        data={cotizaciones}
+        keyExtractor={(c) => c.id}
+        storageKey="cotizaciones-table-layout"
+        searchPlaceholder="Buscar por folio, cliente, RUT, patente u OT..."
+        loading={isLoading}
+        loadingMessage="Cargando cotizaciones..."
+        error={isError ? error : null}
+        errorMessage={`Error al consultar cotizaciones: ${(error as any)?.message || 'Error del servidor'}`}
+        onRetry={() => refetch()}
+        emptyMessage="No se encontraron cotizaciones con los criterios seleccionados."
+        actions={
+          userRole !== 'MECANICO' ? (
+            <button
+              type="button"
+              className={styles.btnTablePrimary}
+              style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
+              onClick={() => {
+                setErrorAccion(null);
+                setModalNuevoAbierto(true);
+              }}
+              title="Emitir nueva cotización comercial"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Nueva Cotización</span>
+            </button>
+          ) : null
+        }
+        columns={[
+          {
+            id: 'numero',
+            accessor: 'numero',
+            header: 'Folio',
+            cell: (c) => (
+              <span className={styles.folioBadge}>
+                COT-{String(c.numero).padStart(5, '0')}
+              </span>
+            ),
+            filterFn: (c, q) =>
+              `cot-${String(c.numero).padStart(5, '0')}`.toLowerCase().includes(q) ||
+              String(c.numero).includes(q),
+          },
+          {
+            id: 'ordenTrabajoId',
+            accessor: 'ordenTrabajoId',
+            header: 'OT Asociada',
+            cell: (c) => (
+              <div>
+                <strong>#{c.ordenTrabajoId.slice(0, 8).toUpperCase()}</strong>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {c.ordenTrabajo?.fallaReportada?.slice(0, 28)}...
+                </div>
+              </div>
+            ),
+            filterFn: (c, q) =>
+              c.ordenTrabajoId.toLowerCase().includes(q) ||
+              (c.ordenTrabajo?.fallaReportada || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'cliente',
+            header: 'Cliente y Vehículo',
+            cell: (c) => (
+              <div>
+                <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                  {c.ordenTrabajo?.vehiculo?.cliente?.nombre}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {c.ordenTrabajo?.vehiculo?.marca} {c.ordenTrabajo?.vehiculo?.modelo} (
+                  {c.ordenTrabajo?.vehiculo?.patente})
+                </div>
+              </div>
+            ),
+            filterFn: (c, q) => {
+              const cli = (c.ordenTrabajo?.vehiculo?.cliente?.nombre || '').toLowerCase();
+              const rut = (c.ordenTrabajo?.vehiculo?.cliente?.rut || '').toLowerCase();
+              const pat = (c.ordenTrabajo?.vehiculo?.patente || '').toLowerCase();
+              const veh = `${c.ordenTrabajo?.vehiculo?.marca || ''} ${c.ordenTrabajo?.vehiculo?.modelo || ''}`.toLowerCase();
+              return cli.includes(q) || rut.includes(q) || pat.includes(q) || veh.includes(q);
+            },
+          },
+          {
+            id: 'subtotalNeto',
+            accessor: 'subtotalNeto',
+            header: 'Subtotal Neto',
+            cell: (c) => formatoMoneda(c.subtotalNeto),
+          },
+          {
+            id: 'iva',
+            accessor: 'iva',
+            header: 'IVA (19%)',
+            cell: (c) => formatoMoneda(c.iva),
+          },
+          {
+            id: 'total',
+            accessor: 'total',
+            header: 'Total Cliente',
+            cell: (c) => (
+              <strong style={{ color: '#0f172a' }}>{formatoMoneda(c.total)}</strong>
+            ),
+          },
+          ...(userRole === 'ADMINISTRADOR'
+            ? [
+                {
+                  id: 'margenNeto',
+                  accessor: 'margenNeto' as const,
+                  header: 'Margen Taller',
+                  cell: (c: Cotizacion) => (
+                    <div className={styles.marginBadge}>
+                      <span
+                        className={
+                          (c.margenNeto || 0) >= 0
+                            ? styles.marginValuePositivo
+                            : styles.marginValueNegativo
+                        }
+                      >
+                        {formatoMoneda(c.margenNeto)}
+                      </span>
+                      <span style={{ color: '#64748b' }}>
+                        {c.porcentajeMargen !== undefined
+                          ? `${c.porcentajeMargen.toFixed(1)}%`
+                          : '0%'}
+                      </span>
+                    </div>
+                  ),
+                },
+              ]
+            : []),
+          {
+            id: 'estado',
+            accessor: 'estado',
+            header: 'Estado',
+            cell: (c) => {
+              const badgeClass =
+                c.estado === 'APROBADA'
+                  ? styles.statusAprobada
+                  : c.estado === 'RECHAZADA'
+                  ? styles.statusRechazada
+                  : c.estado === 'ENVIADA'
+                  ? styles.statusEnviada
+                  : c.estado === 'VENCIDA'
+                  ? styles.statusVencida
+                  : styles.statusBorrador;
+              return <span className={badgeClass}>{c.estado}</span>;
+            },
+          },
+          {
+            header: 'Acciones',
+            align: 'right',
+            sortable: false,
+            filterable: false,
+            cell: (c) => (
+              <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
+                {/* Exportar PDF */}
+                <button
+                  type="button"
+                  className={`${styles.iconBtn} ${styles.iconBtnPdf}`}
+                  title="Descargar PDF comercial para cliente"
+                  disabled={descargandoPdfId === c.id}
+                  onClick={() => handleDescargarPdf(c)}
+                >
+                  {descargandoPdfId === c.id ? (
+                    <span style={{ fontSize: '0.7rem' }}>...</span>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  )}
+                </button>
 
-                return (
-                  <tr key={c.id}>
-                    <td>
-                      <span className={styles.folioBadge}>COT-{String(c.numero).padStart(5, '0')}</span>
-                    </td>
-                    <td>
-                      <strong>#{c.ordenTrabajoId.slice(0, 8).toUpperCase()}</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {c.ordenTrabajo?.fallaReportada?.slice(0, 28)}...
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>
-                        {c.ordenTrabajo?.vehiculo?.cliente?.nombre}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {c.ordenTrabajo?.vehiculo?.marca} {c.ordenTrabajo?.vehiculo?.modelo} (
-                        {c.ordenTrabajo?.vehiculo?.patente})
-                      </div>
-                    </td>
-                    <td>{formatoMoneda(c.subtotalNeto)}</td>
-                    <td>{formatoMoneda(c.iva)}</td>
-                    <td>
-                      <strong style={{ color: '#0f172a' }}>{formatoMoneda(c.total)}</strong>
-                    </td>
-                    {/* Columna Margen visible solo para ADMINISTRADOR */}
-                    {userRole === 'ADMINISTRADOR' && (
-                      <td>
-                        <div className={styles.marginBadge}>
-                          <span
-                            className={
-                              (c.margenNeto || 0) >= 0
-                                ? styles.marginValuePositivo
-                                : styles.marginValueNegativo
-                            }
-                          >
-                            {formatoMoneda(c.margenNeto)}
-                          </span>
-                          <span style={{ color: '#64748b' }}>
-                            {c.porcentajeMargen !== undefined ? `${c.porcentajeMargen.toFixed(1)}%` : '0%'}
-                          </span>
-                        </div>
-                      </td>
-                    )}
-                    <td>
-                      <span className={badgeClass}>{c.estado}</span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
-                        {/* Exportar PDF */}
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnPdf}`}
-                          title="Descargar PDF comercial para cliente"
-                          disabled={descargandoPdfId === c.id}
-                          onClick={() => handleDescargarPdf(c)}
-                        >
-                          {descargandoPdfId === c.id ? (
-                            <span style={{ fontSize: '0.7rem' }}>...</span>
-                          ) : (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="7 10 12 15 17 10" />
-                              <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                          )}
-                        </button>
+                {/* Ver / Editar */}
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  title="Ver detalle o modificar"
+                  onClick={() => handleAbrirEdicion(c)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
 
-                        {/* Ver / Editar */}
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          title="Ver detalle o modificar"
-                          onClick={() => handleAbrirEdicion(c)}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
+                {/* Historial de Trazabilidad */}
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  title="Trazabilidad de cambios de precio"
+                  onClick={() => handleAbrirHistorial(c)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </button>
 
-                        {/* Historial de Trazabilidad */}
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          title="Trazabilidad de cambios de precio"
-                          onClick={() => handleAbrirHistorial(c)}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                          </svg>
-                        </button>
+                {/* Acción rápida: Aprobar */}
+                {c.estado !== 'APROBADA' && (
+                  <button
+                    type="button"
+                    className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
+                    title="Aprobar presupuesto"
+                    onClick={() => handleCambiarEstado(c, 'APROBADA')}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                )}
 
-                        {/* Acción rápida: Aprobar */}
-                        {c.estado !== 'APROBADA' && (
-                          <button
-                            type="button"
-                            className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
-                            title="Aprobar presupuesto"
-                            onClick={() => handleCambiarEstado(c, 'APROBADA')}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          </button>
-                        )}
-
-                        {/* Acción rápida: Rechazar */}
-                        {c.estado !== 'RECHAZADA' && (
-                          <button
-                            type="button"
-                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                            title="Marcar rechazada"
-                            onClick={() => handleCambiarEstado(c, 'RECHAZADA')}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                {/* Acción rápida: Rechazar */}
+                {c.estado !== 'RECHAZADA' && (
+                  <button
+                    type="button"
+                    className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                    title="Marcar rechazada"
+                    onClick={() => handleCambiarEstado(c, 'RECHAZADA')}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {/* MODAL 1: DETALLE Y EDICIÓN (con trazabilidad) */}
       {modalDetalleAbierto && cotizacionSeleccionada && (

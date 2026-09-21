@@ -11,6 +11,15 @@ test('Fase 5: Módulos Administrativos (/usuarios, /ajustes, /perfil) y Limpieza
     assert.equal(isRouteAllowed('/usuarios', 'MECANICO'), false);
   });
 
+  await t.test('Control de acceso RBAC estricto a /auditoria (solo Admin)', () => {
+    assert.equal(isRouteAllowed('/auditoria', 'ADMINISTRADOR'), true);
+    assert.equal(isRouteAllowed('/auditoria', 'RECEPCIONISTA'), false);
+    assert.equal(isRouteAllowed('/auditoria', 'MECANICO'), false);
+
+    const auditoriaItem = NAV_ITEMS.find((i) => i.id === 'auditoria');
+    assert.equal(auditoriaItem?.label, 'Auditoría');
+  });
+
   await t.test('Control de acceso RBAC estricto a /ajustes (solo Admin)', () => {
     assert.equal(isRouteAllowed('/ajustes', 'ADMINISTRADOR'), true);
     assert.equal(isRouteAllowed('/ajustes', 'RECEPCIONISTA'), false);
@@ -28,6 +37,11 @@ test('Fase 5: Módulos Administrativos (/usuarios, /ajustes, /perfil) y Limpieza
     assert.ok(fs.existsSync(usuariosPath), 'Debe existir app/(dashboard)/usuarios/page.tsx');
     const contentUsuarios = fs.readFileSync(usuariosPath, 'utf8');
     assert.ok(contentUsuarios.includes('UsuariosSeguridadView'));
+
+    const auditoriaPath = path.resolve('app/(dashboard)/auditoria/page.tsx');
+    assert.ok(fs.existsSync(auditoriaPath), 'Debe existir app/(dashboard)/auditoria/page.tsx');
+    const contentAuditoria = fs.readFileSync(auditoriaPath, 'utf8');
+    assert.ok(contentAuditoria.includes('AuditoriaView'));
 
     const ajustesPath = path.resolve('app/(dashboard)/ajustes/page.tsx');
     assert.ok(fs.existsSync(ajustesPath), 'Debe existir app/(dashboard)/ajustes/page.tsx');

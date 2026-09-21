@@ -10,6 +10,7 @@ import {
   formatearPatente,
 } from '../../lib/validators';
 import VehiclePhoto from './VehiclePhoto';
+import DataTable from './DataTable';
 import {
   useClientes,
   useCrearCliente,
@@ -123,11 +124,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [otHistory, setOtHistory] = useState<OrdenTrabajoHistorial[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Buscador de clientes y queries TanStack
-  const [clientSearchTerm, setClientSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const clientSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Queries TanStack
   const {
     data: clientes = [],
     isLoading: loadingClientes,
@@ -135,7 +132,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     isError: errorClientes,
     error: errClientes,
     refetch: refetchClientes,
-  } = useClientes(debouncedSearch);
+  } = useClientes();
 
   const crearClienteMutation = useCrearCliente();
   const crearVehiculoMutation = useCrearVehiculo();
@@ -186,16 +183,6 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     } finally {
       setLoadingClienteModal(false);
     }
-  }
-
-  function handleClientSearchChange(term: string) {
-    setClientSearchTerm(term);
-    if (clientSearchTimeoutRef.current) {
-      clearTimeout(clientSearchTimeoutRef.current);
-    }
-    clientSearchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearch(term);
-    }, 250);
   }
 
   // Autocompletado de patente predictivo
@@ -638,9 +625,9 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
       )}
 
       {/* Directorio de Clientes Registrados */}
-      <div className={styles.clientsSection}>
-        <div className={styles.sectionHeader}>
-          <h4>
+      <div className={styles.clientsHeaderSection}>
+        <div>
+          <h4 className={styles.clientsSectionTitle}>
             <span>Directorio de Clientes Registrados</span>
             <span className={styles.historyCountBadge}>{clientes.length} Clientes</span>
             {fetchingClientes && !loadingClientes && (
@@ -649,113 +636,125 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               </span>
             )}
           </h4>
-        </div>
-
-        {/* Buscador de Clientes en Tiempo Real */}
-        <div className={styles.clientSearchWrapper}>
-          <span className={styles.searchIcon}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            className={styles.clientSearchInput}
-            placeholder="Filtrar clientes por nombre, RUT o correo..."
-            value={clientSearchTerm}
-            onChange={(e) => handleClientSearchChange(e.target.value)}
-          />
-          {clientSearchTerm && (
-            <button
-              type="button"
-              className={styles.searchClear}
-              onClick={() => handleClientSearchChange('')}
-              title="Limpiar filtro"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {errorClientes ? (
-          <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c', fontSize: '13px' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>Error al cargar clientes: {(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => refetchClientes()}
-              style={{ padding: '6px 12px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
-            >
-              Reintentar
-            </button>
-          </div>
-        ) : loadingClientes ? (
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>
-            Buscando clientes...
+          <p className={styles.clientsSectionSubtitle}>
+            Fichas de clientes, historial de vehículos asociados y datos de contacto directo
           </p>
-        ) : clientes.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className={styles.clientsTable}>
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>RUT</th>
-                  <th>Teléfono</th>
-                  <th>Correo Electrónico</th>
-                  <th>Vehículos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientes.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.clientLinkBtn}
-                        onClick={() => handleOpenClienteModal(c.id)}
-                        title="Ver ficha y vehículos del cliente"
-                      >
-                        {c.nombre}
-                      </button>
-                    </td>
-                    <td>
-                      <span className={styles.rutBadge}>{c.rut}</span>
-                    </td>
-                    <td>{c.telefono || '—'}</td>
-                    <td>{c.email || '—'}</td>
-                    <td>
-                      <button
-                        type="button"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                        onClick={() => handleOpenClienteModal(c.id)}
-                        title="Ver vehículos del cliente"
-                      >
-                        <span className={styles.vehicleCountPill}>
-                          {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
-                        </span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={styles.emptyState} style={{ marginTop: '12px' }}>
-            <div className={styles.emptyStateTitle}>No hay clientes registrados</div>
-            <div className={styles.emptyStateText}>
-              Comienza registrando tu primer cliente con el botón "+ Nuevo Cliente".
-            </div>
-          </div>
-        )}
+        </div>
       </div>
+
+      <DataTable<Cliente>
+        data={clientes}
+        keyExtractor={(c) => c.id}
+        storageKey="clientes-table-layout"
+        searchPlaceholder="Buscar por cliente, RUT, teléfono o correo..."
+        loading={loadingClientes}
+        loadingMessage="Cargando directorio de clientes..."
+        error={errorClientes ? errClientes : null}
+        errorMessage={`Error al cargar clientes: ${(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}`}
+        onRetry={() => refetchClientes()}
+        emptyMessage="No se encontraron clientes registrados con los criterios seleccionados."
+        actions={
+          userRole !== 'MECANICO' ? (
+            <button
+              type="button"
+              className={styles.btnTablePrimary}
+              style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
+              onClick={() => {
+                setClienteError(null);
+                setClienteSuccess(null);
+                setShowModalCliente(true);
+              }}
+              title="Registrar un nuevo cliente en el sistema"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Nuevo Cliente</span>
+            </button>
+          ) : null
+        }
+        columns={[
+          {
+            id: 'nombre',
+            accessor: 'nombre',
+            header: 'Nombre',
+            cell: (c) => (
+              <button
+                type="button"
+                className={styles.clientLinkBtn}
+                onClick={() => handleOpenClienteModal(c.id)}
+                title="Ver ficha y vehículos del cliente"
+              >
+                {c.nombre}
+              </button>
+            ),
+          },
+          {
+            id: 'rut',
+            accessor: 'rut',
+            header: 'RUT',
+            cell: (c) => <span className={styles.rutBadge}>{c.rut}</span>,
+          },
+          {
+            id: 'telefono',
+            accessor: 'telefono',
+            header: 'Teléfono',
+            cell: (c) => c.telefono || '—',
+            filterFn: (c, q) => (c.telefono || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'email',
+            accessor: 'email',
+            header: 'Correo Electrónico',
+            cell: (c) => c.email || '—',
+            filterFn: (c, q) => (c.email || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'vehiculos',
+            header: 'Vehículos',
+            sortable: true,
+            sortFn: (a, b) =>
+              (a._count?.vehiculos ?? a.vehiculos?.length ?? 0) -
+              (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
+            cell: (c) => (
+              <button
+                type="button"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                onClick={() => handleOpenClienteModal(c.id)}
+                title="Ver vehículos del cliente"
+              >
+                <span className={styles.vehicleCountPill}>
+                  {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
+                </span>
+              </button>
+            ),
+            filterFn: (c, q) => {
+              const count = String(c._count?.vehiculos ?? c.vehiculos?.length ?? 0);
+              return count.includes(q);
+            },
+          },
+          {
+            id: 'acciones',
+            header: 'Acciones',
+            align: 'right',
+            sortable: false,
+            filterable: false,
+            cell: (c) => (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                <button
+                  type="button"
+                  className={styles.clientActionBtn}
+                  onClick={() => handleOpenClienteModal(c.id)}
+                  title="Ver ficha completa y vehículos"
+                >
+                  Ver Ficha
+                </button>
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {/* Modal Registrar Cliente */}
       {showModalCliente && (

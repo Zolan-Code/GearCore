@@ -132,6 +132,40 @@
   padding: 0 10px;
 }
 
+.btnSavedActive {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #1e1b4b;
+  font-weight: 600;
+}
+
+.btnSavedActive:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.savedDot {
+  display: inline-block;
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2px #d1fae5;
+}
+
+.btnActionHighlight {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.btnActionHighlight:hover {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
 /* Fila de filtros activos y resumen */
 .activeFiltersRow {
   display: flex;
@@ -164,7 +198,8 @@
 }
 
 /* Popover / Menú Desplegable */
-.popoverWrapper {
+.popoverWrapper,
+.columnPopoverWrapper {
   position: relative;
   display: inline-block;
 }

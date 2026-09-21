@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './inventario.module.css';
+import DataTable from './DataTable';
 import {
   useRepuestos,
   useCrearRepuesto,
@@ -104,7 +105,6 @@ export default function InventarioView({ userRole }: Props) {
   const ajusteFisicoMutation = useAjusteFisicoRepuesto();
   const importarCsvMutation = useImportarCsvRepuestos();
 
-  const [busqueda, setBusqueda] = useState('');
   const [filtroStock, setFiltroStock] = useState<string>('TODOS');
 
   // Modales de Diálogo personalizados
@@ -501,22 +501,12 @@ export default function InventarioView({ userRole }: Props) {
     }
   }
 
-  // Filtrado de la tabla
+  // Filtrado de la tabla por estado de stock
   const repuestosFiltrados = repuestos.filter((r) => {
-    const q = busqueda.toLowerCase().trim();
-    const matchBusqueda =
-      !q || r.codigo.toLowerCase().includes(q) || r.nombre.toLowerCase().includes(q);
-
-    let matchStock = true;
-    if (filtroStock === 'STOCK_BAJO') {
-      matchStock = r.enAlerta && !r.agotado;
-    } else if (filtroStock === 'AGOTADOS') {
-      matchStock = r.agotado;
-    } else if (filtroStock === 'STOCK_NORMAL') {
-      matchStock = !r.enAlerta;
-    }
-
-    return matchBusqueda && matchStock;
+    if (filtroStock === 'STOCK_BAJO') return r.enAlerta && !r.agotado;
+    if (filtroStock === 'AGOTADOS') return r.agotado;
+    if (filtroStock === 'STOCK_NORMAL') return !r.enAlerta;
+    return true;
   });
 
   const precioCompraNum = parseFloat(formPrecioCompra) || 0;
@@ -575,20 +565,6 @@ export default function InventarioView({ userRole }: Props) {
             </svg>
             <span>Importar CSV</span>
           </button>
-
-          {userRole !== 'MECANICO' && (
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={abrirCrearModal}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>Nuevo Repuesto</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -690,22 +666,8 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       )}
 
-      {/* Barra de Filtros y Búsqueda */}
-      <div className={styles.filterBar}>
-        <div className={styles.searchWrapper}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Buscar por código (ej: BOS-001) o nombre del repuesto..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-        </div>
-
+      {/* Filtro Rápido de Estado de Stock */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '-8px' }}>
         <div className={styles.filterControls}>
           <select
             className={styles.filterSelect}
@@ -720,194 +682,199 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       </div>
 
-      {/* TABLA PRINCIPAL DE REPUESTOS */}
-      <div className={styles.tableContainer}>
-        <table className={styles.table}>
-          <thead className={styles.thead}>
-            <tr>
-              <th className={styles.th}>Código</th>
-              <th className={styles.th}>Repuesto / Insumo</th>
-              <th className={styles.th}>Stock Actual</th>
-              <th className={styles.th}>Stock Mínimo</th>
-              <th className={styles.th}>P. Compra</th>
-              <th className={styles.th}>P. Venta</th>
-              <th className={styles.th}>Margen</th>
-              <th className={styles.th} style={{ textAlign: 'right' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {errorInventario ? (
-              <tr>
-                <td colSpan={8} style={{ padding: '24px' }}>
-                  <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c', fontSize: '13px' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      <span>Error al cargar inventario: {(errInventario as any)?.message || 'Error de conexión con el servidor.'}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => refetchInventario()}
-                      style={{ padding: '6px 12px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
-                    >
-                      Reintentar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ) : loadingInventario ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  Cargando inventario de repuestos...
-                </td>
-              </tr>
-            ) : repuestosFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  No se encontraron repuestos con los filtros aplicados.
-                </td>
-              </tr>
-            ) : (
-              repuestosFiltrados.map((r) => {
-                const isCritico = r.enAlerta && !r.agotado;
-                const isAgotado = r.agotado;
+      {/* TABLA PRINCIPAL DE REPUESTOS (DATATABLE) */}
+      <DataTable<Repuesto>
+        data={repuestosFiltrados}
+        keyExtractor={(r) => r.id}
+        storageKey="inventario-table-layout"
+        searchPlaceholder="Buscar por código, repuesto, stock o precio..."
+        loading={loadingInventario}
+        loadingMessage="Cargando inventario de repuestos..."
+        error={errorInventario ? errInventario : null}
+        errorMessage={`Error al cargar inventario: ${(errInventario as any)?.message || 'Error de conexión'}`}
+        onRetry={() => refetchInventario()}
+        emptyMessage="No se encontraron repuestos con los criterios seleccionados."
+        actions={
+          userRole !== 'MECANICO' ? (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
+              onClick={abrirCrearModal}
+              title="Registrar nuevo repuesto en el catálogo"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Nuevo Repuesto</span>
+            </button>
+          ) : null
+        }
+        columns={[
+          {
+            id: 'codigo',
+            accessor: 'codigo',
+            header: 'Código',
+            cell: (r) => <span className={styles.codeBadge}>{r.codigo}</span>,
+          },
+          {
+            id: 'nombre',
+            accessor: 'nombre',
+            header: 'Repuesto / Insumo',
+            cell: (r) => (
+              <div>
+                <p className={styles.repuestoName}>{r.nombre}</p>
+                <p className={styles.repuestoUsage}>
+                  Usado en {r._count?.usosEnOT || 0} OT(s)
+                </p>
+              </div>
+            ),
+          },
+          {
+            id: 'stock',
+            accessor: 'stock',
+            header: 'Stock Actual',
+            cell: (r) => {
+              const isCritico = r.enAlerta && !r.agotado;
+              const isAgotado = r.agotado;
 
-                return (
-                  <tr key={r.id} className={styles.tr}>
-                    <td className={styles.td}>
-                      <span className={styles.codeBadge}>{r.codigo}</span>
-                    </td>
+              return (
+                <span
+                  className={`${styles.stockBadge} ${
+                    isAgotado
+                      ? styles.stockDanger
+                      : isCritico
+                      ? styles.stockWarning
+                      : styles.stockNormal
+                  }`}
+                >
+                  <span
+                    className={`${styles.stockDot} ${
+                      isAgotado
+                        ? styles.dotDanger
+                        : isCritico
+                        ? styles.dotWarning
+                        : styles.dotNormal
+                    }`}
+                  />
+                  <span>{r.stock} uds</span>
+                </span>
+              );
+            },
+          },
+          {
+            id: 'stockMinimo',
+            accessor: 'stockMinimo',
+            header: 'Stock Mínimo',
+            cell: (r) => (
+              <span style={{ color: '#64748b', fontWeight: 600 }}>
+                {r.stockMinimo} uds
+              </span>
+            ),
+          },
+          {
+            id: 'precioCompra',
+            accessor: 'precioCompra',
+            header: 'P. Compra',
+            cell: (r) => (
+              <span className={styles.priceText}>
+                ${r.precioCompra.toLocaleString('es-CL')}
+              </span>
+            ),
+          },
+          {
+            id: 'precioVenta',
+            accessor: 'precioVenta',
+            header: 'P. Venta',
+            cell: (r) => (
+              <span className={styles.priceText} style={{ color: '#1e1b4b' }}>
+                ${r.precioVenta.toLocaleString('es-CL')}
+              </span>
+            ),
+          },
+          {
+            id: 'margenPorcentaje',
+            accessor: 'margenPorcentaje',
+            header: 'Margen',
+            cell: (r) => (
+              <span
+                className={`${styles.marginBadge} ${
+                  r.margenPorcentaje > 0 ? styles.marginPositive : ''
+                }`}
+                title={`Ganancia bruta estimada: $${r.margenMoneda.toLocaleString('es-CL')}`}
+              >
+                +{r.margenPorcentaje}%
+              </span>
+            ),
+          },
+          {
+            header: 'Acciones',
+            align: 'right',
+            sortable: false,
+            filterable: false,
+            cell: (r) => (
+              <div className={styles.rowActions} style={{ justifyContent: 'flex-end' }}>
+                {/* Botón Ajuste Físico */}
+                <button
+                  type="button"
+                  className={styles.btnActionIcon}
+                  title="Auditoría / Ajuste manual de stock físico"
+                  onClick={() => abrirAjusteModal(r)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </button>
 
-                    <td className={styles.td}>
-                      <div>
-                        <p className={styles.repuestoName}>{r.nombre}</p>
-                        <p className={styles.repuestoUsage}>
-                          Usado en {r._count?.usosEnOT || 0} OT(s)
-                        </p>
-                      </div>
-                    </td>
+                {/* Botón Historial de Movimientos */}
+                <button
+                  type="button"
+                  className={styles.btnActionIcon}
+                  title="Ver historial de movimientos"
+                  onClick={() => abrirHistorial(r)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </button>
 
-                    <td className={styles.td}>
-                      <span
-                        className={`${styles.stockBadge} ${
-                          isAgotado
-                            ? styles.stockDanger
-                            : isCritico
-                            ? styles.stockWarning
-                            : styles.stockNormal
-                        }`}
-                      >
-                        <span
-                          className={`${styles.stockDot} ${
-                            isAgotado
-                              ? styles.dotDanger
-                              : isCritico
-                              ? styles.dotWarning
-                              : styles.dotNormal
-                          }`}
-                        />
-                        <span>{r.stock} uds</span>
-                      </span>
-                    </td>
+                {/* Botón Editar Repuesto */}
+                {userRole !== 'MECANICO' && (
+                  <button
+                    type="button"
+                    className={styles.btnActionIcon}
+                    title="Editar datos del repuesto"
+                    onClick={() => abrirEditarModal(r)}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
+                )}
 
-                    <td className={styles.td}>
-                      <span style={{ color: '#64748b', fontWeight: 600 }}>
-                        {r.stockMinimo} uds
-                      </span>
-                    </td>
-
-                    <td className={styles.td}>
-                      <span className={styles.priceText}>
-                        ${r.precioCompra.toLocaleString('es-CL')}
-                      </span>
-                    </td>
-
-                    <td className={styles.td}>
-                      <span className={styles.priceText} style={{ color: '#1e1b4b' }}>
-                        ${r.precioVenta.toLocaleString('es-CL')}
-                      </span>
-                    </td>
-
-                    <td className={styles.td}>
-                      <span
-                        className={`${styles.marginBadge} ${
-                          r.margenPorcentaje > 0 ? styles.marginPositive : ''
-                        }`}
-                        title={`Ganancia bruta estimada: $${r.margenMoneda.toLocaleString('es-CL')}`}
-                      >
-                        +{r.margenPorcentaje}%
-                      </span>
-                    </td>
-
-                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                      <div className={styles.rowActions}>
-                        {/* Botón Ajuste Físico */}
-                        <button
-                          type="button"
-                          className={styles.btnActionIcon}
-                          title="Auditoría / Ajuste manual de stock físico"
-                          onClick={() => abrirAjusteModal(r)}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 20h9" />
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                          </svg>
-                        </button>
-
-                        {/* Botón Historial de Movimientos */}
-                        <button
-                          type="button"
-                          className={styles.btnActionIcon}
-                          title="Ver historial de movimientos"
-                          onClick={() => abrirHistorial(r)}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                          </svg>
-                        </button>
-
-                        {/* Botón Editar Repuesto */}
-                        {userRole !== 'MECANICO' && (
-                          <button
-                            type="button"
-                            className={styles.btnActionIcon}
-                            title="Editar datos del repuesto"
-                            onClick={() => abrirEditarModal(r)}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                        )}
-
-                        {/* Botón Eliminar (Solo Admin) */}
-                        {userRole === 'ADMINISTRADOR' && (
-                          <button
-                            type="button"
-                            className={`${styles.btnActionIcon} ${styles.btnActionIconDelete}`}
-                            title="Eliminar repuesto"
-                            onClick={() => handleEliminarRepuesto(r)}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                {/* Botón Eliminar (Solo Admin) */}
+                {userRole === 'ADMINISTRADOR' && (
+                  <button
+                    type="button"
+                    className={`${styles.btnActionIcon} ${styles.btnActionIconDelete}`}
+                    title="Eliminar repuesto"
+                    onClick={() => handleEliminarRepuesto(r)}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
 
       {/* MODAL: CREAR / EDITAR REPUESTO */}
       {showFormModal && (

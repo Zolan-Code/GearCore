@@ -10,7 +10,7 @@ import {
 test('Fase 0: Configuración y visibilidad de rutas por rol', async (t) => {
   await t.test('ADMINISTRADOR tiene acceso a todos los módulos principales', () => {
     const items = getVisibleNavItems('ADMINISTRADOR');
-    assert.equal(items.length, 7);
+    assert.equal(items.length, 8);
     const ids = items.map((i) => i.id);
     assert.ok(ids.includes('dashboard'));
     assert.ok(ids.includes('clientes-vehiculos'));
@@ -18,14 +18,16 @@ test('Fase 0: Configuración y visibilidad de rutas por rol', async (t) => {
     assert.ok(ids.includes('inventario'));
     assert.ok(ids.includes('cotizaciones'));
     assert.ok(ids.includes('usuarios-seguridad'));
+    assert.ok(ids.includes('auditoria'));
     assert.ok(ids.includes('ajustes'));
   });
 
-  await t.test('RECEPCIONISTA no ve módulos administrativos (usuarios y ajustes)', () => {
+  await t.test('RECEPCIONISTA no ve módulos administrativos (usuarios, auditoría y ajustes)', () => {
     const items = getVisibleNavItems('RECEPCIONISTA');
     assert.equal(items.length, 5);
     const ids = items.map((i) => i.id);
     assert.ok(!ids.includes('usuarios-seguridad'));
+    assert.ok(!ids.includes('auditoria'));
     assert.ok(!ids.includes('ajustes'));
     assert.ok(ids.includes('cotizaciones'));
     assert.ok(ids.includes('clientes-vehiculos'));
@@ -51,6 +53,10 @@ test('Fase 0: Guardias de ruta (isRouteAllowed)', async (t) => {
     assert.equal(isRouteAllowed('/usuarios', 'RECEPCIONISTA'), false);
     assert.equal(isRouteAllowed('/usuarios', 'MECANICO'), false);
     assert.equal(isRouteAllowed('/usuarios', 'ADMINISTRADOR'), true);
+
+    assert.equal(isRouteAllowed('/auditoria', 'RECEPCIONISTA'), false);
+    assert.equal(isRouteAllowed('/auditoria', 'MECANICO'), false);
+    assert.equal(isRouteAllowed('/auditoria', 'ADMINISTRADOR'), true);
 
     assert.equal(isRouteAllowed('/ajustes', 'RECEPCIONISTA'), false);
     assert.equal(isRouteAllowed('/ajustes', 'MECANICO'), false);

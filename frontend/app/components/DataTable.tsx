@@ -100,6 +100,7 @@ export default function DataTable<T>({
 
   // Popovers abiertos
   const [showColumnPopover, setShowColumnPopover] = useState<boolean>(false);
+  const [showSavedLayoutPopover, setShowSavedLayoutPopover] = useState<boolean>(false);
   const [activeFilterPopover, setActiveFilterPopover] = useState<string | null>(null);
 
   // Drag state para reordenar columnas
@@ -108,6 +109,7 @@ export default function DataTable<T>({
 
   // Referencias para cerrar popovers al hacer click fuera
   const columnPopoverRef = useRef<HTMLDivElement>(null);
+  const savedLayoutPopoverRef = useRef<HTMLDivElement>(null);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
 
   // Cargar layout desde localStorage al montar
@@ -149,6 +151,12 @@ export default function DataTable<T>({
         !columnPopoverRef.current.contains(e.target as Node)
       ) {
         setShowColumnPopover(false);
+      }
+      if (
+        savedLayoutPopoverRef.current &&
+        !savedLayoutPopoverRef.current.contains(e.target as Node)
+      ) {
+        setShowSavedLayoutPopover(false);
       }
       if (
         filterPopoverRef.current &&
@@ -196,6 +204,7 @@ export default function DataTable<T>({
     setPage(1);
     setHasSavedLayoutInStorage(false);
     setShowColumnPopover(false);
+    setShowSavedLayoutPopover(false);
     setActiveFilterPopover(null);
   }
 
@@ -522,36 +531,116 @@ export default function DataTable<T>({
               </div>
             )}
 
-            {/* Guardar Layout en LocalStorage */}
-            {storageKey && isLayoutDirty && (
-              <>
-                <button
-                  type="button"
-                  onClick={saveLayout}
-                  className={`${styles.btnAction} ${layoutSaved ? styles.btnActionSuccess : ''}`}
-                  title="Guardar layout de columnas y tamaño de página en tu navegador"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                  <span>{layoutSaved ? '¡Layout guardado!' : 'Guardar layout'}</span>
-                </button>
+            {/* Botón de Columnas Personalizadas Guardadas (Persistencia en LocalStorage) */}
+            {storageKey && (
+              <div className={styles.popoverWrapper} ref={savedLayoutPopoverRef}>
+                {hasSavedLayoutInStorage ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowSavedLayoutPopover((prev) => !prev)}
+                      className={`${styles.btnAction} ${styles.btnSavedActive}`}
+                      title="Ver estado de columnas personalizadas guardadas"
+                      aria-expanded={showSavedLayoutPopover}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span>Columnas guardadas</span>
+                      <span className={styles.savedDot} title="Configuración personalizada activa" />
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={resetLayout}
-                  className={`${styles.btnAction} ${styles.btnIconOnly}`}
-                  title="Eliminar layout guardado y volver a valores por defecto"
-                  aria-label="Restablecer layout"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </>
+                    <button
+                      type="button"
+                      onClick={resetLayout}
+                      className={`${styles.btnAction} ${styles.btnIconOnly}`}
+                      title="Restablecer columnas a valores iniciales"
+                      aria-label="Restablecer layout"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="1 4 1 10 7 10" />
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : isLayoutDirty ? (
+                  <button
+                    type="button"
+                    onClick={saveLayout}
+                    className={`${styles.btnAction} ${styles.btnActionHighlight} ${layoutSaved ? styles.btnActionSuccess : ''}`}
+                    title="Guardar las columnas actuales como tu vista personalizada"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    <span>{layoutSaved ? '¡Columnas guardadas!' : 'Guardar columnas personalizadas'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={saveLayout}
+                    className={`${styles.btnAction} ${layoutSaved ? styles.btnActionSuccess : ''}`}
+                    title="Guardar la configuración actual de columnas como tu vista personalizada"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>{layoutSaved ? '¡Columnas guardadas!' : 'Columnas personalizadas'}</span>
+                  </button>
+                )}
+
+                {showSavedLayoutPopover && hasSavedLayoutInStorage && (
+                  <div className={styles.popoverContent} style={{ width: '270px' }}>
+                    <div className={styles.popoverHeader}>
+                      <span className={styles.popoverTitle}>Columnas Personalizadas</span>
+                      <span className={styles.popoverSubtitle}>
+                        Configuración guardada en este navegador ({visibleColumns.length} de {columns.length} visibles)
+                      </span>
+                    </div>
+
+                    <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {isLayoutDirty && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            saveLayout();
+                            setShowSavedLayoutPopover(false);
+                          }}
+                          className={`${styles.btnAction} ${styles.btnActionSuccess}`}
+                          style={{ width: '100%', justifyContent: 'center' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                          </svg>
+                          Actualizar guardado actual
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetLayout();
+                          setShowSavedLayoutPopover(false);
+                        }}
+                        className={styles.btnResetLayout}
+                        style={{ width: '100%', justifyContent: 'center', padding: '8px' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="1 4 1 10 7 10" />
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg>
+                        Restablecer a vista inicial
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Acciones adicionales provistas por la vista */}

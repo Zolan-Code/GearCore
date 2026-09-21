@@ -41,7 +41,13 @@ export const NAV_ITEMS: NavItemConfig[] = [
   {
     id: 'usuarios-seguridad',
     href: '/usuarios',
-    label: 'Usuarios, Roles y Seguridad',
+    label: 'Usuarios y Roles',
+    roles: ['ADMINISTRADOR'],
+  },
+  {
+    id: 'auditoria',
+    href: '/auditoria',
+    label: 'Auditoría',
     roles: ['ADMINISTRADOR'],
   },
   {

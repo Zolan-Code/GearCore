@@ -85,11 +85,15 @@ export interface DataTableProps<T> {
 
 ## 3. Mecánicas y Características Clave
 
-### 3.1 Persistencia de Layout en `localStorage`
+### 3.1 Persistencia de Columnas Personalizadas en `localStorage`
 - Al definir `storageKey`, la tabla lee al montarse la configuración guardada (orden de columnas, columnas visibles y tamaño de página).
-- Si el usuario modifica columnas o paginación, el botón **"Guardar layout"** aparece automáticamente (`isLayoutDirty`).
-- Al guardar, emite retroalimentación visual inmediata ("¡Layout guardado!") durante 1.8 segundos y persiste el JSON en el navegador.
-- El botón con icono de papelera / **"Restablecer vista inicial"** limpia la clave en `localStorage` y regresa la tabla a su estado de fábrica.
+- **Botón de Columnas Personalizadas**:
+  - Si existen columnas guardadas en el navegador, se muestra el botón **"Columnas guardadas"** con un indicador verde activo. Al pulsarlo, despliega un menú para actualizar o restablecer las columnas de fábrica. Además, cuenta con un botón rápido de restablecimiento al lado.
+  - Si el usuario modifica el orden o visibilidad de columnas, el botón se resalta como **"Guardar columnas personalizadas"**.
+  - Si la tabla está en su estado de fábrica, el botón ofrece **"Columnas personalizadas"** / **"Guardar columnas"** para fijar la preferencia actual.
+- Al guardar, emite retroalimentación visual inmediata ("¡Columnas guardadas!") y persiste el JSON en el navegador.
+- El botón de restablecer limpia la clave en `localStorage` y regresa la tabla a su configuración original de fábrica.
+- **Acciones en la Barra de Herramientas**: La prop `actions` permite inyectar botones principales como `+ Nuevo Usuario` directamente al lado de los controles de columnas.
 
 ### 3.2 Búsqueda Global y Filtros por Columna Acumulativos
 - La búsqueda global inspecciona todas las columnas visibles y no visibles (accesores y comparadores).
@@ -286,6 +290,110 @@ Demuestra el uso de formateo de fecha con hora, badges condicionales de severida
 />
 ```
 
+### 4.3 Ejemplo 3: Inventario de Repuestos (`InventarioView.tsx`)
+
+Muestra el uso de `storageKey="inventario-table-layout"`, badges dinámicos de stock físico (Agotado / Crítico / Normal) y slot `actions` para el botón "+ Nuevo Repuesto":
+
+```tsx
+<DataTable<Repuesto>
+  data={repuestosFiltrados}
+  keyExtractor={(r) => r.id}
+  storageKey="inventario-table-layout"
+  searchPlaceholder="Buscar por código, repuesto, stock o precio..."
+  loading={loadingInventario}
+  error={errorInventario ? errInventario : null}
+  onRetry={() => refetchInventario()}
+  actions={
+    userRole !== 'MECANICO' ? (
+      <button className={styles.btnPrimary} onClick={abrirCrearModal}>
+        <span>Nuevo Repuesto</span>
+      </button>
+    ) : null
+  }
+  columns={[
+    { id: 'codigo', accessor: 'codigo', header: 'Código', cell: (r) => <span className={styles.codeBadge}>{r.codigo}</span> },
+    { id: 'nombre', accessor: 'nombre', header: 'Repuesto / Insumo', cell: (r) => <p>{r.nombre}</p> },
+    { id: 'stock', accessor: 'stock', header: 'Stock Actual' },
+    { id: 'stockMinimo', accessor: 'stockMinimo', header: 'Stock Mínimo' },
+    { id: 'precioCompra', accessor: 'precioCompra', header: 'P. Compra' },
+    { id: 'precioVenta', accessor: 'precioVenta', header: 'P. Venta' },
+    { id: 'margenPorcentaje', accessor: 'margenPorcentaje', header: 'Margen' },
+    { header: 'Acciones', align: 'right', sortable: false, filterable: false, cell: (r) => <div className={styles.rowActions}>...</div> },
+  ]}
+/>
+```
+
+### 4.4 Ejemplo 4: Cotizaciones y Facturación (`CotizacionesView.tsx`)
+
+Muestra el uso de `storageKey="cotizaciones-table-layout"`, búsqueda con `filterFn` sobre entidades anidadas (cliente, vehículo, patente, OT), y columnas condicionales según el rol (`margenNeto` para Administrador):
+
+```tsx
+<DataTable<Cotizacion>
+  data={cotizaciones}
+  keyExtractor={(c) => c.id}
+  storageKey="cotizaciones-table-layout"
+  searchPlaceholder="Buscar por folio, cliente, RUT, patente u OT..."
+  loading={isLoading}
+  error={isError ? error : null}
+  onRetry={() => refetch()}
+  actions={
+    userRole !== 'MECANICO' ? (
+      <button className={styles.btnPrimary} onClick={() => setModalNuevoAbierto(true)}>
+        <span>Nueva Cotización</span>
+      </button>
+    ) : null
+  }
+  columns={[
+    { id: 'numero', accessor: 'numero', header: 'Folio', cell: (c) => <span>COT-{c.numero}</span> },
+    { id: 'ordenTrabajoId', accessor: 'ordenTrabajoId', header: 'OT Asociada' },
+    { id: 'cliente', header: 'Cliente y Vehículo', filterFn: (c, q) => ... },
+    { id: 'subtotalNeto', accessor: 'subtotalNeto', header: 'Subtotal Neto' },
+    { id: 'iva', accessor: 'iva', header: 'IVA (19%)' },
+    { id: 'total', accessor: 'total', header: 'Total Cliente' },
+    ...(userRole === 'ADMINISTRADOR' ? [{ id: 'margenNeto', accessor: 'margenNeto', header: 'Margen Taller' }] : []),
+    { id: 'estado', accessor: 'estado', header: 'Estado' },
+    { header: 'Acciones', align: 'right', sortable: false, filterable: false, cell: (c) => ... },
+  ]}
+/>
+```
+
+### 4.5 Ejemplo 5: Clientes y Vehículos (`ClientesVehiculosView.tsx`)
+
+Muestra el uso de `storageKey="clientes-table-layout"`, ordenamiento numérico por cantidad de vehículos (`sortFn`), botones de acción con `.btnTablePrimary` y enlaces directos a la ficha del cliente:
+
+```tsx
+<DataTable<Cliente>
+  data={clientes}
+  keyExtractor={(c) => c.id}
+  storageKey="clientes-table-layout"
+  searchPlaceholder="Buscar por cliente, RUT, teléfono o correo..."
+  loading={loadingClientes}
+  error={errorClientes ? errClientes : null}
+  onRetry={() => refetchClientes()}
+  actions={
+    userRole !== 'MECANICO' ? (
+      <button className={styles.btnTablePrimary} onClick={() => setShowModalCliente(true)}>
+        <span>Nuevo Cliente</span>
+      </button>
+    ) : null
+  }
+  columns={[
+    { id: 'nombre', accessor: 'nombre', header: 'Nombre', cell: (c) => <button onClick={() => handleOpenClienteModal(c.id)}>{c.nombre}</button> },
+    { id: 'rut', accessor: 'rut', header: 'RUT', cell: (c) => <span>{c.rut}</span> },
+    { id: 'telefono', accessor: 'telefono', header: 'Teléfono', cell: (c) => c.telefono || '—' },
+    { id: 'email', accessor: 'email', header: 'Correo Electrónico', cell: (c) => c.email || '—' },
+    {
+      id: 'vehiculos',
+      header: 'Vehículos',
+      sortable: true,
+      sortFn: (a, b) => (a._count?.vehiculos ?? a.vehiculos?.length ?? 0) - (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
+      cell: (c) => <span>{c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos</span>,
+    },
+    { id: 'acciones', header: 'Acciones', align: 'right', sortable: false, filterable: false, cell: (c) => <button onClick={() => handleOpenClienteModal(c.id)}>Ver Ficha</button> },
+  ]}
+/>
+```
+
 ---
 
 ## 5. Guía de Adopción para Nuevos Módulos
@@ -297,7 +405,7 @@ Al construir o refactorizar vistas de tabla (Cotizaciones, Inventario de Repuest
    import DataTable, { Column } from '@/app/components/DataTable';
    ```
 2. **Definir una clave de almacenamiento única (`storageKey`)**:
-   - Usar el formato estándar: `<modulo>-table-layout` (ej. `cotizaciones-table-layout`, `inventario-table-layout`).
+   - Usar el formato estándar: `<modulo>-table-layout` (ej. `cotizaciones-table-layout`, `inventario-table-layout`, `clientes-table-layout`).
 3. **Identificador único por fila (`keyExtractor`)**:
    - Siempre proveer una función que retorne un identificador estable: `keyExtractor={(item) => item.id}`.
 4. **Columnas no ordenables / no filtrables**:

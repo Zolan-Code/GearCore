@@ -54,14 +54,46 @@ test('Componente Global DataTable y Patrón de Tablas Avanzado (Mockup Specifica
     assert.ok(code.includes('handleDragStart') || code.includes('moveColumn'), 'Debe permitir reordenar columnas');
   });
 
-  await t.test('UsuariosSeguridadView utiliza DataTable con storageKey', () => {
-    const viewPath = path.resolve('app/components/UsuariosSeguridadView.tsx');
-    const viewCode = fs.readFileSync(viewPath, 'utf8');
+  await t.test('UsuariosSeguridadView y AuditoriaView utilizan DataTable con storageKey', () => {
+    const usuariosViewPath = path.resolve('app/components/UsuariosSeguridadView.tsx');
+    const usuariosViewCode = fs.readFileSync(usuariosViewPath, 'utf8');
 
-    assert.ok(viewCode.includes("import DataTable from './DataTable'"), 'Debe importar DataTable');
-    assert.ok(viewCode.includes('<DataTable<Usuario>'), 'Debe usar DataTable tipado con Usuario');
-    assert.ok(viewCode.includes('storageKey="usuarios-table-layout"'), 'Debe usar storageKey para tabla usuarios');
-    assert.ok(viewCode.includes('<DataTable<RegistroAuditoria>'), 'Debe usar DataTable tipado con RegistroAuditoria');
-    assert.ok(viewCode.includes('storageKey="auditoria-table-layout"'), 'Debe usar storageKey para tabla auditoría');
+    assert.ok(usuariosViewCode.includes("import DataTable from './DataTable'"), 'UsuariosView debe importar DataTable');
+    assert.ok(usuariosViewCode.includes('<DataTable<Usuario>'), 'UsuariosView debe usar DataTable tipado con Usuario');
+    assert.ok(usuariosViewCode.includes('storageKey="usuarios-table-layout"'), 'UsuariosView debe usar storageKey para tabla usuarios');
+
+    const auditoriaViewPath = path.resolve('app/components/AuditoriaView.tsx');
+    const auditoriaViewCode = fs.readFileSync(auditoriaViewPath, 'utf8');
+
+    assert.ok(auditoriaViewCode.includes("import DataTable from './DataTable'"), 'AuditoriaView debe importar DataTable');
+    assert.ok(auditoriaViewCode.includes('<DataTable<RegistroAuditoria>'), 'AuditoriaView debe usar DataTable tipado con RegistroAuditoria');
+    assert.ok(auditoriaViewCode.includes('storageKey="auditoria-table-layout"'), 'AuditoriaView debe usar storageKey para tabla auditoría');
+  });
+
+  await t.test('InventarioView y CotizacionesView utilizan DataTable con storageKey', () => {
+    const inventarioViewPath = path.resolve('app/components/InventarioView.tsx');
+    const inventarioViewCode = fs.readFileSync(inventarioViewPath, 'utf8');
+
+    assert.ok(inventarioViewCode.includes("import DataTable from './DataTable'"), 'InventarioView debe importar DataTable');
+    assert.ok(inventarioViewCode.includes('<DataTable<Repuesto>'), 'InventarioView debe usar DataTable tipado con Repuesto');
+    assert.ok(inventarioViewCode.includes('storageKey="inventario-table-layout"'), 'InventarioView debe usar storageKey para tabla inventario');
+
+    const cotizacionesViewPath = path.resolve('app/components/CotizacionesView.tsx');
+    const cotizacionesViewCode = fs.readFileSync(cotizacionesViewPath, 'utf8');
+
+    assert.ok(cotizacionesViewCode.includes("import DataTable"), 'CotizacionesView debe importar DataTable');
+    assert.ok(cotizacionesViewCode.includes('<DataTable<Cotizacion>'), 'CotizacionesView debe usar DataTable tipado con Cotizacion');
+    assert.ok(cotizacionesViewCode.includes('storageKey="cotizaciones-table-layout"'), 'CotizacionesView debe usar storageKey para tabla cotizaciones');
+    assert.ok(cotizacionesViewCode.includes('className={styles.btnTablePrimary}'), 'CotizacionesView debe usar btnTablePrimary para el boton de nueva cotizacion');
+  });
+
+  await t.test('ClientesVehiculosView utiliza DataTable con storageKey', () => {
+    const clientesViewPath = path.resolve('app/components/ClientesVehiculosView.tsx');
+    const clientesViewCode = fs.readFileSync(clientesViewPath, 'utf8');
+
+    assert.ok(clientesViewCode.includes("import DataTable from './DataTable'"), 'ClientesVehiculosView debe importar DataTable');
+    assert.ok(clientesViewCode.includes('<DataTable<Cliente>'), 'ClientesVehiculosView debe usar DataTable tipado con Cliente');
+    assert.ok(clientesViewCode.includes('storageKey="clientes-table-layout"'), 'ClientesVehiculosView debe usar storageKey para tabla clientes');
+    assert.ok(clientesViewCode.includes('className={styles.btnTablePrimary}'), 'ClientesVehiculosView debe usar btnTablePrimary para el boton de nuevo cliente');
   });
 });
