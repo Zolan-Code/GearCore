@@ -1067,10 +1067,10 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                   <div>
-                    <h4 style={{ fontSize: '18px', color: '#0f172a', fontWeight: '700' }}>
+                    <h4 style={{ fontSize: '18px', color: 'var(--text-primary)', fontWeight: '700' }}>
                       {selectedClienteModal.nombre}
                     </h4>
-                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                       Cliente registrado el {new Date(selectedClienteModal.creadoEn).toLocaleDateString('es-CL')}
                     </p>
                   </div>
@@ -1092,7 +1092,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
                 <div>
                   <div className={styles.sectionHeader} style={{ marginBottom: '8px' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>
                       Vehículos Asociados ({selectedClienteModal.vehiculos?.length || 0})
                     </h4>
                     <button

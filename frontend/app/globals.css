@@ -4,10 +4,266 @@
   padding: 0;
 }
 
+:root {
+  color-scheme: light;
+  /* Modo Claro (Light) */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --bg-hover: #f1f5f9;
+  --border-color: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-primary: #1e1b4b;
+  --accent-hover: #312e81;
+  --accent-light: #eff6ff;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --popover-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  /* Modo Oscuro: Negro neutro carbón (cero tinte azul marino) */
+  --bg-app: #000000;
+  --bg-surface: #111113;
+  --bg-surface-elevated: #18181b;
+  --bg-subtle: #1c1c20;
+  --bg-hover: #27272a;
+  --border-color: #27272a;
+  --border-subtle: #1a1a1e;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent-primary: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-light: #18181b;
+  --input-bg: #09090b;
+  --input-border: #27272a;
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+  --popover-shadow: 0 16px 36px rgba(0, 0, 0, 0.85);
+}
+
 html,
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #ffffff;
-  color: #0f172a;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Reglas ergonómicas para Modo Oscuro en componentes generales */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color-scheme: dark;
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] select option {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Encabezados y títulos en modo oscuro */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] [class*="headerTitle"],
+[data-theme="dark"] [class*="title"],
+[data-theme="dark"] [class*="Title"],
+[data-theme="dark"] [class*="cardTitle"],
+[data-theme="dark"] [class*="sectionTitle"],
+[data-theme="dark"] [class*="vehicleTitle"],
+[data-theme="dark"] [class*="vehicleModelText"],
+[data-theme="dark"] [class*="kpiValue"],
+[data-theme="dark"] [class*="statValue"] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] [class*="headerSubtitle"],
+[data-theme="dark"] [class*="subtitle"],
+[data-theme="dark"] [class*="Subtitle"],
+[data-theme="dark"] [class*="cardSubtitle"],
+[data-theme="dark"] [class*="clientText"],
+[data-theme="dark"] [class*="metaDetails"],
+[data-theme="dark"] [class*="kpiHeader"] {
+  color: var(--text-secondary) !important;
+}
+
+/* Tarjetas y Contenedores */
+[data-theme="dark"] [class*="card"],
+[data-theme="dark"] [class*="Card"],
+[data-theme="dark"] [class*="otCard"],
+[data-theme="dark"] [class*="kpiCard"],
+[data-theme="dark"] [class*="statCard"],
+[data-theme="dark"] [class*="vehicleHeroCard"],
+[data-theme="dark"] [class*="specsGrid"],
+[data-theme="dark"] [class*="clientsSection"],
+[data-theme="dark"] [class*="settingsCard"],
+[data-theme="dark"] [class*="permissionsCard"],
+[data-theme="dark"] [class*="repuestosSection"],
+[data-theme="dark"] [class*="repuestosTableWrapper"],
+[data-theme="dark"] [class*="filterBar"],
+[data-theme="dark"] [class*="controlsBar"],
+[data-theme="dark"] [class*="tableContainer"],
+[data-theme="dark"] [class*="emptyState"],
+[data-theme="dark"] [class*="detalleCard"] {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] [class*="permissionItem"],
+[data-theme="dark"] [class*="emptyRepuestosBox"],
+[data-theme="dark"] [class*="detalleTextareaBox"] {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] [class*="clientLinkBtn"] {
+  color: #ffffff !important;
+  text-decoration-color: #52525b !important;
+}
+
+[data-theme="dark"] [class*="clientLinkBtn"]:hover {
+  color: #60a5fa !important;
+  text-decoration-color: #60a5fa !important;
+}
+
+[data-theme="dark"] [class*="formLabel"],
+[data-theme="dark"] [class*="label"]:not([class*="Badge"]) {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="formLabelHint"],
+[data-theme="dark"] [class*="helperText"] {
+  color: var(--text-muted) !important;
+}
+
+/* Tablas en modo oscuro */
+[data-theme="dark"] table th {
+  background-color: var(--bg-subtle) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] table td {
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+[data-theme="dark"] table tr:hover td {
+  background-color: var(--bg-hover) !important;
+}
+
+/* Modales y Paneles Flotantes */
+[data-theme="dark"] [class*="modalContent"],
+[data-theme="dark"] [class*="modalCard"],
+[data-theme="dark"] [class*="confirmModalContent"],
+[data-theme="dark"] [class*="promptModalContent"],
+[data-theme="dark"] [class*="headerFilterPopover"],
+[data-theme="dark"] [class*="popoverContent"],
+[data-theme="dark"] [class*="autocompleteDropdown"],
+[data-theme="dark"] [class*="clientVehicleCard"] {
+  background-color: var(--bg-surface-elevated) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--popover-shadow) !important;
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] [class*="modalHeader"],
+[data-theme="dark"] [class*="cardHeader"] {
+  background-color: var(--bg-surface-elevated) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] [class*="modalFooter"],
+[data-theme="dark"] [class*="cardFooter"] {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] [class*="modalClose"],
+[data-theme="dark"] [class*="closeBtn"] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="modalClose"]:hover,
+[data-theme="dark"] [class*="closeBtn"]:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Pestañas, Chips y Botones de Filtro */
+[data-theme="dark"] [class*="statusTab"]:not([class*="Active"]),
+[data-theme="dark"] [class*="tabBtn"]:not([class*="Active"]),
+[data-theme="dark"] [class*="faultChip"]:not([class*="Active"]),
+[data-theme="dark"] [class*="fuelOption"]:not([class*="Active"]),
+[data-theme="dark"] [class*="btnSecondary"],
+[data-theme="dark"] [class*="btnActionSecondary"],
+[data-theme="dark"] [class*="btnActionIcon"],
+[data-theme="dark"] [class*="iconBtn"] {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] [class*="statusTab"]:hover,
+[data-theme="dark"] [class*="tabBtn"]:hover,
+[data-theme="dark"] [class*="faultChip"]:hover,
+[data-theme="dark"] [class*="fuelOption"]:hover,
+[data-theme="dark"] [class*="btnSecondary"]:hover,
+[data-theme="dark"] [class*="btnActionSecondary"]:hover,
+[data-theme="dark"] [class*="btnActionIcon"]:hover,
+[data-theme="dark"] [class*="iconBtn"]:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Cajas de notas y diagnóstico en modales */
+[data-theme="dark"] [class*="fallaBox"],
+[data-theme="dark"] [class*="dropzone"] {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Scrollbar estilizado en modo oscuro */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

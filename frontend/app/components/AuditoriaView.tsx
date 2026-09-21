@@ -61,7 +61,7 @@ export default function AuditoriaView({ userRole }: Props) {
           <h2 className={styles.headerTitle}>
             Auditoría
             {isFetching && !isLoading && (
-              <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#64748b', marginLeft: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-secondary)', marginLeft: '12px' }}>
                 Actualizando...
               </span>
             )}
@@ -116,7 +116,7 @@ export default function AuditoriaView({ userRole }: Props) {
               <>
                 <strong>{a.usuario ? a.usuario.nombre : 'Sistema'}</strong>
                 {a.usuario && (
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                     [{a.usuario.rol}]
                   </div>
                 )}
@@ -128,7 +128,7 @@ export default function AuditoriaView({ userRole }: Props) {
             accessor: 'entidad',
             header: 'Entidad',
             cell: (a) => (
-              <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-secondary)' }}>
                 {a.entidad}
               </span>
             ),

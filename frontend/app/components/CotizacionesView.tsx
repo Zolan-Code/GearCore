@@ -427,10 +427,10 @@ export default function CotizacionesView({ userRole }: Props) {
             header: 'Cliente y Vehículo',
             cell: (c) => (
               <div>
-                <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                   {c.ordenTrabajo?.vehiculo?.cliente?.nombre}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   {c.ordenTrabajo?.vehiculo?.marca} {c.ordenTrabajo?.vehiculo?.modelo} (
                   {c.ordenTrabajo?.vehiculo?.patente})
                 </div>
@@ -461,7 +461,7 @@ export default function CotizacionesView({ userRole }: Props) {
             accessor: 'total',
             header: 'Total Cliente',
             cell: (c) => (
-              <strong style={{ color: '#0f172a' }}>{formatoMoneda(c.total)}</strong>
+              <strong style={{ color: 'var(--text-primary)' }}>{formatoMoneda(c.total)}</strong>
             ),
           },
           ...(userRole === 'ADMINISTRADOR'
@@ -693,12 +693,12 @@ export default function CotizacionesView({ userRole }: Props) {
 
                 {/* Desglose de Partidas / Ítems */}
                 <div>
-                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                  <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
                     Partidas en Snapshot de Cotización
                   </h4>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.5rem', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                      <thead style={{ background: '#f8fafc', color: '#475569' }}>
+                      <thead style={{ background: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}>
                         <tr>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Tipo</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Descripción</th>
@@ -906,13 +906,13 @@ export default function CotizacionesView({ userRole }: Props) {
                         <div className={styles.timelineDeltas}>
                           <div>
                             <span className={styles.infoLabel}>Total Anterior</span>
-                            <span style={{ color: '#64748b', fontWeight: 600 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                               {formatoMoneda(entry.totalAnterior)}
                             </span>
                           </div>
                           <div>
                             <span className={styles.infoLabel}>Total Nuevo</span>
-                            <span style={{ color: '#0f172a', fontWeight: 700 }}>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
                               {formatoMoneda(entry.totalNuevo)}
                             </span>
                           </div>

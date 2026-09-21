@@ -72,7 +72,7 @@ gearcore/
 │
 └── frontend/                   # Cliente web Next.js
     ├── app/
-    │   ├── (dashboard)/        # Layout protegido con AppBar y Sidebar
+    │   ├── (dashboard)/        # Layout protegido con AppBar (modo oscuro, notificaciones) y Sidebar
     │   │   ├── clientes/       # Vista de Clientes y Vehículos con DataTable
     │   │   ├── ordenes/        # Vista de Órdenes de Trabajo y seguimiento técnico
     │   │   ├── inventario/     # Vista de Inventario con DataTable
@@ -82,8 +82,9 @@ gearcore/
     │   │   ├── ajustes/        # Formulario de configuración del taller
     │   │   └── perfil/         # Perfil del operador conectado
     │   ├── components/         # Componentes reutilizables (DataTable, modales, vistas)
+    │   ├── context/            # Contextos nativos (ThemeContext con persistencia y detección de sistema)
     │   ├── login/              # Pantalla de autenticación Supabase
-    │   └── providers.tsx       # QueryClientProvider de TanStack Query
+    │   └── providers.tsx       # Providers de TanStack Query y ThemeProvider
     ├── hooks/                  # Hooks desacoplados por dominio (React Query)
     ├── lib/                    # Cliente de Supabase y cliente fetchWithAuth
     ├── test/                   # Suite de pruebas unitarias automatizadas (Node.js test runner)
@@ -236,3 +237,4 @@ npx nest build
 2. **Acceso a Datos**: Exclusivamente mediante Prisma ORM para garantizar consultas tipadas y transacciones atómicas seguras.
 3. **Cero Secretos en Cliente**: Los márgenes de costo y llaves de servicio de Supabase nunca se exponen al frontend.
 4. **Manejo de Estado**: Se prohíbe el uso de `fetch` directo en componentes; toda interacción con la API debe realizarse mediante hooks de TanStack Query ubicados en `frontend/hooks/`.
+5. **Modo Oscuro y Ergonomía Visual**: Paleta de alto contraste para entornos de taller (`[data-theme="dark"]`), soporte de `color-scheme: dark`, persistencia en `localStorage` y prevención de destello (anti-FOUT) sin dependencias externas.

@@ -83,7 +83,7 @@ export default function AjustesView() {
             <p className={styles.headerSubtitle}>Cargando parámetros de configuración...</p>
           </div>
         </div>
-        <div className={styles.settingsCard} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+        <div className={styles.settingsCard} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <p>Obteniendo configuración del sistema...</p>
         </div>
       </div>

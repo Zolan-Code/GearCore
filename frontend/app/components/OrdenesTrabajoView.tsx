@@ -1710,7 +1710,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
               <div className={styles.modalHeader}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e1b4b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
                       <line x1="16" y1="13" x2="8" y2="13" />
@@ -1743,10 +1743,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 {/* Stepper de ciclo de vida */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Estado del Vehículo en Taller
                     </span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       Etapa {estadoIdx + 1} de 7: {estadoObj.label}
                     </span>
                   </div>
@@ -1807,34 +1807,38 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                     <div className={styles.detalleInfoRow}>
                       <span className={styles.detalleInfoLabel}>Cliente / Titular:</span>
-                      <span className={styles.detalleInfoValue}>{otInfo.vehiculo.cliente.nombre}</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.vehiculo.cliente?.nombre || 'Sin cliente asignado'}
+                      </span>
                     </div>
 
                     <div className={styles.detalleInfoRow}>
                       <span className={styles.detalleInfoLabel}>RUT:</span>
-                      <span className={styles.detalleInfoValue}>{otInfo.vehiculo.cliente.rut}</span>
+                      <span className={styles.detalleInfoValue}>
+                        {otInfo.vehiculo.cliente?.rut || 'Sin RUT'}
+                      </span>
                     </div>
 
                     <div className={styles.detalleInfoRow}>
                       <span className={styles.detalleInfoLabel}>Teléfono:</span>
                       <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente.telefono ? `+${otInfo.vehiculo.cliente.telefono}` : 'Sin teléfono registrado'}
+                        {otInfo.vehiculo.cliente?.telefono || 'No registrado'}
                       </span>
                     </div>
 
                     <div className={styles.detalleInfoRow}>
                       <span className={styles.detalleInfoLabel}>Correo Electrónico:</span>
                       <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente.email || 'Sin correo registrado'}
+                        {otInfo.vehiculo.cliente?.email || 'No registrado'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Tarjeta 2: Checklist e Inspección de Recepción */}
+                  {/* Tarjeta 2: Checklist y Datos de Recepción */}
                   <div className={styles.detalleCard}>
                     <h4 className={styles.detalleCardTitle}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M9 11l3 3L22 4" />
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                       </svg>
                       <span>Checklist de Ingreso</span>
@@ -1843,10 +1847,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <div className={styles.detalleInfoRow}>
                       <span className={styles.detalleInfoLabel}>Kilometraje al Ingreso:</span>
                       <span className={styles.detalleInfoValue}>
-                        {otInfo.kilometrajeRecepcion !== null && otInfo.kilometrajeRecepcion !== undefined
-                          ? `${otInfo.kilometrajeRecepcion.toLocaleString('es-CL')} km`
-                          : otInfo.vehiculo.kilometraje
-                          ? `${otInfo.vehiculo.kilometraje.toLocaleString('es-CL')} km`
+                        {(otInfo.kilometrajeRecepcion ?? otInfo.vehiculo?.kilometraje) != null
+                          ? `${(otInfo.kilometrajeRecepcion ?? otInfo.vehiculo?.kilometraje)!.toLocaleString('es-CL')} km`
                           : 'No registrado'}
                       </span>
                     </div>
@@ -1891,14 +1893,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                       <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
-                      <span style={{ fontSize: '12px', color: '#334155', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                         {otInfo.rayonesCarroceria || 'Sin rayones ni daños declarados'}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
                       <span className={styles.detalleInfoLabel}>Elementos de Valor Declarados:</span>
-                      <span style={{ fontSize: '12px', color: '#334155', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                         {otInfo.elementosValor || 'Sin elementos de valor declarados'}
                       </span>
                     </div>
@@ -1907,7 +1909,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                 {/* Sección Falla Reportada y Diagnóstico Técnico */}
                 <div className={styles.detalleCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                     <h4 className={styles.detalleCardTitle} style={{ borderBottom: 'none', paddingBottom: 0 }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
@@ -1936,7 +1938,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Motivo de ingreso */}
                   <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                       Motivo de Ingreso / Falla Reportada por Cliente:
                     </span>
                     <div className={styles.fallaBox}>
@@ -1946,7 +1948,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Hallazgos de Diagnóstico */}
                   <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                       Diagnóstico del Mecánico:
                     </span>
                     <div className={styles.detalleTextareaBox}>
@@ -1956,7 +1958,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Trabajos Realizados */}
                   <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                       Trabajos y Reparaciones Efectuadas:
                     </span>
                     <div className={styles.detalleTextareaBox}>
@@ -1977,7 +1979,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       <span>Repuestos Asignados ({otInfo.detalleRepuestos?.length || 0})</span>
                     </h4>
                     {otInfo.detalleRepuestos && otInfo.detalleRepuestos.length > 0 && (
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e1b4b' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                         Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
                       </span>
                     )}

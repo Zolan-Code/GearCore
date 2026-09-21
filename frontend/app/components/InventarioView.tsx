@@ -1045,13 +1045,13 @@ export default function InventarioView({ userRole }: Props) {
                 <div className={styles.auditCurrentStockBox}>
                   <div>
                     <span className={styles.codeBadge}>{repuestoAjustar.codigo}</span>
-                    <h4 style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#0f172a' }}>
+                    <h4 style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--text-primary)' }}>
                       {repuestoAjustar.nombre}
                     </h4>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>STOCK SISTEMA</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#1e1b4b' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>STOCK SISTEMA</div>
+                    <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {repuestoAjustar.stock} uds
                     </div>
                   </div>
@@ -1202,10 +1202,10 @@ export default function InventarioView({ userRole }: Props) {
                   <line x1="9" y1="15" x2="12" y2="12" />
                   <line x1="15" y1="15" x2="12" y2="12" />
                 </svg>
-                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '13.5px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13.5px' }}>
                   Haz clic para seleccionar tu archivo CSV
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Formato requerido: codigo, nombre, stock, stockMinimo, precioCompra, precioVenta
                 </div>
               </label>
