@@ -318,6 +318,92 @@
   background: #ef4444;
 }
 
+/* Switch ON / OFF para Estado de Usuario */
+.toggleSwitch {
+  position: relative;
+  width: 56px;
+  height: 26px;
+  border-radius: 9999px;
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  vertical-align: middle;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.toggleSwitch:focus-visible {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #10b981;
+}
+
+.toggleSwitch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.toggleSwitchOn {
+  background-color: #10b981;
+}
+
+.toggleSwitchOn:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.toggleSwitchOff {
+  background-color: #94a3b8;
+}
+
+.toggleSwitchOff:hover:not(:disabled) {
+  background-color: #64748b;
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+}
+
+.toggleSwitchOn .toggleThumb {
+  transform: translateX(30px);
+}
+
+.toggleSwitchOff .toggleThumb {
+  transform: translateX(0);
+}
+
+.toggleText {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  line-height: 1;
+  z-index: 1;
+  transition: opacity 0.2s ease;
+}
+
+.toggleSwitchOn .toggleText {
+  left: 8px;
+}
+
+.toggleSwitchOff .toggleText {
+  right: 7px;
+  font-size: 9.5px;
+}
+
+/* Compatibilidad previa */
 .btnToggleStatus {
   background: none;
   border: none;

@@ -205,102 +205,107 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
   const activeNavHref = getActiveNavHref(pathname);
 
+  const rolLabel =
+    userRole === 'ADMINISTRADOR'
+      ? 'Administrador'
+      : userRole === 'RECEPCIONISTA'
+      ? 'Recepcionista'
+      : 'Mecánico';
+
+  const fechaHoy = new Date().toLocaleDateString('es-CL', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
   return (
     <DashboardContext.Provider value={{ user, userRole, loading }}>
-      <div className={styles.layout}>
-        {/* Botón flotante para reabrir el menú lateral cuando está colapsado */}
-        {!sidebarOpen && (
-          <button
-            type="button"
-            className={styles.floatingMenuBtn}
-            onClick={() => setSidebarOpen(true)}
-            title="Mostrar menú lateral"
-            aria-label="Mostrar menú lateral"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-              <path d="m13 9 3 3-3 3" />
-            </svg>
-          </button>
-        )}
-
-        {/* Barra Lateral Izquierda (Sidebar) */}
-        <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
-          <div className={styles.sidebarTop}>
-            <div className={styles.brand}>
-              <div className={styles.brandInfo}>
-                <img src="/assets/logo.png" alt="GearCore" className={styles.brandLogo} />
-                <div className={styles.brandText}>
-                  <h3>GearCore</h3>
-                  <p>ERP Taller Mecánico</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className={styles.sidebarToggleBtn}
-                onClick={() => setSidebarOpen(false)}
-                title="Ocultar menú lateral"
-                aria-label="Ocultar menú lateral"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <line x1="9" y1="3" x2="9" y2="21" />
-                  <path d="m16 15-3-3 3-3" />
-                </svg>
-              </button>
+      <div className={styles.appContainer}>
+        {/* Barra Superior Global (AppBar) */}
+        <header className={styles.appBar}>
+          <div className={styles.appBarLeft}>
+            <div className={styles.appBarStatus}>
+              <span className={styles.onlineDot} />
+              <span>En Línea</span>
             </div>
 
-            {/* Tarjeta de Usuario / Bienvenido en Barra Lateral */}
-            <div className={styles.sidebarUserCard}>
-              <div className={styles.sidebarUserMain}>
-                <div className={styles.sidebarAvatar}>{initialLetter}</div>
-                <div className={styles.sidebarUserDetails}>
-                  <div className={styles.sidebarGreeting}>Bienvenido,</div>
-                  <h4 className={styles.sidebarUserName} title={user?.nombre || 'Usuario'}>
-                    {user?.nombre || 'Usuario'}
-                  </h4>
-                  <p className={styles.sidebarUserEmail} title={user?.email}>
-                    {user?.email}
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.sidebarUserMeta}>
-                <div className={styles.sidebarMetaItem}>
-                  <span className={styles.sidebarMetaLabel}>Rol Activo</span>
-                  <span className={styles.sidebarRoleBadge}>{userRole}</span>
-                </div>
-                <div className={styles.sidebarMetaItem}>
-                  <span className={styles.sidebarMetaLabel}>Estado</span>
-                  <span className={styles.sidebarStatusBadge}>
-                    <span className={styles.onlineDot} />
-                    En Línea
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.sidebarDateRow}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <span>
-                  {new Date().toLocaleDateString('es-CL', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </span>
-              </div>
+            <div className={styles.appBarItem}>
+              <span className={styles.appBarLabel}>Usuario:</span>
+              <span className={styles.appBarValue}>{user?.nombre || 'Usuario'}</span>
             </div>
 
-            {/* Lista de navegación */}
-            <ul className={styles.navList}>
+            <div className={styles.appBarItem}>
+              <span className={styles.appBarLabel}>ROL:</span>
+              <span className={styles.appBarValue}>{rolLabel}</span>
+            </div>
+          </div>
+
+          <div className={styles.appBarRight}>
+            <span className={styles.appBarDate}>{fechaHoy}</span>
+
+            <button
+              type="button"
+              className={styles.notificationBtn}
+              title="Notificaciones: Sistema al día"
+              aria-label="Notificaciones"
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span className={styles.notificationBadge} />
+            </button>
+          </div>
+        </header>
+
+        <div className={styles.layout}>
+          {/* Botón flotante para reabrir el menú lateral cuando está colapsado */}
+          {!sidebarOpen && (
+            <button
+              type="button"
+              className={styles.floatingMenuBtn}
+              onClick={() => setSidebarOpen(true)}
+              title="Mostrar menú lateral"
+              aria-label="Mostrar menú lateral"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <path d="m13 9 3 3-3 3" />
+              </svg>
+            </button>
+          )}
+
+          {/* Barra Lateral Izquierda (Sidebar) */}
+          <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
+            <div className={styles.sidebarTop}>
+              <div className={styles.brand}>
+                <div className={styles.brandInfo}>
+                  <img src="/assets/logo.png" alt="GearCore" className={styles.brandLogo} />
+                  <div className={styles.brandText}>
+                    <h3>GearCore</h3>
+                    <p>ERP Taller Mecánico</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.sidebarToggleBtn}
+                  onClick={() => setSidebarOpen(false)}
+                  title="Ocultar menú lateral"
+                  aria-label="Ocultar menú lateral"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                    <line x1="9" y1="3" x2="9" y2="21" />
+                    <path d="m16 15-3-3 3-3" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Lista de navegación */}
+              <ul className={styles.navList} style={{ marginTop: '16px' }}>
               {visibleNavItems.map((item) => {
                 const isActive = activeNavHref === item.href;
                 return (
@@ -450,6 +455,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         )}
+        </div>
       </div>
     </DashboardContext.Provider>
   );

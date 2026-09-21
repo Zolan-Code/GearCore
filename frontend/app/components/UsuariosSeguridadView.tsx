@@ -315,13 +315,18 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
             cell: (u) => (
               <button
                 type="button"
-                className={`${styles.btnToggleStatus} ${
-                  u.activo ? styles.btnToggleStatusDeactivate : styles.btnToggleStatusActivate
+                role="switch"
+                aria-checked={u.activo}
+                className={`${styles.toggleSwitch} ${
+                  u.activo ? styles.toggleSwitchOn : styles.toggleSwitchOff
                 }`}
                 disabled={actualizandoId === u.id}
                 onClick={() => handleToggleEstado(u)}
+                title={u.activo ? `Desactivar usuario (${u.nombre})` : `Activar usuario (${u.nombre})`}
+                aria-label={u.activo ? `Desactivar usuario ${u.nombre}` : `Activar usuario ${u.nombre}`}
               >
-                {u.activo ? 'Desactivar' : 'Reactivar'}
+                <span className={styles.toggleThumb} />
+                <span className={styles.toggleText}>{u.activo ? 'ON' : 'OFF'}</span>
               </button>
             ),
           },

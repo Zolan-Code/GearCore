@@ -1,7 +1,111 @@
-.layout {
+.appContainer {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   max-height: 100vh;
+  overflow: hidden;
+  background-color: #f8fafc;
+}
+
+/* Barra Superior Global (AppBar) */
+.appBar {
+  height: 48px;
+  min-height: 48px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.appBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.appBarStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.appBarItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.appBarLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.appBarValue {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.appBarRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.appBarDate {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.notificationBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.notificationBtn:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1.5px solid #ffffff;
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 48px);
+  max-height: calc(100vh - 48px);
   overflow: hidden;
   background-color: #f8fafc;
 }
@@ -10,14 +114,14 @@
 .sidebar {
   width: 280px;
   min-width: 280px;
-  height: 100vh;
-  max-height: 100vh;
+  height: calc(100vh - 48px);
+  max-height: calc(100vh - 48px);
   background: #ffffff;
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 24px 16px;
+  padding: 20px 16px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   white-space: nowrap;
@@ -85,8 +189,8 @@
 
 .floatingMenuBtn {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  top: 60px;
+  left: 16px;
   z-index: 90;
   width: 42px;
   height: 42px;
@@ -260,7 +364,7 @@
 /* Contenido Principal */
 .mainContent {
   flex: 1;
-  height: 100vh;
+  height: calc(100vh - 48px);
   overflow-y: auto;
   padding: 32px;
   display: flex;
