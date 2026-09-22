@@ -23,6 +23,29 @@
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.mobileMenuBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mobileMenuBtn:hover {
+  background: var(--bg-hover);
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
 .appBarLeft {
   display: flex;
   align-items: center;
@@ -1273,34 +1296,150 @@
   background: #dc2626;
 }
 
-/* Responsividad */
+/* Responsividad Móvil y Tablet (PWA) */
 @media (max-width: 960px) {
-  .layout {
-    flex-direction: column;
+  .appBar {
+    padding: 0 12px;
   }
 
+  .mobileMenuBtn {
+    display: inline-flex;
+  }
+
+  .appBarStatus,
+  .appBarDate {
+    display: none !important;
+  }
+
+  .appBarLeft {
+    gap: 10px;
+  }
+
+  .appBarItem {
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .appBarLabel {
+    display: none;
+  }
+
+  .appBarRight {
+    gap: 8px;
+  }
+
+  /* El wrapper rail no debe reservar espacio en móviles */
+  .sidebarRailWrapper,
+  .sidebarRailWrapperCollapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    position: static;
+  }
+
+  /* Drawer lateral flotante */
   .sidebar {
-    width: 100%;
-    min-width: 100%;
-    border-right: none;
-    border-bottom: 1px solid #e2e8f0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px !important;
+    min-width: 280px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    z-index: 1000;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 1px solid var(--border-color);
+    visibility: hidden;
   }
 
+  .sidebarMobileOpen {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+  }
+
+  /* Forzar que en móvil el sidebar muestre los textos y su estructura completa cuando se abre */
   .sidebarCollapsed {
-    height: 0 !important;
-    min-height: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    border-bottom: none !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    padding: 20px 14px !important;
   }
 
+  .sidebarCollapsed .brandText,
+  .sidebarCollapsed .navLabel {
+    display: block !important;
+  }
+
+  .sidebarCollapsed .brand {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 0 20px 0 !important;
+  }
+
+  .sidebarCollapsed .navItem {
+    justify-content: flex-start !important;
+    padding: 9px 12px !important;
+  }
+
+  .sidebarCollapsed .navItemContent {
+    justify-content: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .sidebarCollapsed .logoutBtn {
+    justify-content: flex-start !important;
+    padding: 9px 12px !important;
+  }
+
+  /* En móvil no queremos tooltips flotantes al pasar el dedo */
+  .sidebarCollapsed .sidebarToggleBtn:hover::after,
+  .sidebarCollapsed .navItem:hover::after,
+  .sidebarCollapsed .logoutBtn:hover::after,
+  .sidebarCollapsed .sidebarToggleBtn:hover::before,
+  .sidebarCollapsed .navItem:hover::before,
+  .sidebarCollapsed .logoutBtn:hover::before {
+    display: none !important;
+  }
+
+  /* Botón colapsar del sidebar oculto en móvil (se usa botón hamburguesa) */
+  .sidebarToggleBtn {
+    display: none !important;
+  }
+
+  /* Backdrop oscuro para móvil */
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* Contenido principal al 100% de ancho con scroll natural */
   .mainContent {
-    padding: 20px;
+    width: 100% !important;
+    padding: 16px 12px !important;
+    height: calc(100vh - 48px);
+    overflow-y: auto;
+    gap: 16px;
   }
 
-  .mainContentExpanded {
-    padding-top: 72px !important;
-    padding-left: 20px !important;
+  /* Ajuste de notificaciones en móvil */
+  .notificationsPopover {
+    position: fixed;
+    top: 52px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    z-index: 1010;
   }
 }
 

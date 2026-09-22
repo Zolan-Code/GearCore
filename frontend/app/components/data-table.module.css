@@ -726,3 +726,37 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 640px) {
+  .toolbar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .toolbarTop {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .searchBox {
+    max-width: 100%;
+  }
+
+  .toolbarActions {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .btnAction {
+    font-size: 11.5px;
+    height: 34px;
+    padding: 0 10px;
+  }
+
+  .th,
+  .td {
+    padding: 10px 12px;
+  }
+}

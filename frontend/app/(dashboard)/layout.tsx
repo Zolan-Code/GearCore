@@ -84,6 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   // Inactividad
@@ -213,9 +214,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, [showNotifications]);
 
-  // Cerrar notificaciones al cambiar de ruta
+  // Cerrar notificaciones y menú móvil al cambiar de ruta
   useEffect(() => {
     setShowNotifications(false);
+    setMobileMenuOpen(false);
   }, [pathname]);
 
   const userRole = (user?.rol || 'MECANICO') as Rol;
@@ -343,6 +345,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Barra Superior Global (AppBar) */}
         <header className={styles.appBar}>
           <div className={styles.appBarLeft}>
+            {/* Botón Hamburguesa Móvil (visible solo en < 960px vía CSS) */}
+            <button
+              type="button"
+              className={styles.mobileMenuBtn}
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              title="Menú"
+            >
+              {mobileMenuOpen ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
+
             <div className={styles.appBarStatus}>
               <span className={styles.onlineDot} />
               <span>En Línea</span>
@@ -478,10 +502,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <div className={styles.layout}>
+          {/* Backdrop para cerrar el drawer en móviles al tocar fuera */}
+          {mobileMenuOpen && (
+            <div
+              className={styles.mobileBackdrop}
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
           {/* Contenedor Rail para reservar espacio y evitar reflow al expandir por hover */}
           <div className={`${styles.sidebarRailWrapper} ${!sidebarOpen ? styles.sidebarRailWrapperCollapsed : ''}`}>
-            {/* Barra Lateral Izquierda (Sidebar con Rail + Hover Expand Instagram style) */}
-            <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
+            {/* Barra Lateral Izquierda (Sidebar con Rail + Hover Expand en escritorio, Drawer en móviles) */}
+            <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''} ${mobileMenuOpen ? styles.sidebarMobileOpen : ''}`}>
             <div className={styles.sidebarTop}>
               <div className={styles.brand}>
                 <div className={styles.brandInfo}>
