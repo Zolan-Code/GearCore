@@ -289,25 +289,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <div className={styles.layout}>
-          {/* Botón flotante para reabrir el menú lateral cuando está colapsado */}
-          {!sidebarOpen && (
-            <button
-              type="button"
-              className={styles.floatingMenuBtn}
-              onClick={() => setSidebarOpen(true)}
-              title="Mostrar menú lateral"
-              aria-label="Mostrar menú lateral"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-                <path d="m13 9 3 3-3 3" />
-              </svg>
-            </button>
-          )}
-
-          {/* Barra Lateral Izquierda (Sidebar) */}
-          <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
+          {/* Contenedor Rail para reservar espacio y evitar reflow al expandir por hover */}
+          <div className={`${styles.sidebarRailWrapper} ${!sidebarOpen ? styles.sidebarRailWrapperCollapsed : ''}`}>
+            {/* Barra Lateral Izquierda (Sidebar con Rail + Hover Expand Instagram style) */}
+            <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
             <div className={styles.sidebarTop}>
               <div className={styles.brand}>
                 <div className={styles.brandInfo}>
@@ -321,14 +306,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <button
                   type="button"
                   className={styles.sidebarToggleBtn}
-                  onClick={() => setSidebarOpen(false)}
-                  title="Ocultar menú lateral"
-                  aria-label="Ocultar menú lateral"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  title={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+                  aria-label={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+                  data-tooltip={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                     <line x1="9" y1="3" x2="9" y2="21" />
-                    <path d="m16 15-3-3 3-3" />
+                    {sidebarOpen ? (
+                      <path d="m16 15-3-3 3-3" />
+                    ) : (
+                      <path d="m13 9 3 3-3 3" />
+                    )}
                   </svg>
                 </button>
               </div>
@@ -343,10 +333,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       href={item.href}
                       className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
                       style={{ textDecoration: 'none' }}
+                      data-tooltip={item.label}
                     >
                       <span className={styles.navItemContent}>
                         {NAV_ICONS[item.id]}
-                        <span>{item.label}</span>
+                        <span className={styles.navLabel}>{item.label}</span>
                       </span>
                       {isActive && <span className={styles.activeDot} />}
                     </Link>
@@ -363,10 +354,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={auditoriaItem.href}
                 className={`${styles.navItem} ${activeNavHref === auditoriaItem.href ? styles.navItemActive : ''}`}
                 style={{ textDecoration: 'none' }}
+                data-tooltip={auditoriaItem.label}
               >
                 <span className={styles.navItemContent}>
                   {NAV_ICONS[auditoriaItem.id]}
-                  <span>{auditoriaItem.label}</span>
+                  <span className={styles.navLabel}>{auditoriaItem.label}</span>
                 </span>
                 {activeNavHref === auditoriaItem.href && <span className={styles.activeDot} />}
               </Link>
@@ -376,13 +368,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               href="/perfil"
               className={`${styles.navItem} ${pathname === '/perfil' ? styles.navItemActive : ''}`}
               style={{ textDecoration: 'none' }}
+              data-tooltip="Mi Perfil"
             >
               <span className={styles.navItemContent}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                <span>Mi Perfil</span>
+                <span className={styles.navLabel}>Mi Perfil</span>
               </span>
               {pathname === '/perfil' && <span className={styles.activeDot} />}
             </Link>
@@ -392,19 +385,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setShowLogoutConfirm(true)}
               className={styles.logoutBtn}
               title="Cerrar sesión"
+              data-tooltip="Cerrar Sesión"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
-              <span>Cerrar Sesión</span>
+              <span className={styles.navLabel}>Cerrar Sesión</span>
             </button>
           </div>
         </aside>
+      </div>
 
         {/* Área Principal de Contenido */}
-        <main className={`${styles.mainContent} ${!sidebarOpen ? styles.mainContentExpanded : ''}`}>
+        <main className={styles.mainContent}>
           {children}
         </main>
 
