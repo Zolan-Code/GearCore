@@ -136,27 +136,41 @@ export class CotizacionesPdfService {
         doc.text('SUBTOTAL', 490, yTable + 6, { width: 70, align: 'right' });
 
         yTable += 22;
-        doc.font('Helvetica').fontSize(8.5);
 
         data.items.forEach((item, index) => {
-          const bgColor = index % 2 === 0 ? '#f8fafc' : '#ffffff';
-          doc.rect(40, yTable, 530, 20).fillColor(bgColor).fill();
+          doc.font('Helvetica').fontSize(8.5);
+          // Medir la altura real que ocupará la descripción en un ancho de 215pt considerando lineGap
+          const textHeight = doc.heightOfString(item.descripcion, { width: 215, lineGap: 2 });
+          const rowHeight = Math.max(26, Math.ceil(textHeight) + 12);
 
-          doc.fillColor('#334155');
-          const tipoLabel = item.tipo === 'REPUESTO' ? 'Repuesto' : item.tipo === 'MANO_DE_OBRA' ? 'Mano de Obra' : 'Servicio';
-          doc.text(tipoLabel, 50, yTable + 5);
-          doc.text(item.descripcion, 130, yTable + 5, { width: 220, ellipsis: true });
-          doc.text(String(item.cantidad), 360, yTable + 5, { width: 40, align: 'right' });
-          doc.text(formatoMoneda(item.precioUnitario), 410, yTable + 5, { width: 70, align: 'right' });
-          doc.text(formatoMoneda(item.subtotal), 490, yTable + 5, { width: 70, align: 'right' });
-
-          yTable += 20;
-
-          // Salto de página si la tabla es muy larga
-          if (yTable > 650) {
+          // Salto de página preventivo antes de dibujar la fila
+          if (yTable + rowHeight > 660) {
             doc.addPage();
             yTable = 50;
+
+            // Redibujar encabezado de tabla en la nueva página
+            doc.rect(40, yTable, 530, 22).fillColor('#0f172a').fill();
+            doc.fillColor('#ffffff').fontSize(8.5).font('Helvetica-Bold');
+            doc.text('TIPO', 50, yTable + 6);
+            doc.text('DESCRIPCIÓN', 130, yTable + 6);
+            doc.text('CANT.', 360, yTable + 6, { width: 40, align: 'right' });
+            doc.text('P. UNITARIO', 410, yTable + 6, { width: 70, align: 'right' });
+            doc.text('SUBTOTAL', 490, yTable + 6, { width: 70, align: 'right' });
+            yTable += 22;
           }
+
+          const bgColor = index % 2 === 0 ? '#f8fafc' : '#ffffff';
+          doc.rect(40, yTable, 530, rowHeight).fillColor(bgColor).fill();
+
+          doc.fillColor('#334155').font('Helvetica').fontSize(8.5);
+          const tipoLabel = item.tipo === 'REPUESTO' ? 'Repuesto' : item.tipo === 'MANO_DE_OBRA' ? 'Mano de Obra' : 'Servicio';
+          doc.text(tipoLabel, 50, yTable + 6);
+          doc.text(item.descripcion, 130, yTable + 6, { width: 215, lineGap: 2 });
+          doc.text(String(item.cantidad), 360, yTable + 6, { width: 40, align: 'right' });
+          doc.text(formatoMoneda(item.precioUnitario), 410, yTable + 6, { width: 70, align: 'right' });
+          doc.text(formatoMoneda(item.subtotal), 490, yTable + 6, { width: 70, align: 'right' });
+
+          yTable += rowHeight;
         });
 
         // ================= DESGLOSE DE TOTALES =================

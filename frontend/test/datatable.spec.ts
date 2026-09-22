@@ -96,4 +96,13 @@ test('Componente Global DataTable y Patrón de Tablas Avanzado (Mockup Specifica
     assert.ok(clientesViewCode.includes('storageKey="clientes-table-layout"'), 'ClientesVehiculosView debe usar storageKey para tabla clientes');
     assert.ok(clientesViewCode.includes('className={styles.btnTablePrimary}'), 'ClientesVehiculosView debe usar btnTablePrimary para el boton de nuevo cliente');
   });
+
+  await t.test('OrdenesTrabajoView utiliza DataTable con storageKey', () => {
+    const ordenesViewPath = path.resolve('app/components/OrdenesTrabajoView.tsx');
+    const ordenesViewCode = fs.readFileSync(ordenesViewPath, 'utf8');
+
+    assert.ok(ordenesViewCode.includes("import DataTable"), 'OrdenesTrabajoView debe importar DataTable');
+    assert.ok(ordenesViewCode.includes('<DataTable<OrdenTrabajo>'), 'OrdenesTrabajoView debe usar DataTable tipado con OrdenTrabajo');
+    assert.ok(ordenesViewCode.includes('storageKey="ordenes-table-layout"'), 'OrdenesTrabajoView debe usar storageKey para tabla órdenes');
+  });
 });

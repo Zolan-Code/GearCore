@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './ordenes-trabajo.module.css';
+import DataTable, { Column } from './DataTable';
 import {
   useOrdenesTrabajo,
   useMecanicos,
@@ -153,7 +154,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState<string>('TODAS');
   const [filtroMecanico, setFiltroMecanico] = useState<string>('TODOS');
-  const [busqueda, setBusqueda] = useState<string>('');
 
   // Modal Crear OT
   const [showCrearModal, setShowCrearModal] = useState(false);
@@ -168,9 +168,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [nuevoKm, setNuevoKm] = useState<string>('');
   const [guardandoOT, setGuardandoOT] = useState(false);
 
-  // Modal Técnico / Diagnóstico / Horas
+  // Modal Unificado de Gestión de OT (3 pestañas)
   const [selectedOT, setSelectedOT] = useState<OrdenTrabajo | null>(null);
-  const [showTecnicoModal, setShowTecnicoModal] = useState(false);
+  const [showGestionModal, setShowGestionModal] = useState(false);
+  const [modalTab, setModalTab] = useState<'tecnico' | 'repuestos' | 'ficha'>('tecnico');
   const [editDiagnostico, setEditDiagnostico] = useState('');
   const [editTrabajo, setEditTrabajo] = useState('');
   const [editFotos, setEditFotos] = useState<string[]>([]);
@@ -204,18 +205,48 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     onConfirm?: () => void;
   } | null>(null);
 
-  // Modal Ficha Integral / Detalle de OT
-  const [otDetalle, setOtDetalle] = useState<OrdenTrabajo | null>(null);
+  // Determinar la siguiente acción lógica según el estado actual
+  function getSiguientePaso(estado: EstadoOT): { label: string; siguiente: EstadoOT } | null {
+    switch (estado) {
+      case 'RECIBIDO':
+        return { label: 'Comenzar Diagnóstico', siguiente: 'DIAGNOSTICO' };
+      case 'DIAGNOSTICO':
+        return { label: 'Completar Diagnóstico (A Cotizar)', siguiente: 'COTIZACION' };
+      case 'APROBADO':
+        return { label: 'Iniciar Reparación', siguiente: 'EN_REPARACION' };
+      case 'EN_REPARACION':
+        return { label: 'Enviar a Control de Calidad', siguiente: 'CONTROL_CALIDAD' };
+      case 'CONTROL_CALIDAD':
+        return { label: 'Aprobar y Entregar Vehículo', siguiente: 'ENTREGADO' };
+      default:
+        return null;
+    }
+  }
 
-  async function abrirDetalleOT(ot: OrdenTrabajo) {
-    setOtDetalle(ot);
+  // Abrir Modal Unificado de Gestión
+  async function abrirGestionOT(ot: OrdenTrabajo, tabInicial: 'tecnico' | 'repuestos' | 'ficha' = 'tecnico') {
+    setSelectedOT(ot);
+    setModalTab(tabInicial);
+    setEditDiagnostico(ot.diagnostico || '');
+    setEditTrabajo(ot.trabajoRealizado || '');
+    setEditFotos(ot.fotosDiagnostico || []);
+    setNuevaFotoUrl('');
+    setHorasInput('');
+    setComentarioHoras('');
+    setRepuestoSeleccionadoId('');
+    setCantidadRepuesto('1');
+    setShowGestionModal(true);
+
     try {
       const fresca = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${ot.id}`);
       if (fresca) {
-        setOtDetalle(fresca);
+        setSelectedOT(fresca);
+        setEditDiagnostico(fresca.diagnostico || '');
+        setEditTrabajo(fresca.trabajoRealizado || '');
+        setEditFotos(fresca.fotosDiagnostico || []);
       }
     } catch {
-      // mantiene la existente si falla
+      // mantener estado actual si falla
     }
   }
 
@@ -243,9 +274,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       const updated = await cambiarEstadoOTMutation.mutateAsync({ otId, estado: nuevoEstado });
       if (selectedOT && selectedOT.id === otId) {
         setSelectedOT(updated);
-      }
-      if (otDetalle && otDetalle.id === otId) {
-        setOtDetalle(updated);
       }
     } catch (err: any) {
       setDialogo({
@@ -315,28 +343,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setNuevoKm('');
   }
 
-  // Abrir Modal Técnico
-  async function abrirModalTecnico(ot: OrdenTrabajo) {
-    setSelectedOT(ot);
-    setEditDiagnostico(ot.diagnostico || '');
-    setEditTrabajo(ot.trabajoRealizado || '');
-    setEditFotos(ot.fotosDiagnostico || []);
-    setNuevaFotoUrl('');
-    setHorasInput('');
-    setComentarioHoras('');
-    setRepuestoSeleccionadoId('');
-    setCantidadRepuesto('1');
-    setShowTecnicoModal(true);
-
-    try {
-      const fresca = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${ot.id}`);
-      if (fresca) {
-        setSelectedOT(fresca);
-      }
-    } catch {
-      // mantener estado actual si falla fetch
-    }
-  }
 
   // SCRUM-23: Agregar Repuesto a la OT con descuento automático
   async function handleAgregarRepuestoOT() {
@@ -529,13 +535,20 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
           horas: parseFloat(horasInput),
           comentario: comentarioHoras || undefined,
         });
+        setHorasInput('');
+        setComentarioHoras('');
       }
 
       const finalOT = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
       if (finalOT) {
         setSelectedOT(finalOT);
       }
-      setShowTecnicoModal(false);
+      setShowGestionModal(false);
+      setDialogo({
+        tipo: 'success',
+        titulo: 'Diagnóstico Guardado',
+        mensaje: 'Se actualizaron el diagnóstico técnico, la bitácora y las horas registradas exitosamente.',
+      });
     } catch (err: any) {
       setDialogo({
         tipo: 'error',
@@ -568,20 +581,12 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     }
   }
 
-  // Filtrado de OTs en memoria
+  // Filtrado de OTs en memoria (por estado de pestaña y mecánico seleccionado)
   const ordenesFiltradas = ordenes.filter((ot) => {
     if (filtroEstado !== 'TODAS' && ot.estado !== filtroEstado) return false;
     if (filtroMecanico !== 'TODOS') {
       if (filtroMecanico === 'SIN_ASIGNAR' && ot.mecanicoId) return false;
       if (filtroMecanico !== 'SIN_ASIGNAR' && ot.mecanicoId !== filtroMecanico) return false;
-    }
-    if (busqueda.trim()) {
-      const q = busqueda.toLowerCase().trim();
-      const patenteMatch = ot.vehiculo.patente.toLowerCase().includes(q);
-      const clienteMatch = ot.vehiculo.cliente.nombre.toLowerCase().includes(q);
-      const fallaMatch = ot.fallaReportada.toLowerCase().includes(q);
-      const modeloMatch = `${ot.vehiculo.marca} ${ot.vehiculo.modelo}`.toLowerCase().includes(q);
-      if (!patenteMatch && !clienteMatch && !fallaMatch && !modeloMatch) return false;
     }
     return true;
   });
@@ -605,50 +610,54 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
               : 'Recepción, diagnóstico técnico, registro de horas y trazabilidad en taller'}
           </p>
         </div>
-
-        <div className={styles.toolbarActions}>
-          {userRole !== 'MECANICO' && (
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => {
-                resetCrearForm();
-                setShowCrearModal(true);
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>Nueva Orden de Trabajo</span>
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Barra de Filtros */}
-      <div className={styles.filterBar}>
-        <div className={styles.filterRow}>
-          <div className={styles.searchWrapper}>
-            <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Buscar por patente, cliente o falla..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-          </div>
+      {/* Pestañas de Estado (Filtro Rápido) */}
+      <div className={styles.statusTabs}>
+        <button
+          type="button"
+          className={`${styles.statusTab} ${filtroEstado === 'TODAS' ? styles.statusTabActive : ''}`}
+          onClick={() => setFiltroEstado('TODAS')}
+        >
+          <span>Todas</span>
+          <span className={styles.tabCountBadge}>{ordenes.length}</span>
+        </button>
+        {ESTADOS_OT.map((est) => {
+          const count = ordenes.filter((o) => o.estado === est.id).length;
+          return (
+            <button
+              key={est.id}
+              type="button"
+              className={`${styles.statusTab} ${filtroEstado === est.id ? styles.statusTabActive : ''}`}
+              onClick={() => setFiltroEstado(est.id)}
+            >
+              <span>{est.label}</span>
+              <span className={styles.tabCountBadge}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <div className={styles.filterControls}>
+      {/* TABLA PRINCIPAL DE ÓRDENES DE TRABAJO (DATATABLE) */}
+      <DataTable<OrdenTrabajo>
+        data={ordenesFiltradas}
+        keyExtractor={(ot) => ot.id}
+        storageKey="ordenes-table-layout"
+        searchPlaceholder="Buscar por patente, cliente, marca o falla..."
+        loading={loadingOTs}
+        loadingMessage="Cargando órdenes de trabajo..."
+        error={errorOTs ? errOTs : null}
+        errorMessage={`Error al consultar órdenes: ${(errOTs as any)?.message || 'Error del servidor'}`}
+        onRetry={() => refetchOTs()}
+        emptyMessage="No se encontraron órdenes de trabajo con los filtros aplicados."
+        actions={
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             {userRole !== 'MECANICO' ? (
               <select
-                className={styles.selectInput}
+                className={styles.selectTableFilter}
                 value={filtroMecanico}
                 onChange={(e) => setFiltroMecanico(e.target.value)}
+                title="Filtrar órdenes por mecánico asignado"
               >
                 <option value="TODOS">Todos los mecánicos</option>
                 <option value="SIN_ASIGNAR">Sin asignar</option>
@@ -664,12 +673,13 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  color: '#1d4ed8',
-                  padding: '7px 12px',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  height: '36px',
+                  padding: '0 12px',
                   borderRadius: '8px',
-                  fontSize: '12px',
+                  fontSize: '12.5px',
                   fontWeight: 600,
                 }}
               >
@@ -677,321 +687,188 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                <span>Mis Órdenes Asignadas</span>
+                <span>Mis Órdenes</span>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Pestañas de Estado (Filtro Rápido) */}
-        <div className={styles.statusTabs}>
-          <button
-            type="button"
-            className={`${styles.statusTab} ${filtroEstado === 'TODAS' ? styles.statusTabActive : ''}`}
-            onClick={() => setFiltroEstado('TODAS')}
-          >
-            <span>Todas</span>
-            <span className={styles.tabCountBadge}>{ordenes.length}</span>
-          </button>
-          {ESTADOS_OT.map((est) => {
-            const count = ordenes.filter((o) => o.estado === est.id).length;
-            return (
+            {userRole !== 'MECANICO' && (
               <button
-                key={est.id}
                 type="button"
-                className={`${styles.statusTab} ${filtroEstado === est.id ? styles.statusTabActive : ''}`}
-                onClick={() => setFiltroEstado(est.id)}
-              >
-                <span>{est.label}</span>
-                <span className={styles.tabCountBadge}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Contenido Principal: Listado de Tarjetas */}
-      {errorOTs ? (
-        <div style={{ padding: '20px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#b91c1c' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div>
-              <strong style={{ display: 'block', fontSize: '14px' }}>Error al cargar Órdenes de Trabajo</strong>
-              <span style={{ fontSize: '12px' }}>{(errOTs as any)?.message || 'No fue posible conectar con el servidor.'}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => refetchOTs()}
-            style={{ padding: '8px 16px', background: '#ffffff', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
-          >
-            Reintentar
-          </button>
-        </div>
-      ) : loadingOTs ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-          Cargando órdenes de trabajo...
-        </div>
-      ) : ordenesFiltradas.length === 0 ? (
-        <div className={styles.emptyState}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-          </svg>
-          <h4 className={styles.emptyStateTitle}>No se encontraron órdenes de trabajo</h4>
-          <p>
-            {busqueda || filtroEstado !== 'TODAS'
-              ? 'Prueba modificando los filtros de búsqueda.'
-              : 'Aún no hay órdenes registradas. Haz clic en "+ Nueva Orden de Trabajo" para ingresar una.'}
-          </p>
-        </div>
-      ) : (
-        <div className={styles.grid}>
-          {ordenesFiltradas.map((ot) => {
-            const estadoObj = ESTADOS_OT.find((e) => e.id === ot.estado) || ESTADOS_OT[0];
-            const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === ot.estado);
-
-            return (
-              <div
-                key={ot.id}
-                className={styles.otCard}
-                onClick={() => abrirDetalleOT(ot)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    abrirDetalleOT(ot);
-                  }
+                className={styles.btnTablePrimary}
+                onClick={() => {
+                  resetCrearForm();
+                  setShowCrearModal(true);
                 }}
-                title="Haz clic para ver la ficha completa de la orden"
+                title="Registrar una nueva Orden de Trabajo"
               >
-                {/* Cabecera Tarjeta: Código y Estado */}
-                <div className={styles.otCardHeader}>
-                  <span className={styles.otCodeBadge}>OT #{ot.id.slice(0, 8).toUpperCase()}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {actualizandoEstadoId === ot.id ? (
-                      <span className={styles.statusBadgeLoading}>
-                        <span className={styles.spinner} />
-                        <span>Actualizando...</span>
-                      </span>
-                    ) : (
-                      <span className={`${styles.statusBadge} ${estadoObj.class}`}>
-                        {estadoObj.label}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span>Nueva OT</span>
+              </button>
+            )}
+          </div>
+        }
+        columns={[
+          {
+            id: 'patente',
+            header: 'Patente',
+            width: '120px',
+            cell: (ot) => (
+              <div className={styles.plateBadge}>
+                <img
+                  src="/assets/chile-flag.svg"
+                  alt="CL"
+                  className={styles.plateFlag}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                <span>{ot.vehiculo.patente}</span>
+              </div>
+            ),
+            filterFn: (ot, q) => ot.vehiculo.patente.toLowerCase().includes(q),
+          },
+          {
+            id: 'vehiculo',
+            header: 'Vehículo',
+            cell: (ot) => (
+              <div>
+                <strong style={{ display: 'block', color: 'var(--text-primary)' }}>
+                  {ot.vehiculo.marca} {ot.vehiculo.modelo}
+                </strong>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  {ot.vehiculo.anio ? `Año ${ot.vehiculo.anio}` : 'Año S/I'}
+                  {ot.kilometrajeRecepcion ? ` • ${ot.kilometrajeRecepcion.toLocaleString('es-CL')} km` : ''}
+                </span>
+              </div>
+            ),
+            filterFn: (ot, q) =>
+              `${ot.vehiculo.marca} ${ot.vehiculo.modelo}`.toLowerCase().includes(q),
+          },
+          {
+            id: 'cliente',
+            header: 'Cliente',
+            cell: (ot) => (
+              <div>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
+                  {ot.vehiculo.cliente?.nombre || 'Sin cliente'}
+                </span>
+                {userRole !== 'MECANICO' && ot.vehiculo.cliente?.telefono && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    +{ot.vehiculo.cliente.telefono}
+                  </span>
+                )}
+              </div>
+            ),
+            filterFn: (ot, q) =>
+              (ot.vehiculo.cliente?.nombre || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'mecanico',
+            header: 'Mecánico',
+            cell: (ot) => (
+              <span style={{ fontSize: '12.5px', color: ot.mecanico ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                {ot.mecanico ? ot.mecanico.nombre : 'Sin asignar'}
+              </span>
+            ),
+            filterFn: (ot, q) =>
+              (ot.mecanico?.nombre || 'sin asignar').toLowerCase().includes(q),
+          },
+          {
+            id: 'fallaReportada',
+            header: 'Motivo / Falla',
+            cell: (ot) => (
+              <div
+                title={ot.fallaReportada}
+                style={{
+                  maxWidth: '260px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontSize: '12.5px',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {ot.fallaReportada}
+              </div>
+            ),
+            filterFn: (ot, q) => ot.fallaReportada.toLowerCase().includes(q),
+          },
+          {
+            id: 'horasHombre',
+            header: 'Horas',
+            align: 'center',
+            width: '80px',
+            cell: (ot) => (
+              <span className={styles.hoursPill} style={{ margin: '0 auto' }}>
+                {ot.horasHombre || 0}h
+              </span>
+            ),
+            sortFn: (a, b) => (a.horasHombre || 0) - (b.horasHombre || 0),
+          },
+          {
+            id: 'estado',
+            header: 'Estado',
+            align: 'center',
+            width: '130px',
+            cell: (ot) => {
+              const estadoObj = ESTADOS_OT.find((e) => e.id === ot.estado) || ESTADOS_OT[0];
+              return (
+                <span className={`${styles.statusBadge} ${estadoObj.class}`}>
+                  {estadoObj.label}
+                </span>
+              );
+            },
+            filterFn: (ot, q) => {
+              const estadoObj = ESTADOS_OT.find((e) => e.id === ot.estado);
+              return (estadoObj?.label || '').toLowerCase().includes(q);
+            },
+          },
+          {
+            id: 'acciones',
+            header: 'Acciones',
+            align: 'right',
+            width: '180px',
+            sortable: false,
+            filterable: false,
+            cell: (ot) => (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  className={styles.btnGestionar}
+                  onClick={() => abrirGestionOT(ot, 'tecnico')}
+                  title="Abrir gestión técnica, diagnóstico y avance de estado"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  <span>Gestionar</span>
+                </button>
 
-                {/* Info Vehículo y Cliente */}
-                <div className={styles.vehicleInfoRow}>
-                  <div>
-                    <h4 className={styles.vehicleModelText}>
-                      {ot.vehiculo.marca} {ot.vehiculo.modelo} {ot.vehiculo.anio ? `(${ot.vehiculo.anio})` : ''}
-                    </h4>
-                    <p className={styles.clientText}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      <span>{ot.vehiculo.cliente.nombre}</span>
-                    </p>
-                  </div>
-                  <div className={styles.plateBadge}>
-                    <img src="/assets/chile-flag.svg" alt="CL" className={styles.plateFlag} onError={(e) => (e.currentTarget.style.display = 'none')} />
-                    <span>{ot.vehiculo.patente}</span>
-                  </div>
-                </div>
-
-                {/* Falla Reportada */}
-                <div className={styles.fallaBox}>
-                  <strong>Motivo:</strong> {ot.fallaReportada}
-                </div>
-
-                {/* Barra de progreso de ciclo de vida */}
-                <div className={styles.progressStepper} title={`Progreso: paso ${estadoIdx + 1} de 7`}>
-                  {ESTADOS_OT.map((est, idx) => (
-                    <div
-                      key={est.id}
-                      className={`${styles.stepSegment} ${
-                        idx < estadoIdx
-                          ? styles.stepSegmentDone
-                          : idx === estadoIdx
-                          ? styles.stepSegmentCurrent
-                          : ''
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                {/* Metadatos: Mecánico, Horas y Checklist */}
-                <div className={styles.metaDetails}>
-                  <div className={styles.mecanicoPill}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                    <span>{ot.mecanico ? ot.mecanico.nombre : 'Sin asignar'}</span>
-                  </div>
-
-                  <div className={styles.hoursPill} title="Horas-hombre invertidas">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span>{ot.horasHombre || 0} hrs</span>
-                  </div>
-
-                  {ot.detalleRepuestos && ot.detalleRepuestos.length > 0 && (
-                    <div
-                      className={styles.repuestosOTBadge}
-                      title={`${ot.detalleRepuestos.length} repuesto(s) asignados. Total: $${ot.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')}. Clic para gestionar.`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        abrirModalTecnico(ot);
-                      }}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                      </svg>
-                      <span>
-                        {ot.detalleRepuestos.length} rep. (${ot.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')})
-                      </span>
-                    </div>
-                  )}
-
-                  {ot.fotosDiagnostico && ot.fotosDiagnostico.length > 0 && (
-                    <div
-                      className={styles.hoursPill}
-                      style={{ background: '#f0fdf4', color: '#166534', cursor: 'pointer' }}
-                      title={`${ot.fotosDiagnostico.length} foto(s) de diagnóstico. Clic para ver`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        abrirModalTecnico(ot);
-                      }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                      <span>{ot.fotosDiagnostico.length} fotos</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Acciones de la Tarjeta */}
-                <div className={styles.cardActions}>
-                  {/* Selector rápido de estado con indicador de carga */}
-                  <div className={styles.selectWrapper} onClick={(e) => e.stopPropagation()}>
-                    <select
-                      className={styles.selectInput}
-                      style={{ width: '100%', padding: '6px 10px', fontSize: '12px' }}
-                      value={ot.estado}
-                      disabled={actualizandoEstadoId === ot.id}
-                      onChange={(e) => handleCambiarEstado(ot.id, e.target.value as EstadoOT)}
-                    >
-                      {ESTADOS_OT.map((est) => {
-                        // Reglas de Negocio / RBAC:
-                        // 1. Un MECANICO no puede aprobar cotizaciones ni saltar a APROBADO (la aprobación es comercial por cliente/recepcionista).
-                        // 2. Si la OT está en COTIZACION, el mecánico no puede avanzar a EN_REPARACION ni posteriores sin aprobación previa.
-                        // 3. Si la cotización existe y no está APROBADA, nadie puede saltar a EN_REPARACION.
-                        const cotNoAprobada =
-                          (ot as any).cotizacion && (ot as any).cotizacion.estado !== 'APROBADA';
-
-                        const disabledPorMecanico =
-                          userRole === 'MECANICO' &&
-                          (est.id === 'APROBADO' ||
-                            (ot.estado === 'COTIZACION' && est.id !== 'COTIZACION' && est.id !== 'DIAGNOSTICO'));
-
-                        const disabledPorCotizacion =
-                          cotNoAprobada &&
-                          (est.id === 'APROBADO' || est.id === 'EN_REPARACION') &&
-                          est.id !== ot.estado;
-
-                        const disabledOption = disabledPorMecanico || disabledPorCotizacion;
-
-                        return (
-                          <option key={est.id} value={est.id} disabled={disabledOption}>
-                            {est.label} {disabledOption && est.id !== ot.estado ? '🔒' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {actualizandoEstadoId === ot.id && (
-                      <div className={styles.selectLoadingOverlay}>
-                        <span className={styles.spinner} />
-                        <span>Guardando...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className={styles.btnActionSecondary}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirModalTecnico(ot);
-                    }}
-                    title="Diagnóstico, fotos y registro de horas"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                    <span>Diagnóstico & Fotos</span>
-                  </button>
-
+                {userRole !== 'MECANICO' && (
                   <button
                     type="button"
                     className={styles.btnWhatsApp}
+                    style={{ padding: '6px 9px', borderRadius: '8px', fontSize: '11.5px' }}
                     disabled={cargandoWhatsappId === ot.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleGenerarWhatsapp(ot.id);
-                    }}
-                    title="Notificar avance o cotización por WhatsApp"
+                    onClick={() => handleGenerarWhatsapp(ot.id)}
+                    title="Notificar por WhatsApp al cliente"
                   >
                     {cargandoWhatsappId === ot.id ? (
-                      <>
-                        <span
-                          className={styles.spinner}
-                          style={{
-                            width: '12px',
-                            height: '12px',
-                            borderWidth: '2px',
-                            borderColor: '#a7f3d0',
-                            borderTopColor: '#047857',
-                          }}
-                        />
-                        <span>Cargando...</span>
-                      </>
+                      <span className={styles.spinner} style={{ width: '10px', height: '10px' }} />
                     ) : (
-                      <>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                        </svg>
-                        <span>WhatsApp</span>
-                      </>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
                     )}
                   </button>
-                </div>
-
-                {/* Pista visual para abrir ficha */}
-                <div className={styles.otCardHint}>
-                  <span>Ver ficha completa</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+            ),
+          },
+        ]}
+      />
 
       {/* MODAL 1: CREAR ORDEN DE TRABAJO (SCRUM-10, 11, 21) */}
       {showCrearModal && (
@@ -1215,397 +1092,674 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         </div>
       )}
 
-      {/* MODAL 2: TÉCNICO - DIAGNÓSTICO, HORAS Y FOTOS (SCRUM-13, 19) */}
-      {showTecnicoModal && selectedOT && (
-        <div className={styles.modalOverlay} onClick={() => setShowTecnicoModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div>
-                <h3>Diagnóstico & Seguimiento Técnico</h3>
-                <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                  OT #{selectedOT.id.slice(0, 8).toUpperCase()} | {selectedOT.vehiculo.patente} ({selectedOT.vehiculo.marca} {selectedOT.vehiculo.modelo})
-                </p>
-              </div>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                onClick={() => setShowTecnicoModal(false)}
-              >
-                ✕
-              </button>
-            </div>
+      {/* MODAL UNIFICADO: GESTIÓN DE ORDEN DE TRABAJO (3 PESTAÑAS) */}
+      {showGestionModal && selectedOT && (() => {
+        const otActual = ordenes.find((o) => o.id === selectedOT.id) || selectedOT;
+        const estadoObj = ESTADOS_OT.find((e) => e.id === otActual.estado) || ESTADOS_OT[0];
+        const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === otActual.estado);
+        const pasoSiguiente = getSiguientePaso(otActual.estado);
+        const repuestosAsignados = otActual.detalleRepuestos || [];
+        const totalRepuestos = repuestosAsignados.reduce(
+          (acc, item) => acc + item.cantidad * item.precioUnitario,
+          0
+        );
 
-            <div className={styles.modalBody}>
-              {/* Resumen Checklist */}
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '10px', fontSize: '13px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span><strong>Combustible:</strong> {selectedOT.nivelCombustible || 'No registrado'}</span>
-                  <span><strong>Km Recepción:</strong> {selectedOT.kilometrajeRecepcion ? `${selectedOT.kilometrajeRecepcion.toLocaleString('es-CL')} km` : 'S/I'}</span>
-                </div>
-                <div><strong>Carrocería:</strong> {selectedOT.rayonesCarroceria || 'Sin observaciones'}</div>
-                <div><strong>Elementos de Valor:</strong> {selectedOT.elementosValor || 'Sin elementos'}</div>
-              </div>
-
-              {/* Registro de Horas Invertidas (SCRUM-13) */}
-              <div className={styles.formGroup} style={{ background: '#eff6ff', padding: '14px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className={styles.formLabel} style={{ color: '#1e3a8a', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span>Registro de Horas-Hombre (Mecánico)</span>
-                  </label>
-                  <strong style={{ fontSize: '14px', color: '#1e40af' }}>
-                    Total actual: {selectedOT.horasHombre || 0} hrs
-                  </strong>
-                </div>
-
-                <div className={styles.hoursButtonsRow}>
-                  <span style={{ fontSize: '12px', color: '#1e40af' }}>Atajo rápido:</span>
-                  {[0.5, 1, 1.5, 2, 3].map((h) => (
-                    <button
-                      key={h}
-                      type="button"
-                      className={styles.hourQuickBtn}
-                      onClick={() => setHorasInput(h.toString())}
-                    >
-                      +{h}h
-                    </button>
-                  ))}
-                </div>
-
-                <div className={styles.rowTwoCols} style={{ marginTop: '8px' }}>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    className={styles.formInput}
-                    placeholder="Horas a sumar (ej: 1.5)"
-                    value={horasInput}
-                    onChange={(e) => setHorasInput(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    className={styles.formInput}
-                    placeholder="Comentario / tarea realizada (opcional)"
-                    value={comentarioHoras}
-                    onChange={(e) => setComentarioHoras(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Diagnóstico Técnico */}
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Diagnóstico Técnico</label>
-                <textarea
-                  className={styles.formTextarea}
-                  placeholder="Detalle el diagnóstico realizado (fallas encontradas, componentes afectados)..."
-                  value={editDiagnostico}
-                  onChange={(e) => setEditDiagnostico(e.target.value)}
-                />
-              </div>
-
-              {/* Trabajo Realizado / Bitácora */}
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Trabajo Realizado / Bitácora de Reparación</label>
-                <textarea
-                  className={styles.formTextarea}
-                  placeholder="Detalle las reparaciones efectuadas, repuestos instalados..."
-                  value={editTrabajo}
-                  onChange={(e) => setEditTrabajo(e.target.value)}
-                />
-              </div>
-
-              {/* Repuestos y Materiales Utilizados (SCRUM-23) */}
-              <div className={styles.repuestosSection}>
-                <div className={styles.repuestosHeader}>
-                  <h4 className={styles.repuestosTitle}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                    </svg>
-                    <span>Repuestos y Materiales Utilizados ({selectedOT.detalleRepuestos?.length || 0})</span>
-                  </h4>
-                  {selectedOT.detalleRepuestos && selectedOT.detalleRepuestos.length > 0 && (
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af' }}>
-                      Total: ${selectedOT.detalleRepuestos.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0).toLocaleString('es-CL')}
+        return (
+          <div className={styles.modalOverlay} onClick={() => setShowGestionModal(false)}>
+            <div className={styles.modalContentLarge} onClick={(e) => e.stopPropagation()}>
+              {/* Header Unificado */}
+              <div className={styles.modalHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div className={styles.plateBadge}>
+                    <img
+                      src="/assets/chile-flag.svg"
+                      alt="CL"
+                      className={styles.plateFlag}
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                    <span>{otActual.vehiculo.patente}</span>
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px' }}>
+                      OT #{otActual.id.slice(0, 8).toUpperCase()} — {otActual.vehiculo.marca} {otActual.vehiculo.modelo}
+                    </h3>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      Cliente: {otActual.vehiculo.cliente?.nombre || 'Sin cliente'}
                     </span>
+                  </div>
+                  <span className={`${styles.statusBadge} ${estadoObj.class}`}>
+                    {estadoObj.label}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.closeBtn}
+                  onClick={() => setShowGestionModal(false)}
+                  title="Cerrar modal"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Barra de Pestañas Unificadas */}
+              <div className={styles.tabNav}>
+                <button
+                  type="button"
+                  className={`${styles.tabNavItem} ${modalTab === 'tecnico' ? styles.tabNavItemActive : ''}`}
+                  onClick={() => setModalTab('tecnico')}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                  <span>1. Diagnóstico & Reparación</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.tabNavItem} ${modalTab === 'repuestos' ? styles.tabNavItemActive : ''}`}
+                  onClick={() => setModalTab('repuestos')}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                  <span>2. Repuestos & Materiales</span>
+                  {repuestosAsignados.length > 0 && (
+                    <span className={styles.tabBadge}>{repuestosAsignados.length}</span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.tabNavItem} ${modalTab === 'ficha' ? styles.tabNavItemActive : ''}`}
+                  onClick={() => setModalTab('ficha')}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <span>3. Ficha & Recepción</span>
+                </button>
+              </div>
+
+              {/* Contenido Dinámico según Pestaña Activa */}
+              <div className={styles.modalBody}>
+                {/* Stepper de ciclo de vida compacto */}
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                      Progreso de OT
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Paso {estadoIdx + 1} de 7: {estadoObj.label}
+                    </span>
+                  </div>
+                  <div className={styles.stepperDetail}>
+                    {ESTADOS_OT.map((est, idx) => {
+                      const isDone = idx < estadoIdx;
+                      const isCurrent = idx === estadoIdx;
+                      return (
+                        <div key={est.id} className={styles.stepperDetailItem}>
+                          <div
+                            className={`${styles.stepperDetailBar} ${
+                              isDone
+                                ? styles.stepperDetailBarDone
+                                : isCurrent
+                                ? styles.stepperDetailBarCurrent
+                                : ''
+                            }`}
+                          />
+                          <span
+                            className={`${styles.stepperDetailText} ${
+                              isCurrent ? styles.stepperDetailTextCurrent : ''
+                            }`}
+                          >
+                            {est.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* PESTAÑA 1: DIAGNÓSTICO, REPARACIÓN, HORAS Y FOTOS */}
+                {modalTab === 'tecnico' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Falla Reportada por el Cliente */}
+                    <div className={styles.fallaBox}>
+                      <strong>Motivo de Ingreso declarado:</strong> {otActual.fallaReportada}
+                    </div>
+
+                    {/* Registro de Horas-Hombre Invertidas */}
+                    <div className={styles.formGroup} style={{ background: 'var(--bg-subtle)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label className={styles.formLabel} style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          <span>Registro Rápido de Horas-Hombre</span>
+                        </label>
+                        <strong style={{ fontSize: '13px', color: 'var(--accent-primary)' }}>
+                          Total actual: {otActual.horasHombre || 0} hrs
+                        </strong>
+                      </div>
+
+                      <div className={styles.hoursButtonsRow}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Sumar:</span>
+                        {[0.5, 1, 1.5, 2, 3].map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            className={styles.hourQuickBtn}
+                            onClick={() => setHorasInput(h.toString())}
+                          >
+                            +{h}h
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className={styles.rowTwoCols} style={{ marginTop: '8px' }}>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          className={styles.formInput}
+                          placeholder="Horas a sumar (ej: 1.5)"
+                          value={horasInput}
+                          onChange={(e) => setHorasInput(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className={styles.formInput}
+                          placeholder="Comentario / tarea realizada (opcional)"
+                          value={comentarioHoras}
+                          onChange={(e) => setComentarioHoras(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Diagnóstico Técnico */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>Diagnóstico Técnico del Mecánico</label>
+                      <textarea
+                        className={styles.formTextarea}
+                        placeholder="Detalle el diagnóstico realizado (fallas encontradas, componentes afectados)..."
+                        value={editDiagnostico}
+                        onChange={(e) => setEditDiagnostico(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Trabajo Realizado / Bitácora (Solo editable una vez aprobada la reparación) */}
+                    {otActual.estado === 'RECIBIDO' || otActual.estado === 'DIAGNOSTICO' || otActual.estado === 'COTIZACION' ? (
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>
+                          <span>Trabajo Realizado / Bitácora de Reparación</span>
+                          <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Bloqueado hasta aprobación comercial
+                          </span>
+                        </label>
+                        <div
+                          style={{
+                            padding: '12px 14px',
+                            background: 'var(--bg-subtle)',
+                            border: '1px dashed var(--border-color)',
+                            borderRadius: '10px',
+                            fontSize: '12.5px',
+                            color: 'var(--text-secondary)',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          {editTrabajo ? (
+                            <div>
+                              <strong style={{ display: 'block', marginBottom: '4px', color: 'var(--text-primary)' }}>Registro previo:</strong>
+                              <span>{editTrabajo}</span>
+                            </div>
+                          ) : (
+                            <span>
+                              🔒 La bitácora de reparación y ejecución se habilitará automáticamente una vez que la cotización sea <strong>aprobada por el cliente</strong>.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Trabajo Realizado / Bitácora de Reparación</label>
+                        <textarea
+                          className={styles.formTextarea}
+                          placeholder="Detalle las reparaciones efectuadas, calibraciones, pruebas realizadas..."
+                          value={editTrabajo}
+                          onChange={(e) => setEditTrabajo(e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    {/* Evidencia Fotográfica */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>
+                        <span>Fotografías de Evidencia ({editFotos.length})</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Sube desde PC o cámara/celular
+                        </span>
+                      </label>
+
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        capture="environment"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={handleFileSelect}
+                      />
+
+                      <div className={styles.photoActionsRow}>
+                        <button
+                          type="button"
+                          className={styles.btnUploadFile}
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={procesandoFotos}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                          <span>{procesandoFotos ? 'Procesando imágenes...' : 'Subir desde Dispositivo'}</span>
+                        </button>
+
+                        <div className={styles.urlInputRow}>
+                          <input
+                            type="url"
+                            className={styles.formInput}
+                            style={{ flex: 1 }}
+                            placeholder="O pegar URL de imagen..."
+                            value={nuevaFotoUrl}
+                            onChange={(e) => setNuevaFotoUrl(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className={styles.btnActionSecondary}
+                            onClick={() => {
+                              if (nuevaFotoUrl.trim()) {
+                                setEditFotos((prev) => [...prev, nuevaFotoUrl.trim()]);
+                                setNuevaFotoUrl('');
+                              }
+                            }}
+                          >
+                            + Agregar URL
+                          </button>
+                        </div>
+                      </div>
+
+                      {editFotos.length > 0 && (
+                        <div className={styles.photosGrid}>
+                          {editFotos.map((url, idx) => (
+                            <div
+                              key={idx}
+                              className={styles.photoThumbnailWrapper}
+                              onClick={() => setFotoAmpliada(url)}
+                              title="Clic para ver en grande"
+                            >
+                              <img
+                                src={url}
+                                alt={`Diagnóstico ${idx + 1}`}
+                                className={styles.photoThumbnail}
+                                onError={(e) => {
+                                  e.currentTarget.src = 'https://via.placeholder.com/150?text=Foto+No+Disponible';
+                                }}
+                              />
+                              <div className={styles.photoZoomBadge}>
+                                <span>Ver</span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.photoDeleteBtn}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditFotos((prev) => prev.filter((_, i) => i !== idx));
+                                }}
+                                title="Eliminar foto"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* PESTAÑA 2: REPUESTOS Y MATERIALES */}
+                {modalTab === 'repuestos' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>
+                        Repuestos Asignados ({repuestosAsignados.length})
+                      </h4>
+                      {userRole !== 'MECANICO' && repuestosAsignados.length > 0 && (
+                        <strong style={{ fontSize: '14px', color: 'var(--accent-primary)' }}>
+                          Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
+                        </strong>
+                      )}
+                    </div>
+
+                    {repuestosAsignados.length > 0 ? (
+                      <div className={styles.repuestosTableWrapper}>
+                        <table className={styles.repuestosTable}>
+                          <thead>
+                            <tr>
+                              <th>Código</th>
+                              <th>Descripción</th>
+                              <th style={{ textAlign: 'center' }}>Cant.</th>
+                              {userRole !== 'MECANICO' && (
+                                <>
+                                  <th style={{ textAlign: 'right' }}>P. Unitario</th>
+                                  <th style={{ textAlign: 'right' }}>Subtotal</th>
+                                </>
+                              )}
+                              <th style={{ textAlign: 'center', width: '60px' }}>Acción</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {repuestosAsignados.map((d) => (
+                              <tr key={d.id}>
+                                <td>
+                                  <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
+                                </td>
+                                <td>
+                                  <strong>{d.repuesto.nombre}</strong>
+                                </td>
+                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{d.cantidad}</td>
+                                {userRole !== 'MECANICO' && (
+                                  <>
+                                    <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                                      ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
+                                    </td>
+                                  </>
+                                )}
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    className={styles.btnDeleteRepuesto}
+                                    disabled={quitandoRepuestoId === d.id}
+                                    onClick={() => solicitarQuitarRepuesto(d)}
+                                    title="Quitar repuesto y devolver a inventario"
+                                  >
+                                    {quitandoRepuestoId === d.id ? (
+                                      <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                                    ) : (
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className={styles.emptyRepuestosBox}>
+                        Aún no se han asignado repuestos a esta orden de trabajo.
+                      </div>
+                    )}
+
+                    {/* Formulario para añadir repuesto */}
+                    <div className={styles.repuestoAddForm}>
+                      <div className={styles.repuestoSelectWrapper}>
+                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          Seleccionar Repuesto del Almacén:
+                        </label>
+                        <select
+                          className={styles.formSelect}
+                          value={repuestoSeleccionadoId}
+                          onChange={(e) => {
+                            setRepuestoSeleccionadoId(e.target.value);
+                            setCantidadRepuesto('1');
+                          }}
+                          style={{ fontSize: '13px' }}
+                        >
+                          <option value="">-- Seleccionar repuesto --</option>
+                          {catalogoRepuestos.map((r) => {
+                            const disponible = r.stock > 0;
+                            return (
+                              <option key={r.id} value={r.id} disabled={!disponible}>
+                                [{r.codigo}] {r.nombre} — {disponible ? `Stock: ${r.stock} uds` : 'AGOTADO'}
+                                {userRole !== 'MECANICO' ? ` — $${r.precioVenta.toLocaleString('es-CL')}` : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      <div className={styles.repuestoQtyWrapper}>
+                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          Cant:
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          className={styles.formInput}
+                          value={cantidadRepuesto}
+                          onChange={(e) => setCantidadRepuesto(e.target.value)}
+                          style={{ fontSize: '13px', textAlign: 'center' }}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        className={styles.btnPrimary}
+                        style={{ alignSelf: 'flex-end', padding: '10px 14px', fontSize: '13px' }}
+                        disabled={!repuestoSeleccionadoId || guardandoRepuestoOT}
+                        onClick={handleAgregarRepuestoOT}
+                      >
+                        {guardandoRepuestoOT ? 'Asociando...' : '+ Añadir a OT'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* PESTAÑA 3: FICHA DE INGRESO Y CLIENTE */}
+                {modalTab === 'ficha' && (
+                  <div className={styles.detalleGrid}>
+                    <div className={styles.detalleCard}>
+                      <h4 className={styles.detalleCardTitle}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                          <circle cx="7" cy="17" r="2" />
+                          <circle cx="17" cy="17" r="2" />
+                        </svg>
+                        <span>Vehículo y Propietario</span>
+                      </h4>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Vehículo:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {otActual.vehiculo.marca} {otActual.vehiculo.modelo} {otActual.vehiculo.anio ? `(${otActual.vehiculo.anio})` : ''}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Patente:</span>
+                        <span className={styles.detalleInfoValue} style={{ fontFamily: 'monospace' }}>
+                          {otActual.vehiculo.patente}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Cliente:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {otActual.vehiculo.cliente?.nombre || 'Sin cliente asignado'}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>RUT:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {otActual.vehiculo.cliente?.rut || 'Sin RUT'}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Teléfono:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {otActual.vehiculo.cliente?.telefono || 'No registrado'}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Correo:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {otActual.vehiculo.cliente?.email || 'No registrado'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.detalleCard}>
+                      <h4 className={styles.detalleCardTitle}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 11l3 3L22 4" />
+                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                        </svg>
+                        <span>Checklist de Recepción</span>
+                      </h4>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Kilometraje al Ingreso:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {(otActual.kilometrajeRecepcion ?? otActual.vehiculo?.kilometraje) != null
+                            ? `${(otActual.kilometrajeRecepcion ?? otActual.vehiculo?.kilometraje)!.toLocaleString('es-CL')} km`
+                            : 'No registrado'}
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Nivel de Combustible:</span>
+                        <span className={styles.fuelBadge}>
+                          <span>{otActual.nivelCombustible || 'No indicado'}</span>
+                        </span>
+                      </div>
+
+                      <div className={styles.detalleInfoRow}>
+                        <span className={styles.detalleInfoLabel}>Fecha de Recepción:</span>
+                        <span className={styles.detalleInfoValue}>
+                          {new Date(otActual.fechaRecepcion).toLocaleString('es-CL', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                        <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                          {otActual.rayonesCarroceria || 'Sin rayones ni daños declarados'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                        <span className={styles.detalleInfoLabel}>Elementos de Valor Declarados:</span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                          {otActual.elementosValor || 'Sin elementos de valor declarados'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Unificado con Transición de Estado y Guardar */}
+              <div className={styles.modalFooter} style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Botón de Transición Secuencial */}
+                  {pasoSiguiente ? (
+                    <button
+                      type="button"
+                      className={styles.btnNextStep}
+                      disabled={actualizandoEstadoId === otActual.id}
+                      onClick={() => handleCambiarEstado(otActual.id, pasoSiguiente.siguiente)}
+                      title={`Avanzar al siguiente estado: ${pasoSiguiente.label}`}
+                    >
+                      {actualizandoEstadoId === otActual.id ? (
+                        <>
+                          <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                          <span>Actualizando estado...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{pasoSiguiente.label}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  ) : otActual.estado === 'COTIZACION' ? (
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-subtle)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      En espera de aprobación comercial en Cotizaciones
+                    </span>
+                  ) : otActual.estado === 'ENTREGADO' ? (
+                    <span style={{ fontSize: '12px', color: '#047857', background: '#d1fae5', padding: '6px 12px', borderRadius: '8px', fontWeight: 600 }}>
+                      ✓ Vehículo Entregado al Cliente
+                    </span>
+                  ) : null}
+
+                  {userRole !== 'MECANICO' && (
+                    <button
+                      type="button"
+                      className={styles.btnWhatsApp}
+                      style={{ padding: '8px 12px', fontSize: '12.5px' }}
+                      disabled={cargandoWhatsappId === otActual.id}
+                      onClick={() => handleGenerarWhatsapp(otActual.id)}
+                      title="Notificar por WhatsApp"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      <span>WhatsApp</span>
+                    </button>
                   )}
                 </div>
 
-                {/* Tabla de repuestos ya asignados */}
-                {selectedOT.detalleRepuestos && selectedOT.detalleRepuestos.length > 0 ? (
-                  <div className={styles.repuestosTableWrapper}>
-                    <table className={styles.repuestosTable}>
-                      <thead>
-                        <tr>
-                          <th>Código</th>
-                          <th>Descripción</th>
-                          <th style={{ textAlign: 'center' }}>Cant.</th>
-                          <th style={{ textAlign: 'right' }}>P. Unitario</th>
-                          <th style={{ textAlign: 'right' }}>Subtotal</th>
-                          <th style={{ textAlign: 'center', width: '50px' }}>Acción</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedOT.detalleRepuestos.map((d) => (
-                          <tr key={d.id}>
-                            <td>
-                              <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
-                            </td>
-                            <td>
-                              <strong>{d.repuesto.nombre}</strong>
-                            </td>
-                            <td style={{ textAlign: 'center' }}>{d.cantidad}</td>
-                            <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                              ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                className={styles.btnDeleteRepuesto}
-                                disabled={quitandoRepuestoId === d.id}
-                                onClick={() => solicitarQuitarRepuesto(d)}
-                                title="Quitar repuesto y reintegrar al inventario"
-                              >
-                                {quitandoRepuestoId === d.id ? (
-                                  <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
-                                ) : (
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6" />
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                  </svg>
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', padding: '8px 0' }}>
-                    Aún no se han asociado repuestos a esta orden de trabajo.
-                  </div>
-                )}
-
-                {/* Formulario para asociar repuesto desde el inventario */}
-                <div className={styles.repuestoAddForm}>
-                  <div className={styles.repuestoSelectWrapper}>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-                      Seleccionar Repuesto del Almacén:
-                    </label>
-                    <select
-                      className={styles.formSelect}
-                      value={repuestoSeleccionadoId}
-                      onChange={(e) => {
-                        setRepuestoSeleccionadoId(e.target.value);
-                        setCantidadRepuesto('1');
-                      }}
-                      style={{ fontSize: '13px' }}
-                    >
-                      <option value="">-- Seleccione un repuesto para asociar --</option>
-                      {catalogoRepuestos.map((r) => {
-                        const disponible = r.stock > 0;
-                        return (
-                          <option key={r.id} value={r.id} disabled={!disponible}>
-                            [{r.codigo}] {r.nombre} — {disponible ? `Stock: ${r.stock} uds` : 'AGOTADO'} — ${r.precioVenta.toLocaleString('es-CL')}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div className={styles.repuestoQtyWrapper}>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-                      Cantidad:
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      className={styles.formInput}
-                      value={cantidadRepuesto}
-                      onChange={(e) => setCantidadRepuesto(e.target.value)}
-                      style={{ fontSize: '13px', textAlign: 'center' }}
-                    />
-                  </div>
-
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
-                    className={styles.btnAddRepuesto}
-                    disabled={
-                      !repuestoSeleccionadoId ||
-                      guardandoRepuestoOT ||
-                      parseInt(cantidadRepuesto, 10) <= 0 ||
-                      isNaN(parseInt(cantidadRepuesto, 10))
-                    }
-                    onClick={handleAgregarRepuestoOT}
+                    className={styles.btnActionSecondary}
+                    onClick={() => setShowGestionModal(false)}
                   >
-                    {guardandoRepuestoOT ? (
-                      <>
-                        <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
-                        <span>Descontando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        <span>Añadir a OT</span>
-                      </>
-                    )}
+                    Cerrar
                   </button>
-                </div>
-
-                {/* Subtotal estimado en vivo */}
-                {repuestoSeleccionadoId && (() => {
-                  const sel = catalogoRepuestos.find((r) => r.id === repuestoSeleccionadoId);
-                  const cant = parseInt(cantidadRepuesto, 10) || 0;
-                  if (!sel) return null;
-                  const superado = cant > sel.stock;
-                  return (
-                    <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: superado ? '#dc2626' : '#475569', marginTop: '2px' }}>
-                      <span>
-                        Stock en almacén: <strong>{sel.stock} uds</strong>
-                        {superado && ' (¡Excede el stock disponible!)'}
-                      </span>
-                      <span>
-                        Subtotal a sumar: <strong>${(cant * sel.precioVenta).toLocaleString('es-CL')}</strong>
-                      </span>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Fotografías del Diagnóstico (SCRUM-19) */}
-              <div className={styles.formGroup}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className={styles.formLabel} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                      <circle cx="12" cy="13" r="4" />
-                    </svg>
-                    <span>Fotografías del Diagnóstico ({editFotos.length})</span>
-                  </label>
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>Clic en foto para ver a detalle</span>
-                </div>
-
-                {/* Input nativo de archivo para PC y Galería/Cámara de celular */}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={handleFileSelect}
-                />
-
-                <div className={styles.photoActionsRow}>
                   <button
                     type="button"
-                    className={styles.btnUploadFile}
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={procesandoFotos}
-                    title="Subir fotos desde el computador o galería/cámara del celular"
+                    className={styles.btnPrimary}
+                    onClick={handleGuardarTecnico}
+                    disabled={guardandoTecnico}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    <span>{procesandoFotos ? 'Procesando imágenes...' : 'Subir desde PC o Celular'}</span>
+                    {guardandoTecnico ? 'Guardando...' : 'Guardar Cambios'}
                   </button>
-
-                  <div className={styles.urlInputRow}>
-                    <input
-                      type="url"
-                      className={styles.formInput}
-                      style={{ flex: 1 }}
-                      placeholder="O pegar URL de fotografía..."
-                      value={nuevaFotoUrl}
-                      onChange={(e) => setNuevaFotoUrl(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className={styles.btnActionSecondary}
-                      onClick={() => {
-                        if (nuevaFotoUrl.trim()) {
-                          setEditFotos((prev) => [...prev, nuevaFotoUrl.trim()]);
-                          setNuevaFotoUrl('');
-                        }
-                      }}
-                    >
-                      + Agregar URL
-                    </button>
-                  </div>
                 </div>
-
-                {editFotos.length > 0 && (
-                  <div className={styles.photosGrid}>
-                    {editFotos.map((url, idx) => (
-                      <div
-                        key={idx}
-                        className={styles.photoThumbnailWrapper}
-                        onClick={() => setFotoAmpliada(url)}
-                        title="Clic para maximizar y ver a detalle"
-                      >
-                        <img
-                          src={url}
-                          alt={`Diagnóstico ${idx + 1}`}
-                          className={styles.photoThumbnail}
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/150?text=Foto+No+Disponible';
-                          }}
-                        />
-                        <div className={styles.photoZoomBadge}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            <line x1="11" y1="8" x2="11" y2="14" />
-                            <line x1="8" y1="11" x2="14" y2="11" />
-                          </svg>
-                          <span>Ver</span>
-                        </div>
-                        <button
-                          type="button"
-                          className={styles.photoDeleteBtn}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditFotos((prev) => prev.filter((_, i) => i !== idx));
-                          }}
-                          title="Eliminar foto"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button
-                type="button"
-                className={styles.btnActionSecondary}
-                onClick={() => setShowTecnicoModal(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={styles.btnPrimary}
-                onClick={handleGuardarTecnico}
-                disabled={guardandoTecnico}
-              >
-                {guardandoTecnico ? 'Guardando...' : 'Guardar Diagnóstico y Horas'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL 3: NOTIFICACIÓN POR WHATSAPP (SCRUM-20) */}
       {showWhatsappModal && whatsappData && (
@@ -1692,426 +1846,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
           </div>
         </div>
       )}
-
-      {/* MODAL 5: FICHA INTEGRAL DE ORDEN DE TRABAJO (DETALLE COMPLETO) */}
-      {otDetalle && (() => {
-        const otInfo = ordenes.find((o) => o.id === otDetalle.id) || otDetalle;
-        const estadoObj = ESTADOS_OT.find((e) => e.id === otInfo.estado) || ESTADOS_OT[0];
-        const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === otInfo.estado);
-        const totalRepuestos = (otInfo.detalleRepuestos || []).reduce(
-          (acc, item) => acc + item.cantidad * item.precioUnitario,
-          0
-        );
-
-        return (
-          <div className={styles.modalOverlay} onClick={() => setOtDetalle(null)}>
-            <div className={styles.modalContentLarge} onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
-              <div className={styles.modalHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <polyline points="10 9 9 9 8 9" />
-                    </svg>
-                    <h3 style={{ margin: 0 }}>Ficha Integral de Orden de Trabajo</h3>
-                  </div>
-                  <span className={styles.otCodeBadge}>OT #{otInfo.id.slice(0, 8).toUpperCase()}</span>
-                  <span className={`${styles.statusBadge} ${estadoObj.class}`}>
-                    {estadoObj.label}
-                  </span>
-                  <div className={styles.plateBadge}>
-                    <img src="/assets/chile-flag.svg" alt="CL" className={styles.plateFlag} onError={(e) => (e.currentTarget.style.display = 'none')} />
-                    <span>{otInfo.vehiculo.patente}</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className={styles.closeBtn}
-                  onClick={() => setOtDetalle(null)}
-                  title="Cerrar ficha"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                {/* Stepper de ciclo de vida */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Estado del Vehículo en Taller
-                    </span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Etapa {estadoIdx + 1} de 7: {estadoObj.label}
-                    </span>
-                  </div>
-                  <div className={styles.stepperDetail}>
-                    {ESTADOS_OT.map((est, idx) => {
-                      const isDone = idx < estadoIdx;
-                      const isCurrent = idx === estadoIdx;
-                      return (
-                        <div key={est.id} className={styles.stepperDetailItem}>
-                          <div
-                            className={`${styles.stepperDetailBar} ${
-                              isDone
-                                ? styles.stepperDetailBarDone
-                                : isCurrent
-                                ? styles.stepperDetailBarCurrent
-                                : ''
-                            }`}
-                          />
-                          <span
-                            className={`${styles.stepperDetailText} ${
-                              isCurrent ? styles.stepperDetailTextCurrent : ''
-                            }`}
-                          >
-                            {est.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Grid 2 Columnas: Cliente/Vehículo y Checklist de Recepción */}
-                <div className={styles.detalleGrid}>
-                  {/* Tarjeta 1: Cliente & Vehículo */}
-                  <div className={styles.detalleCard}>
-                    <h4 className={styles.detalleCardTitle}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-                        <circle cx="7" cy="17" r="2" />
-                        <circle cx="17" cy="17" r="2" />
-                      </svg>
-                      <span>Vehículo y Propietario</span>
-                    </h4>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Vehículo:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.marca} {otInfo.vehiculo.modelo} {otInfo.vehiculo.anio ? `(${otInfo.vehiculo.anio})` : ''}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Patente:</span>
-                      <span className={styles.detalleInfoValue} style={{ fontFamily: 'monospace' }}>
-                        {otInfo.vehiculo.patente}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Cliente / Titular:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente?.nombre || 'Sin cliente asignado'}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>RUT:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente?.rut || 'Sin RUT'}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Teléfono:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente?.telefono || 'No registrado'}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Correo Electrónico:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.vehiculo.cliente?.email || 'No registrado'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tarjeta 2: Checklist y Datos de Recepción */}
-                  <div className={styles.detalleCard}>
-                    <h4 className={styles.detalleCardTitle}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 11l3 3L22 4" />
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                      </svg>
-                      <span>Checklist de Ingreso</span>
-                    </h4>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Kilometraje al Ingreso:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {(otInfo.kilometrajeRecepcion ?? otInfo.vehiculo?.kilometraje) != null
-                          ? `${(otInfo.kilometrajeRecepcion ?? otInfo.vehiculo?.kilometraje)!.toLocaleString('es-CL')} km`
-                          : 'No registrado'}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Nivel de Combustible:</span>
-                      <span className={styles.fuelBadge}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 22h12M4 9h10M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
-                        </svg>
-                        <span>{otInfo.nivelCombustible || 'No indicado'}</span>
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Fecha de Recepción:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {new Date(otInfo.fechaRecepcion).toLocaleString('es-CL', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-
-                    <div className={styles.detalleInfoRow}>
-                      <span className={styles.detalleInfoLabel}>Fecha de Entrega:</span>
-                      <span className={styles.detalleInfoValue}>
-                        {otInfo.fechaEntrega
-                          ? new Date(otInfo.fechaEntrega).toLocaleString('es-CL', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Pendiente de entrega'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-                      <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
-                      <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        {otInfo.rayonesCarroceria || 'Sin rayones ni daños declarados'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-                      <span className={styles.detalleInfoLabel}>Elementos de Valor Declarados:</span>
-                      <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        {otInfo.elementosValor || 'Sin elementos de valor declarados'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sección Falla Reportada y Diagnóstico Técnico */}
-                <div className={styles.detalleCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                    <h4 className={styles.detalleCardTitle} style={{ borderBottom: 'none', paddingBottom: 0 }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                      </svg>
-                      <span>Diagnóstico y Ejecución Técnica</span>
-                    </h4>
-
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div className={styles.mecanicoPill}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3" />
-                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                        <span>Mecánico: <strong>{otInfo.mecanico ? otInfo.mecanico.nombre : 'Sin asignar'}</strong></span>
-                      </div>
-
-                      <div className={styles.hoursPill}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        <span>{otInfo.horasHombre || 0} hrs invertidas</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Motivo de ingreso */}
-                  <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                      Motivo de Ingreso / Falla Reportada por Cliente:
-                    </span>
-                    <div className={styles.fallaBox}>
-                      {otInfo.fallaReportada}
-                    </div>
-                  </div>
-
-                  {/* Hallazgos de Diagnóstico */}
-                  <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                      Diagnóstico del Mecánico:
-                    </span>
-                    <div className={styles.detalleTextareaBox}>
-                      {otInfo.diagnostico || 'Sin diagnóstico registrado por el momento.'}
-                    </div>
-                  </div>
-
-                  {/* Trabajos Realizados */}
-                  <div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                      Trabajos y Reparaciones Efectuadas:
-                    </span>
-                    <div className={styles.detalleTextareaBox}>
-                      {otInfo.trabajoRealizado || 'Sin reparaciones registradas por el momento.'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sección Desglose de Repuestos */}
-                <div className={styles.repuestosSection}>
-                  <div className={styles.repuestosHeader}>
-                    <h4 className={styles.repuestosTitle}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                        <line x1="12" y1="22.08" x2="12" y2="12" />
-                      </svg>
-                      <span>Repuestos Asignados ({otInfo.detalleRepuestos?.length || 0})</span>
-                    </h4>
-                    {otInfo.detalleRepuestos && otInfo.detalleRepuestos.length > 0 && (
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
-                      </span>
-                    )}
-                  </div>
-
-                  {otInfo.detalleRepuestos && otInfo.detalleRepuestos.length > 0 ? (
-                    <div className={styles.repuestosTableWrapper}>
-                      <table className={styles.repuestosTable}>
-                        <thead>
-                          <tr>
-                            <th>Código</th>
-                            <th>Descripción</th>
-                            <th style={{ textAlign: 'center' }}>Cantidad</th>
-                            <th style={{ textAlign: 'right' }}>Precio Unitario</th>
-                            <th style={{ textAlign: 'right' }}>Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {otInfo.detalleRepuestos.map((item) => {
-                            const subtotal = item.cantidad * item.precioUnitario;
-                            return (
-                              <tr key={item.id}>
-                                <td>
-                                  <span className={styles.repuestoCodeBadge}>{item.repuesto.codigo}</span>
-                                </td>
-                                <td>{item.repuesto.nombre}</td>
-                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.cantidad}</td>
-                                <td style={{ textAlign: 'right' }}>${item.precioUnitario.toLocaleString('es-CL')}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 700 }}>${subtotal.toLocaleString('es-CL')}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className={styles.emptyRepuestosBox}>
-                      No se han asignado repuestos o insumos a esta orden de trabajo.
-                    </div>
-                  )}
-                </div>
-
-                {/* Sección Galería de Fotografías */}
-                <div className={styles.detalleCard}>
-                  <h4 className={styles.detalleCardTitle}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    <span>Evidencia Fotográfica de Diagnóstico ({otInfo.fotosDiagnostico?.length || 0})</span>
-                  </h4>
-
-                  {otInfo.fotosDiagnostico && otInfo.fotosDiagnostico.length > 0 ? (
-                    <div className={styles.photosGrid}>
-                      {otInfo.fotosDiagnostico.map((foto, idx) => (
-                        <div
-                          key={idx}
-                          className={styles.photoThumbnailWrapper}
-                          onClick={() => setFotoAmpliada(foto)}
-                          title="Clic para ampliar imagen"
-                        >
-                          <img
-                            src={foto}
-                            alt={`Evidencia ${idx + 1}`}
-                            className={styles.photoThumbnail}
-                          />
-                          <div className={styles.photoZoomBadge}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="11" cy="11" r="8" />
-                              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                              <line x1="11" y1="8" x2="11" y2="14" />
-                              <line x1="8" y1="11" x2="14" y2="11" />
-                            </svg>
-                            <span>Ver</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.emptyRepuestosBox}>
-                      No se han adjuntado fotos de diagnóstico para esta orden.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Modal Footer con acciones */}
-              <div className={styles.modalFooter} style={{ justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  className={styles.btnWhatsApp}
-                  disabled={cargandoWhatsappId === otInfo.id}
-                  onClick={() => handleGenerarWhatsapp(otInfo.id)}
-                  title="Generar mensaje y enviar por WhatsApp al cliente"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                  </svg>
-                  <span>Notificar por WhatsApp</span>
-                </button>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="button"
-                    className={styles.btnActionSecondary}
-                    onClick={() => {
-                      setOtDetalle(null);
-                      abrirModalTecnico(otInfo);
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                    <span>Gestionar Diagnóstico / Repuestos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
-                    style={{ padding: '8px 18px', fontSize: '13px' }}
-                    onClick={() => setOtDetalle(null)}
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* MODAL 4: FOTO AMPLIADA A DETALLE (LIGHTBOX) */}
       {fotoAmpliada && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchWithAuth } from '../../lib/api';
+import { fetchWithAuth, fetchBlobWithAuth } from '../../lib/api';
 
 export interface DashboardMetricas {
   periodo: {
@@ -67,3 +67,33 @@ export function useDashboardMetricas(filtro?: { fechaInicio?: string; fechaFin?:
     staleTime: 60 * 1000,
   });
 }
+
+// Utilidad: Descargar informe ejecutivo del Dashboard en PDF
+export async function descargarInformeDashboardPdf(filtro?: {
+  fechaInicio?: string;
+  fechaFin?: string;
+}): Promise<void> {
+  const queryParams = new URLSearchParams();
+  if (filtro?.fechaInicio) queryParams.set('fechaInicio', filtro.fechaInicio);
+  if (filtro?.fechaFin) queryParams.set('fechaFin', filtro.fechaFin);
+
+  const endpoint = `/dashboard/reporte-pdf${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const blob = await fetchBlobWithAuth(endpoint, { method: 'GET' });
+
+  let filename = 'Informe-Ejecutivo-GearCore.pdf';
+  if (filtro?.fechaInicio && filtro?.fechaFin) {
+    filename = `Informe-Ejecutivo-${filtro.fechaInicio}-al-${filtro.fechaFin}.pdf`;
+  } else if (filtro?.fechaInicio) {
+    filename = `Informe-Ejecutivo-desde-${filtro.fechaInicio}.pdf`;
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+

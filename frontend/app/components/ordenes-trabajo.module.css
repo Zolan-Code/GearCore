@@ -1429,3 +1429,171 @@
   white-space: pre-wrap;
 }
 
+/* Modal Unificado con Pestañas (Ponytail Refactor) */
+.tabNav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 24px;
+  background: var(--bg-surface);
+}
+
+.tabNavItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.tabNavItem:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.tabNavItemActive {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.tabNavItemActive .tabBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+:global([data-theme="dark"]) .tabNavItemActive .tabBadge {
+  background: #1e3a8a;
+  color: #bfdbfe;
+}
+
+/* Botón inteligente de transición secuencial de estado */
+.btnNextStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+}
+
+.btnNextStep:hover:not(:disabled) {
+  background: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);
+}
+
+.btnNextStep:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Botón de acción para DataTable */
+.btnTablePrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #1e1b4b;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnTablePrimary:hover {
+  background: #312e81;
+}
+
+:global([data-theme="dark"]) .btnTablePrimary {
+  background: #3b82f6;
+}
+
+:global([data-theme="dark"]) .btnTablePrimary:hover {
+  background: #2563eb;
+}
+
+/* Selector integrado en la toolbar de DataTable */
+.selectTableFilter {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.selectTableFilter:hover {
+  border-color: var(--text-muted);
+}
+
+.selectTableFilter:focus {
+  border-color: var(--accent-primary);
+}
+
+/* Botón de gestión en fila */
+.btnGestionar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnGestionar:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .btnGestionar {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+:global([data-theme="dark"]) .btnGestionar:hover {
+  background: #334155;
+}
+

@@ -4,7 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import styles from '../page.module.css';
 import { useDashboard } from './DashboardContext';
-import { useDashboardMetricas } from '../../hooks/dashboard/useDashboardMetricas';
+import {
+  useDashboardMetricas,
+  descargarInformeDashboardPdf,
+} from '../../hooks/dashboard/useDashboardMetricas';
 
 export default function DashboardPage() {
   const { userRole } = useDashboard();
@@ -13,6 +16,7 @@ export default function DashboardPage() {
   // Filtros de fecha (SCRUM-38)
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
 
   const { data: metricas, isLoading, isFetching } = useDashboardMetricas({
     fechaInicio: fechaInicio || undefined,
@@ -23,6 +27,20 @@ export default function DashboardPage() {
   const operaciones = metricas?.operaciones;
   const rankingRepuestos = metricas?.rankingRepuestos || [];
   const productividadMecanicos = metricas?.productividadMecanicos || [];
+
+  async function handleDescargarInforme() {
+    try {
+      setDescargandoPdf(true);
+      await descargarInformeDashboardPdf({
+        fechaInicio: fechaInicio || undefined,
+        fechaFin: fechaFin || undefined,
+      });
+    } catch (err: any) {
+      alert(`Error al descargar el informe: ${err?.message || 'Error del servidor'}`);
+    } finally {
+      setDescargandoPdf(false);
+    }
+  }
 
   function formatearMoneda(val: number) {
     return new Intl.NumberFormat('es-CL', {
@@ -72,6 +90,35 @@ export default function DashboardPage() {
               Limpiar filtro
             </button>
           )}
+
+          {userRole === 'ADMINISTRADOR' && (
+            <button
+              type="button"
+              className={styles.btnReportePdf}
+              onClick={handleDescargarInforme}
+              disabled={descargandoPdf || isLoading}
+              title="Descargar informe ejecutivo en PDF del período filtrado"
+            >
+              {descargandoPdf ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  <span>Generando PDF...</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Exportar Informe PDF</span>
+                </>
+              )}
+            </button>
+          )}
+
           {isFetching && <span style={{ fontSize: 11, color: '#3b82f6' }}>Actualizando...</span>}
         </div>
       </div>

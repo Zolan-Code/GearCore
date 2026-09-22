@@ -1082,14 +1082,15 @@ export default function CotizacionesView({ userRole }: Props) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                      Descuento Inicial (CLP)
+                      Descuento Comercial (CLP)
                     </label>
                     <input
                       type="number"
-                      step="1000"
+                      step="500"
                       min="0"
                       value={nuevoDescuento}
                       onChange={(e) => setNuevoDescuento(parseFloat(e.target.value) || 0)}
+                      placeholder="0 (opcional)"
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
                     />
                   </div>
