@@ -640,13 +640,14 @@
 
 .modalFooter {
   padding: 16px 24px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   position: sticky;
   bottom: 0;
-  background: #f8fafc;
+  background: var(--bg-surface-elevated);
+  z-index: 10;
 }
 
 /* Campos de Formulario */
@@ -703,6 +704,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   margin-top: 6px;
 }
 
@@ -1595,5 +1597,57 @@
 
 :global([data-theme="dark"]) .btnGestionar:hover {
   background: #334155;
+}
+
+@media (max-width: 640px) {
+  .modalOverlay {
+    padding: 8px;
+  }
+
+  .modalContent {
+    max-height: calc(100vh - 16px);
+    border-radius: 14px;
+  }
+
+  .modalHeader {
+    padding: 14px 16px;
+  }
+
+  .modalHeader h3 {
+    font-size: 16px;
+  }
+
+  .tabNav {
+    padding: 0 12px;
+    overflow-x: auto;
+  }
+
+  .tabNavItem {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .modalBody {
+    padding: 16px 14px;
+    gap: 14px;
+  }
+
+  .modalFooter {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modalFooter > div {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .btnNextStep {
+    width: 100%;
+    justify-content: center;
+  }
 }
 

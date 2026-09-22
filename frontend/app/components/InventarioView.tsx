@@ -893,7 +893,7 @@ export default function InventarioView({ userRole }: Props) {
               </button>
             </div>
 
-            <form onSubmit={handleGuardarRepuesto}>
+            <form onSubmit={handleGuardarRepuesto} className={styles.modalForm}>
               <div className={styles.modalBody}>
                 <div className={styles.rowTwoCols}>
                   <div className={styles.formGroup}>
