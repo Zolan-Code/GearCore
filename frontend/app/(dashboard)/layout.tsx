@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,9 @@ import { fetchWithAuth } from '../../lib/api';
 import styles from '../page.module.css';
 import { useInactivityTimeout } from '../../hooks/useInactivityTimeout';
 import { useMiPerfil } from '../../hooks/usuarios/useUsuarios';
+import { useRepuestos } from '../../hooks/repuestos/useRepuestos';
+import { useOrdenesTrabajo } from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
+import { useCotizaciones } from '../../hooks/cotizaciones/useCotizaciones';
 import { NAV_ITEMS, Rol, isRouteAllowed, getActiveNavHref } from './navConfig';
 import { DashboardContext, UserProfile } from './DashboardContext';
 import { useTheme } from '../context/ThemeContext';
@@ -186,6 +189,120 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.location.href = '/login';
   }
 
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Consultas de datos para alertas del taller (habilitadas si el usuario ya está autenticado)
+  const isAuth = !loading && !!user?.id;
+  const { data: repuestosData } = useRepuestos();
+  const { data: ordenesData = [] } = useOrdenesTrabajo();
+  const { data: cotizacionesData = [] } = useCotizaciones();
+
+  // Cerrar notificaciones al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
+  // Cerrar notificaciones al cambiar de ruta
+  useEffect(() => {
+    setShowNotifications(false);
+  }, [pathname]);
+
+  const userRole = (user?.rol || 'MECANICO') as Rol;
+
+  // Alertas calculadas al vuelo (Ponytail: sin hooks ni tablas adicionales)
+  const alertas = useMemo(() => {
+    if (!isAuth) return [];
+    const list: Array<{
+      id: string;
+      tipo: 'stock' | 'ot' | 'cot';
+      titulo: string;
+      desc: string;
+      href: string;
+    }> = [];
+
+    // 1. Alertas de Repuestos (Admin y Recepción)
+    if (userRole !== 'MECANICO' && repuestosData?.items) {
+      const repuestosBajos = repuestosData.items.filter(
+        (r) => r.stock <= (r.stockMinimo ?? 5)
+      );
+      if (repuestosBajos.length > 0) {
+        list.push({
+          id: 'repuestos-bajos',
+          tipo: 'stock',
+          titulo: `${repuestosBajos.length} repuesto(s) con stock crítico`,
+          desc: repuestosBajos
+            .slice(0, 2)
+            .map((r) => `${r.nombre} (${r.stock} uds)`)
+            .join(', ') + (repuestosBajos.length > 2 ? ' y más...' : ''),
+          href: '/inventario',
+        });
+      }
+    }
+
+    // 2. Alertas de Órdenes de Trabajo
+    if (userRole === 'MECANICO') {
+      // Mecánico: OTs asignadas a él en diagnóstico o recibido
+      const misOTsPendientes = ordenesData.filter(
+        (o) => o.mecanicoId === user?.id && (o.estado === 'RECIBIDO' || o.estado === 'DIAGNOSTICO')
+      );
+      if (misOTsPendientes.length > 0) {
+        list.push({
+          id: 'mis-ots-pendientes',
+          tipo: 'ot',
+          titulo: `${misOTsPendientes.length} OT(s) asignadas por revisar`,
+          desc: misOTsPendientes
+            .slice(0, 2)
+            .map((o) => `${o.vehiculo.patente} (${o.fallaReportada.slice(0, 24)})`)
+            .join(', '),
+          href: '/ordenes',
+        });
+      }
+    } else {
+      // Admin / Recepcionista: OTs listas para entrega
+      const otsListas = ordenesData.filter(
+        (o) => o.estado === 'CONTROL_CALIDAD' || o.estado === 'ENTREGADO'
+      );
+      if (otsListas.length > 0) {
+        list.push({
+          id: 'ots-listas',
+          tipo: 'ot',
+          titulo: `${otsListas.length} vehículo(s) en control o listos`,
+          desc: 'Vehículos con reparaciones completadas listos para retiro.',
+          href: '/ordenes',
+        });
+      }
+    }
+
+    // 3. Alertas de Cotizaciones (Admin y Recepcionista)
+    if (userRole !== 'MECANICO') {
+      const cotizacionesPendientes = cotizacionesData.filter(
+        (c) => c.estado === 'BORRADOR' || c.estado === 'ENVIADA'
+      );
+      if (cotizacionesPendientes.length > 0) {
+        list.push({
+          id: 'cotizaciones-pendientes',
+          tipo: 'cot',
+          titulo: `${cotizacionesPendientes.length} cotización(es) pendientes`,
+          desc: 'Cotizaciones en borrador o enviadas en espera de aprobación.',
+          href: '/cotizaciones',
+        });
+      }
+    }
+
+    return list;
+  }, [isAuth, userRole, user?.id, repuestosData, ordenesData, cotizacionesData]);
+
   if (loading) {
     return (
       <div className={styles.splashContainer}>
@@ -197,7 +314,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const userRole = (user?.rol || 'MECANICO') as Rol;
   const initialLetter = (user?.nombre || user?.email || 'U').charAt(0).toUpperCase();
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => item.roles.includes(userRole) && item.id !== 'auditoria'
@@ -273,18 +389,91 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </button>
 
-            <button
-              type="button"
-              className={styles.notificationBtn}
-              title="Notificaciones: Sistema al día"
-              aria-label="Notificaciones"
-            >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className={styles.notificationBadge} />
-            </button>
+            {/* Centro de Notificaciones Activas */}
+            <div className={styles.notificationsWrapper} ref={notifRef}>
+              <button
+                type="button"
+                className={styles.notificationBtn}
+                onClick={() => setShowNotifications((prev) => !prev)}
+                title={alertas.length > 0 ? `${alertas.length} alertas del taller` : 'Notificaciones: Todo al día'}
+                aria-label="Notificaciones"
+                aria-expanded={showNotifications}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {alertas.length > 0 && (
+                  <span className={styles.notificationBadgeCount}>{alertas.length}</span>
+                )}
+              </button>
+
+              {/* Popover flotante de notificaciones */}
+              {showNotifications && (
+                <div className={styles.notificationsPopover}>
+                  <div className={styles.notificationsHeader}>
+                    <span className={styles.notificationsTitle}>Notificaciones</span>
+                    <span className={styles.notificationsCount}>
+                      {alertas.length} {alertas.length === 1 ? 'alerta' : 'alertas'}
+                    </span>
+                  </div>
+
+                  <div className={styles.notificationsList}>
+                    {alertas.length === 0 ? (
+                      <div className={styles.notificationsEmpty}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#10b981' }}>
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        <span>Todo al día. No hay alertas pendientes.</span>
+                      </div>
+                    ) : (
+                      alertas.map((item) => (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          className={styles.notificationItem}
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          <div
+                            className={`${styles.notificationIcon} ${
+                              item.tipo === 'stock'
+                                ? styles.notificationIconStock
+                                : item.tipo === 'ot'
+                                ? styles.notificationIconOT
+                                : styles.notificationIconCot
+                            }`}
+                          >
+                            {item.tipo === 'stock' ? (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                              </svg>
+                            ) : item.tipo === 'ot' ? (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                              </svg>
+                            ) : (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className={styles.notificationContent}>
+                            <div className={styles.notificationItemTitle}>{item.titulo}</div>
+                            <div className={styles.notificationItemDesc}>{item.desc}</div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
