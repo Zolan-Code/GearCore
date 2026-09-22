@@ -125,6 +125,7 @@ export function useCrearOT() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes-trabajo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -142,6 +143,7 @@ export function useCambiarEstadoOT() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes-trabajo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -159,6 +161,7 @@ export function useActualizarOT() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes-trabajo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

@@ -597,6 +597,328 @@
   color: var(--text-primary);
 }
 
+/* --- Módulo Business Intelligence (SCRUM-35 a SCRUM-38) --- */
+.biHeaderBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--bg-surface);
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+
+.dateFilterGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dateFilterGroup label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.dateInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.dateInput:focus {
+  border-color: #3b82f6;
+}
+
+.clearFilterBtn {
+  padding: 8px 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clearFilterBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.biTwoColumnGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.biPanel {
+  background: var(--bg-surface);
+  border-radius: 18px;
+  padding: 22px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.biPanelTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rankingList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rankingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.rankingLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rankingBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--accent-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rankingName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rankingCode {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rankingStats {
+  text-align: right;
+}
+
+.rankingCount {
+  font-weight: 700;
+  color: #3b82f6;
+  font-size: 14px;
+}
+
+.rankingMoney {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.mecanicoCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+}
+
+.mecanicoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mecanicoName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mecanicoBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+  transition: width 0.4s ease;
+}
+
+.mecanicoMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Embudo de Flujo Operativo (Pipeline de OTs) */
+.pipelineContainer {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pipelineHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pipelineTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pipelineSteps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pipelineStep {
+  flex: 1;
+  min-width: 110px;
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-decoration: none;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.pipelineStep:hover {
+  transform: translateY(-1px);
+  border-color: #3b82f6;
+}
+
+.pipelineStepLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pipelineStepCount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* Tabla de Órdenes Recientes */
+.recentTableWrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.recentTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.recentTable th {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.recentTable td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.recentTable tr:hover td {
+  background: var(--bg-hover);
+}
+
+.plateBadge {
+  font-family: monospace;
+  font-weight: 700;
+  background: var(--bg-surface-elevated);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.statusRecibido { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.statusDiagnostico { background: rgba(234, 179, 8, 0.15); color: #ca8a04; }
+.statusCotizacion { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.statusAprobado { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.statusReparacion { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+.statusCalidad { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
+.statusEntregado { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+
 /* Sección inferior */
 .bottomSection {
   background: var(--bg-surface);
