@@ -288,7 +288,6 @@
   font-weight: 600;
   color: #1e293b;
   z-index: 5;
-  backdrop-filter: blur(1px);
 }
 
 /* Estados */
@@ -575,8 +574,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -590,11 +588,36 @@
   width: 100%;
   max-width: 680px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   border: 1px solid var(--border-color);
   box-shadow: var(--popover-shadow);
   display: flex;
   flex-direction: column;
+  transform: translateZ(0);
+}
+
+.modalContent .modalHeader {
+  flex-shrink: 0;
+  position: static;
+}
+
+.modalContent > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.modalContent .modalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modalContent .modalFooter {
+  flex-shrink: 0;
+  position: static;
 }
 
 .modalHeader {
@@ -603,8 +626,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
   background: var(--bg-surface-elevated);
   z-index: 10;
 }
@@ -810,7 +831,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  backdrop-filter: blur(2px);
   pointer-events: none;
 }
 
@@ -846,8 +866,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1128,8 +1147,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1143,6 +1161,7 @@
   border-radius: 16px;
   max-width: 440px;
   width: 100%;
+  transform: translateZ(0);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   padding: 24px;
   display: flex;
@@ -1269,6 +1288,7 @@
   box-shadow: var(--popover-shadow);
   display: flex;
   flex-direction: column;
+  transform: translateZ(0);
 }
 
 .modalContentLarge .modalHeader {
@@ -1481,7 +1501,7 @@
   font-weight: 600;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all 0.15s ease;
+  transition: color 0.1s ease-out, border-color 0.1s ease-out;
   flex-shrink: 0;
   white-space: nowrap;
 }

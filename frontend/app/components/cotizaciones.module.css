@@ -432,7 +432,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -451,6 +450,7 @@
   overflow: hidden;
   box-shadow: var(--popover-shadow);
   border: 1px solid var(--border-color);
+  transform: translateZ(0);
   animation: modalIn 0.2s ease-out;
 }
 
