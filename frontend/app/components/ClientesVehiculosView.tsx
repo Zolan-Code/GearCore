@@ -157,10 +157,17 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           modelo: res.modelo || prev.modelo,
           anio: res.anio ? String(res.anio) : prev.anio,
         }));
-        setVinFeedback({
-          tipo: 'ok',
-          texto: `✓ Detectado: ${res.marca} ${res.modelo} ${res.anio || ''}`.trim(),
-        });
+        if (res.requiereModeloManual || !res.modelo) {
+          setVinFeedback({
+            tipo: 'ok',
+            texto: `✓ Detectado: ${res.marca} ${res.anio || ''} (Ingresa el modelo manualmente)`.trim(),
+          });
+        } else {
+          setVinFeedback({
+            tipo: 'ok',
+            texto: `✓ Detectado: ${res.marca} ${res.modelo} ${res.anio || ''}`.trim(),
+          });
+        }
       } else {
         setVinFeedback({ tipo: 'error', texto: res.mensaje || 'VIN no encontrado en la base global.' });
       }
@@ -184,8 +191,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const [clienteSuccess, setClienteSuccess] = useState<string | null>(null);
   const [savingCliente, setSavingCliente] = useState(false);
 
-  // Formulario Nuevo Vehículo
-  const [formVehiculo, setFormVehiculo] = useState({
+  const initialFormVehiculo = {
     clienteId: '',
     patente: '',
     marca: '',
@@ -193,10 +199,32 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     vin: '',
     anio: '',
     kilometraje: '',
-  });
+  };
+
+  // Formulario Nuevo Vehículo
+  const [formVehiculo, setFormVehiculo] = useState(initialFormVehiculo);
   const [vehiculoError, setVehiculoError] = useState<string | null>(null);
   const [vehiculoSuccess, setVehiculoSuccess] = useState<string | null>(null);
   const [savingVehiculo, setSavingVehiculo] = useState(false);
+
+  function handleAbrirModalVehiculo(clienteIdPreseleccionado?: string) {
+    setVehiculoError(null);
+    setVehiculoSuccess(null);
+    setVinFeedback(null);
+    setFormVehiculo({
+      ...initialFormVehiculo,
+      clienteId: clienteIdPreseleccionado || '',
+    });
+    setShowModalVehiculo(true);
+  }
+
+  function handleCerrarModalVehiculo() {
+    setShowModalVehiculo(false);
+    setVinFeedback(null);
+    setVehiculoError(null);
+    setVehiculoSuccess(null);
+    setFormVehiculo(initialFormVehiculo);
+  }
 
   // Ficha de detalle de cliente y sus vehículos (Modal)
   const [selectedClienteModal, setSelectedClienteModal] = useState<Cliente | null>(null);
@@ -370,8 +398,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
       await handleSelectVehiculo(nuevoVehiculo as any);
 
       setTimeout(() => {
-        setShowModalVehiculo(false);
-        setVehiculoSuccess(null);
+        handleCerrarModalVehiculo();
       }, 1200);
     } catch (err: any) {
       setVehiculoError(err.message || 'Error al guardar vehículo.');
@@ -463,11 +490,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           <button
             type="button"
             className={styles.btnPrimary}
-            onClick={() => {
-              setVehiculoError(null);
-              setVehiculoSuccess(null);
-              setShowModalVehiculo(true);
-            }}
+            onClick={() => handleAbrirModalVehiculo()}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
@@ -911,10 +934,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <button
                 type="button"
                 className={styles.modalClose}
-                onClick={() => {
-                  setShowModalVehiculo(false);
-                  setVinFeedback(null);
-                }}
+                onClick={handleCerrarModalVehiculo}
               >
                 ✕
               </button>
@@ -1003,7 +1023,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                         gap: '4px',
                       }}
                     >
-                      {decodificarVinMutation.isPending ? 'Consultando...' : '⚡ Autocompletar'}
+                      {decodificarVinMutation.isPending ? 'Consultando...' : 'Autocompletar'}
                     </button>
                   </div>
                   <input
@@ -1100,10 +1120,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 <button
                   type="button"
                   className={styles.btnSecondary}
-                  onClick={() => {
-                    setShowModalVehiculo(false);
-                    setVinFeedback(null);
-                  }}
+                  onClick={handleCerrarModalVehiculo}
                   disabled={savingVehiculo}
                 >
                   Cancelar
@@ -1178,11 +1195,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                       style={{ padding: '5px 12px', fontSize: '12px' }}
                       onClick={() => {
                         setShowClienteDetailModal(false);
-                        setFormVehiculo({
-                          ...formVehiculo,
-                          clienteId: selectedClienteModal.id,
-                        });
-                        setShowModalVehiculo(true);
+                        handleAbrirModalVehiculo(selectedClienteModal.id);
                       }}
                     >
                       + Asociar Vehículo

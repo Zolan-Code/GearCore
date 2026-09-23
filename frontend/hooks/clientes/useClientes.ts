@@ -101,6 +101,7 @@ export interface DecodificarVinResult {
   marca?: string;
   modelo?: string;
   anio?: number | null;
+  requiereModeloManual?: boolean;
   mensaje?: string;
 }
 

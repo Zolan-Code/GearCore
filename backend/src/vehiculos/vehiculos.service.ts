@@ -92,6 +92,43 @@ export class VehiculosService {
       };
     }
 
+    // 1. Si existe AUTO_DEV_API_KEY, consultar primero Auto.dev (base global comercial)
+    const autoDevKey = process.env.AUTO_DEV_API_KEY?.trim();
+    if (autoDevKey) {
+      try {
+        const resAutoDev = await fetch(
+          `https://auto.dev/api/vin/${encodeURIComponent(vin)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${autoDevKey}`,
+              Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(5000),
+          },
+        );
+
+        if (resAutoDev.ok) {
+          const data = await resAutoDev.json();
+          const make = (data.make || data.data?.make || '').trim();
+          const model = (data.model || data.data?.model || '').trim();
+          const year = parseInt(data.year || data.data?.year, 10);
+
+          if (make || model) {
+            return {
+              valido: true,
+              marca: make,
+              modelo: model,
+              anio: Number.isInteger(year) && year > 1900 ? year : null,
+              requiereModeloManual: !model,
+            };
+          }
+        }
+      } catch {
+        // En caso de timeout o error en Auto.dev, continúa al fallback de NHTSA
+      }
+    }
+
+    // 2. Fallback a NHTSA vPIC (100% gratuita y pública)
     try {
       const res = await fetch(
         `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/${encodeURIComponent(vin)}?format=json`,
@@ -103,7 +140,10 @@ export class VehiculosService {
 
       const json = await res.json();
       const r = json?.Results?.[0];
-      if (!r || (!r.Make && !r.Model)) {
+      const make = (r?.Make || '').trim();
+      const model = (r?.Model || '').trim();
+
+      if (!r || (!make && !model)) {
         return {
           valido: false,
           mensaje: 'No se encontraron datos para este VIN.',
@@ -113,14 +153,15 @@ export class VehiculosService {
       const anioNum = parseInt(r.ModelYear, 10);
       return {
         valido: true,
-        marca: (r.Make || '').trim(),
-        modelo: (r.Model || '').trim(),
+        marca: make,
+        modelo: model,
         anio: Number.isInteger(anioNum) && anioNum > 1900 ? anioNum : null,
+        requiereModeloManual: !model,
       };
     } catch {
       return {
         valido: false,
-        mensaje: 'Tiempo de espera agotado al consultar NHTSA.',
+        mensaje: 'Tiempo de espera agotado al consultar servicio de VIN.',
       };
     }
   }
