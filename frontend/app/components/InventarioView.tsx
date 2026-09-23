@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './inventario.module.css';
 import DataTable from './DataTable';
@@ -81,6 +82,9 @@ interface Props {
 }
 
 export default function InventarioView({ userRole }: Props) {
+  const searchParams = useSearchParams();
+  const busquedaParam = searchParams.get('search') || searchParams.get('codigo') || searchParams.get('id') || '';
+
   const {
     data: inventarioData,
     isLoading: loadingInventario,
@@ -690,6 +694,7 @@ export default function InventarioView({ userRole }: Props) {
         keyExtractor={(r) => r.id}
         storageKey="inventario-table-layout"
         searchPlaceholder="Buscar por código, repuesto, stock o precio..."
+        initialQuery={busquedaParam}
         loading={loadingInventario}
         loadingMessage="Cargando inventario de repuestos..."
         error={errorInventario ? errInventario : null}

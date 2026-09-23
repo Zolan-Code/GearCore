@@ -353,7 +353,9 @@ export default function DashboardPage() {
         <div className={styles.biPanel}>
           <div className={styles.biPanelTitle}>
             <span>Repuestos Más Utilizados en Reparaciones</span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Top 5</span>
+            <Link href="/inventario" style={{ fontSize: 12, color: '#3b82f6', textDecoration: 'none', fontWeight: 600 }}>
+              Ver catálogo →
+            </Link>
           </div>
 
           {rankingRepuestos.length === 0 ? (
@@ -363,7 +365,20 @@ export default function DashboardPage() {
           ) : (
             <div className={styles.rankingList}>
               {rankingRepuestos.map((item, index) => (
-                <div key={item.id} className={styles.rankingRow}>
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className={styles.rankingRow}
+                  onClick={() => router.push(`/inventario?search=${encodeURIComponent(item.codigo || item.nombre)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/inventario?search=${encodeURIComponent(item.codigo || item.nombre)}`);
+                    }
+                  }}
+                  title={`Ver repuesto ${item.nombre} (${item.codigo}) en Inventario`}
+                >
                   <div className={styles.rankingLeft}>
                     <div className={styles.rankingBadge}>#{index + 1}</div>
                     <div>
@@ -371,13 +386,28 @@ export default function DashboardPage() {
                       <div className={styles.rankingCode}>Código: {item.codigo}</div>
                     </div>
                   </div>
-                  <div className={styles.rankingStats}>
-                    <div className={styles.rankingCount}>{item.cantidad} un.</div>
-                    {userRole === 'ADMINISTRADOR' && (
-                      <div className={styles.rankingMoney}>
-                        {formatearMoneda(item.totalGenerado)}
-                      </div>
-                    )}
+                  <div className={styles.rankingRight}>
+                    <div className={styles.rankingStats}>
+                      <div className={styles.rankingCount}>{item.cantidad} un.</div>
+                      {userRole === 'ADMINISTRADOR' && (
+                        <div className={styles.rankingMoney}>
+                          {formatearMoneda(item.totalGenerado)}
+                        </div>
+                      )}
+                    </div>
+                    <svg
+                      className={styles.rankingChevron}
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
                   </div>
                 </div>
               ))}
