@@ -1170,12 +1170,12 @@ export default function InventarioView({ userRole }: Props) {
             </div>
 
             <div className={styles.modalBody}>
-              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
                 Carga un archivo CSV para ingresar o actualizar repuestos de forma masiva.
               </p>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   Columnas: <code>codigo, nombre, stock, stockMinimo, precioCompra, precioVenta</code>
                 </span>
                 <button
@@ -1340,16 +1340,16 @@ export default function InventarioView({ userRole }: Props) {
                               })}
                             </span>
                           </div>
-                          <div style={{ color: '#475569', marginTop: '2px' }}>
+                          <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
                             Stock: {m.stockAnterior} → <strong>{m.stockNuevo}</strong>
                           </div>
                           {m.motivo && (
-                            <div style={{ color: '#64748b', fontSize: '11.5px', marginTop: '2px', fontStyle: 'italic' }}>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '11.5px', marginTop: '2px', fontStyle: 'italic' }}>
                               &quot;{m.motivo}&quot;
                             </div>
                           )}
                           {m.usuario && (
-                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>
                               Por: {m.usuario.nombre} [{m.usuario.rol}]
                             </div>
                           )}

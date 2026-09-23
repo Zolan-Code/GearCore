@@ -729,7 +729,7 @@ export default function CotizacionesView({ userRole }: Props) {
                 {/* Campos Editables */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Horas Hombre Estimadas
                     </label>
                     <input
@@ -738,11 +738,11 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={editHorasHombre}
                       onChange={(e) => setEditHorasHombre(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Precio Cobrado por Hora (CLP)
                     </label>
                     <input
@@ -751,14 +751,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={editValorHora}
                       onChange={(e) => setEditValorHora(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                 </div>
 
                 {userRole === 'ADMINISTRADOR' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Costo Interno Taller por Hora (CLP) - Solo Admin
                     </label>
                     <input
@@ -767,14 +767,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={editCostoHora}
                       onChange={(e) => setEditCostoHora(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                 )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Descuento Comercial (CLP)
                     </label>
                     <input
@@ -783,7 +783,7 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={editDescuento}
                       onChange={(e) => setEditDescuento(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.25rem' }}>
@@ -793,27 +793,27 @@ export default function CotizacionesView({ userRole }: Props) {
                       checked={editAplicaIva}
                       onChange={(e) => setEditAplicaIva(e.target.checked)}
                     />
-                    <label htmlFor="editIva" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
+                    <label htmlFor="editIva" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                       Aplicar IVA (19%)
                     </label>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                     Observaciones / Términos de Garantía
                   </label>
                   <textarea
                     rows={2}
                     value={editObservaciones}
                     onChange={(e) => setEditObservaciones(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem', resize: 'vertical' }}
                   />
                 </div>
 
                 {/* Campo Obligatorio de Trazabilidad */}
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.85rem', borderRadius: '0.5rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.25rem' }}>
+                <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', padding: '0.85rem', borderRadius: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                     Motivo de la Modificación (Obligatorio para Trazabilidad) *
                   </label>
                   <input
@@ -822,9 +822,9 @@ export default function CotizacionesView({ userRole }: Props) {
                     placeholder="Ej: Renegociación tras rechazo del cliente, descuento en mano de obra..."
                     value={editMotivo}
                     onChange={(e) => setEditMotivo(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #86efac', borderRadius: '0.35rem' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                   />
-                  <span style={{ fontSize: '0.7rem', color: '#15803d' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     Se guardará un snapshot inmutable de los valores e ítems anteriores en el historial de precios.
                   </span>
                 </div>
@@ -993,7 +993,7 @@ export default function CotizacionesView({ userRole }: Props) {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                     Seleccionar Orden de Trabajo (OT) *
                   </label>
                   <select
@@ -1007,7 +1007,7 @@ export default function CotizacionesView({ userRole }: Props) {
                         setNuevoHorasHombre(otObj.horasHombre);
                       }
                     }}
-                    style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem', background: '#ffffff' }}
+                    style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                   >
                     <option value="">-- Seleccione una OT --</option>
                     {otsElegibles.map((ot) => (
@@ -1017,14 +1017,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       </option>
                     ))}
                   </select>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Los repuestos asignados a la OT y horas hombre se incluirán automáticamente como un snapshot fijo.
                   </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Horas Estimadas (HH)
                     </label>
                     <input
@@ -1033,11 +1033,11 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={nuevoHorasHombre}
                       onChange={(e) => setNuevoHorasHombre(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Valor Cobrado por HH
                     </label>
                     <input
@@ -1046,11 +1046,11 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={nuevoValorHora}
                       onChange={(e) => setNuevoValorHora(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Días de Validez
                     </label>
                     <input
@@ -1058,14 +1058,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="1"
                       value={nuevoValidezDias}
                       onChange={(e) => setNuevoValidezDias(parseInt(e.target.value) || 15)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                 </div>
 
                 {userRole === 'ADMINISTRADOR' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Costo Interno Taller por Hora (CLP) - Solo Admin
                     </label>
                     <input
@@ -1074,14 +1074,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       min="0"
                       value={nuevoCostoHora}
                       onChange={(e) => setNuevoCostoHora(parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                 )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Descuento Comercial (CLP)
                     </label>
                     <input
@@ -1091,7 +1091,7 @@ export default function CotizacionesView({ userRole }: Props) {
                       value={nuevoDescuento}
                       onChange={(e) => setNuevoDescuento(parseFloat(e.target.value) || 0)}
                       placeholder="0 (opcional)"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem' }}
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.25rem' }}>
@@ -1101,14 +1101,14 @@ export default function CotizacionesView({ userRole }: Props) {
                       checked={nuevoAplicaIva}
                       onChange={(e) => setNuevoAplicaIva(e.target.checked)}
                     />
-                    <label htmlFor="nuevoIva" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
+                    <label htmlFor="nuevoIva" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                       Calcular IVA (19%)
                     </label>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                     Observaciones y Condiciones Comerciales
                   </label>
                   <textarea
@@ -1116,7 +1116,7 @@ export default function CotizacionesView({ userRole }: Props) {
                     value={nuevoObservaciones}
                     onChange={(e) => setNuevoObservaciones(e.target.value)}
                     placeholder="Garantía de 90 días o 5.000 km. Precios en pesos chilenos..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.35rem', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.35rem', resize: 'vertical' }}
                   />
                 </div>
               </div>

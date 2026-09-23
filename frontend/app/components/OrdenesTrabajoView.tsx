@@ -772,7 +772,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 </span>
                 {userRole !== 'MECANICO' && ot.vehiculo.cliente?.telefono && (
                   <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    +{ot.vehiculo.cliente.telefono}
+                    {ot.vehiculo.cliente.telefono.replace(/^\+*/, '+')}
                   </span>
                 )}
               </div>
@@ -1043,7 +1043,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Nivel de Combustible */}
                   <div style={{ marginTop: '4px' }}>
-                    <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>Nivel de Combustible:</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Nivel de Combustible:</span>
                     <div className={styles.fuelSelector}>
                       {NIVELES_COMBUSTIBLE.map((nivel) => (
                         <button
@@ -1062,7 +1062,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Rayones / Chapa */}
                   <div style={{ marginTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>Estado de Carrocería / Rayones:</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Estado de Carrocería / Rayones:</span>
                     <input
                       type="text"
                       className={styles.formInput}
@@ -1075,7 +1075,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                   {/* Elementos de Valor */}
                   <div style={{ marginTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>Elementos de Valor / Accesorios dejados:</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Elementos de Valor / Accesorios dejados:</span>
                     <input
                       type="text"
                       className={styles.formInput}

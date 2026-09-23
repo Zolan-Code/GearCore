@@ -41,7 +41,7 @@
 .cardHeader {
   padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--bg-subtle);
+  background: transparent;
 }
 
 .cardTitle {

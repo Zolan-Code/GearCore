@@ -87,6 +87,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
+  // Indicador deslizante suave para módulos del sidebar
+  const navListRef = useRef<HTMLUListElement>(null);
+  const [indicatorReady, setIndicatorReady] = useState(false);
+  const [indicatorStyle, setIndicatorStyle] = useState<{
+    top: number;
+    height: number;
+    opacity: number;
+  }>({ top: 0, height: 0, opacity: 0 });
+
+  const activeNavHref = getActiveNavHref(pathname);
+
+  useEffect(() => {
+    function updateIndicator() {
+      if (!navListRef.current) return;
+      const activeEl = navListRef.current.querySelector<HTMLElement>('[data-nav-active="true"]');
+      if (activeEl) {
+        const li = activeEl.closest('li') || activeEl;
+        setIndicatorStyle({
+          top: li.offsetTop,
+          height: li.offsetHeight,
+          opacity: 1,
+        });
+        setIndicatorReady(true);
+      } else {
+        setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      }
+    }
+
+    updateIndicator();
+    // Re-medir tras la transición de apertura/cierre del sidebar (250ms)
+    const timer = setTimeout(updateIndicator, 260);
+    return () => clearTimeout(timer);
+  }, [activeNavHref, sidebarOpen]);
+
   // Inactividad
   const {
     showWarning: showInactivityWarning,
@@ -323,7 +357,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const auditoriaItem = NAV_ITEMS.find(
     (item) => item.id === 'auditoria' && item.roles.includes(userRole)
   );
-  const activeNavHref = getActiveNavHref(pathname);
 
   const rolLabel =
     userRole === 'ADMINISTRADOR'
@@ -545,28 +578,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
 
-              {/* Lista de navegación */}
-              <ul className={styles.navList} style={{ marginTop: '16px' }}>
-              {visibleNavItems.map((item) => {
-                const isActive = activeNavHref === item.href;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
-                      style={{ textDecoration: 'none' }}
-                      data-tooltip={item.label}
-                    >
-                      <span className={styles.navItemContent}>
-                        {NAV_ICONS[item.id]}
-                        <span className={styles.navLabel}>{item.label}</span>
-                      </span>
-                      {isActive && <span className={styles.activeDot} />}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+              {/* Lista de navegación con indicador deslizante */}
+              <ul
+                className={`${styles.navList} ${indicatorReady ? styles.navListAnimated : ''}`}
+                ref={navListRef}
+                style={{ marginTop: '16px' }}
+              >
+                <div
+                  className={styles.activeIndicator}
+                  style={{
+                    transform: `translateY(${indicatorStyle.top}px)`,
+                    height: `${indicatorStyle.height}px`,
+                    opacity: indicatorStyle.opacity,
+                  }}
+                  aria-hidden="true"
+                />
+                {visibleNavItems.map((item) => {
+                  const isActive = activeNavHref === item.href;
+                  return (
+                    <li key={item.id} className={styles.navListItem}>
+                      <Link
+                        href={item.href}
+                        data-nav-active={isActive ? 'true' : 'false'}
+                        onClick={(e) => {
+                          const li = e.currentTarget.closest('li');
+                          if (li) {
+                            setIndicatorStyle({
+                              top: li.offsetTop,
+                              height: li.offsetHeight,
+                              opacity: 1,
+                            });
+                          }
+                        }}
+                        className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
+                        style={{ textDecoration: 'none' }}
+                        data-tooltip={item.label}
+                      >
+                        <span className={styles.navItemContent}>
+                          {NAV_ICONS[item.id]}
+                          <span className={styles.navLabel}>{item.label}</span>
+                        </span>
+                        {isActive && <span className={styles.activeDot} />}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
           </div>
 
           {/* Pie de Barra Lateral (Auditoría, Mi Perfil y Logout) */}

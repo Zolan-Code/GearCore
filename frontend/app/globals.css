@@ -191,15 +191,23 @@ body {
   color: var(--text-primary);
 }
 
-[data-theme="dark"] [class*="modalHeader"],
-[data-theme="dark"] [class*="cardHeader"] {
+[data-theme="dark"] [class*="modalHeader"] {
   background-color: var(--bg-surface-elevated) !important;
   border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] [class*="modalFooter"],
-[data-theme="dark"] [class*="cardFooter"] {
+[data-theme="dark"] [class*="cardHeader"] {
+  background-color: transparent !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] [class*="modalFooter"] {
   background-color: var(--bg-subtle) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] [class*="cardFooter"] {
+  background-color: transparent !important;
   border-color: var(--border-color) !important;
 }
 
