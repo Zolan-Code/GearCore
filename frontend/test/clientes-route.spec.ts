@@ -24,5 +24,18 @@ test('Fase 1: Módulo Clientes y Vehículos (/clientes)', async (t) => {
     assert.ok(content.includes('export default function ClientesPage'), 'Debe exportar ClientesPage');
     assert.ok(content.includes('<ClientesVehiculosView'), 'Debe renderizar ClientesVehiculosView');
   });
+
+  await t.test('Hook useDecodificarVin y UI de autocompletado por VIN existen', () => {
+    const hookPath = path.resolve('hooks/clientes/useClientes.ts');
+    const hookContent = fs.readFileSync(hookPath, 'utf8');
+    assert.ok(hookContent.includes('export function useDecodificarVin'), 'Debe exportar useDecodificarVin');
+    assert.ok(hookContent.includes('/vehiculos/decodificar-vin/'), 'Debe apuntar al endpoint de decodificación');
+
+    const viewPath = path.resolve('app/components/ClientesVehiculosView.tsx');
+    const viewContent = fs.readFileSync(viewPath, 'utf8');
+    assert.ok(viewContent.includes('useDecodificarVin'), 'Debe importar y usar useDecodificarVin');
+    assert.ok(viewContent.includes('handleDecodificarVin'), 'Debe contener la función handleDecodificarVin');
+    assert.ok(viewContent.includes('Autocompletar'), 'Debe renderizar el botón de Autocompletar');
+  });
 });
 

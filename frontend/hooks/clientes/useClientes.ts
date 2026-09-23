@@ -95,3 +95,23 @@ export function useCrearVehiculo() {
     },
   });
 }
+
+export interface DecodificarVinResult {
+  valido: boolean;
+  marca?: string;
+  modelo?: string;
+  anio?: number | null;
+  mensaje?: string;
+}
+
+export function useDecodificarVin() {
+  return useMutation({
+    mutationFn: async (vin: string) => {
+      const clean = (vin || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      return fetchWithAuth<DecodificarVinResult>(
+        `/vehiculos/decodificar-vin/${encodeURIComponent(clean)}`,
+      );
+    },
+  });
+}
+

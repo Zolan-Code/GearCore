@@ -16,6 +16,7 @@ import {
   useClientes,
   useCrearCliente,
   useCrearVehiculo,
+  useDecodificarVin,
 } from '../../hooks/clientes/useClientes';
 
 interface Cliente {
@@ -137,6 +138,36 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
   const crearClienteMutation = useCrearCliente();
   const crearVehiculoMutation = useCrearVehiculo();
+  const decodificarVinMutation = useDecodificarVin();
+  const [vinFeedback, setVinFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+
+  async function handleDecodificarVin() {
+    const rawVin = formVehiculo.vin.trim();
+    if (!rawVin) {
+      setVinFeedback({ tipo: 'error', texto: 'Ingresa un VIN para autocompletar.' });
+      return;
+    }
+    setVinFeedback(null);
+    try {
+      const res = await decodificarVinMutation.mutateAsync(rawVin);
+      if (res.valido && (res.marca || res.modelo)) {
+        setFormVehiculo((prev) => ({
+          ...prev,
+          marca: res.marca || prev.marca,
+          modelo: res.modelo || prev.modelo,
+          anio: res.anio ? String(res.anio) : prev.anio,
+        }));
+        setVinFeedback({
+          tipo: 'ok',
+          texto: `✓ Detectado: ${res.marca} ${res.modelo} ${res.anio || ''}`.trim(),
+        });
+      } else {
+        setVinFeedback({ tipo: 'error', texto: res.mensaje || 'VIN no encontrado en la base global.' });
+      }
+    } catch {
+      setVinFeedback({ tipo: 'error', texto: 'Error al consultar servicio VIN.' });
+    }
+  }
 
   // Modales
   const [showModalCliente, setShowModalCliente] = useState(false);
@@ -880,7 +911,10 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <button
                 type="button"
                 className={styles.modalClose}
-                onClick={() => setShowModalVehiculo(false)}
+                onClick={() => {
+                  setShowModalVehiculo(false);
+                  setVinFeedback(null);
+                }}
               >
                 ✕
               </button>
@@ -948,16 +982,55 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 </div>
 
                 <div className={styles.formField}>
-                  <label>N° VIN / Chasis</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ margin: 0 }}>N° VIN / Chasis</label>
+                    <button
+                      type="button"
+                      onClick={handleDecodificarVin}
+                      disabled={decodificarVinMutation.isPending || !formVehiculo.vin.trim()}
+                      title="Autocompletar marca, modelo y año consultando la base pública NHTSA"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--accent-primary)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: formVehiculo.vin.trim() ? 'pointer' : 'not-allowed',
+                        opacity: formVehiculo.vin.trim() ? 1 : 0.5,
+                        padding: '0 2px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      {decodificarVinMutation.isPending ? 'Consultando...' : '⚡ Autocompletar'}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     className={styles.inputControl}
-                    placeholder="Opcional"
+                    placeholder="17 caracteres (opcional)"
+                    maxLength={17}
+                    style={{ textTransform: 'uppercase', fontFamily: 'monospace' }}
                     value={formVehiculo.vin}
-                    onChange={(e) =>
-                      setFormVehiculo({ ...formVehiculo, vin: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormVehiculo({ ...formVehiculo, vin: e.target.value.toUpperCase() });
+                      if (vinFeedback) setVinFeedback(null);
+                    }}
                   />
+                  {vinFeedback && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        marginTop: '3px',
+                        display: 'block',
+                        color: vinFeedback.tipo === 'ok' ? '#10b981' : '#f43f5e',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {vinFeedback.texto}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1027,7 +1100,10 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 <button
                   type="button"
                   className={styles.btnSecondary}
-                  onClick={() => setShowModalVehiculo(false)}
+                  onClick={() => {
+                    setShowModalVehiculo(false);
+                    setVinFeedback(null);
+                  }}
                   disabled={savingVehiculo}
                 >
                   Cancelar

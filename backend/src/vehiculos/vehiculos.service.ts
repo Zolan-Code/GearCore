@@ -83,6 +83,48 @@ export class VehiculosService {
     });
   }
 
+  async decodificarVin(vinRaw: string) {
+    const vin = (vinRaw || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (vin.length < 11 || vin.length > 17) {
+      return {
+        valido: false,
+        mensaje: 'El VIN debe tener entre 11 y 17 caracteres alfanuméricos.',
+      };
+    }
+
+    try {
+      const res = await fetch(
+        `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/${encodeURIComponent(vin)}?format=json`,
+        { signal: AbortSignal.timeout(6000) },
+      );
+      if (!res.ok) {
+        return { valido: false, mensaje: 'Error al consultar servicio NHTSA.' };
+      }
+
+      const json = await res.json();
+      const r = json?.Results?.[0];
+      if (!r || (!r.Make && !r.Model)) {
+        return {
+          valido: false,
+          mensaje: 'No se encontraron datos para este VIN.',
+        };
+      }
+
+      const anioNum = parseInt(r.ModelYear, 10);
+      return {
+        valido: true,
+        marca: (r.Make || '').trim(),
+        modelo: (r.Model || '').trim(),
+        anio: Number.isInteger(anioNum) && anioNum > 1900 ? anioNum : null,
+      };
+    } catch {
+      return {
+        valido: false,
+        mensaje: 'Tiempo de espera agotado al consultar NHTSA.',
+      };
+    }
+  }
+
   async buscarPorId(id: string) {
     const vehiculo = await this.prisma.vehiculo.findUnique({
       where: { id },

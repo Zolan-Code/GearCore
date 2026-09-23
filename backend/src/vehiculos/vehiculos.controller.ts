@@ -35,6 +35,11 @@ export class VehiculosController {
     return this.vehiculosService.buscarPorPatente(patente);
   }
 
+  @Get('decodificar-vin/:vin')
+  async decodificarVin(@Param('vin') vin: string) {
+    return this.vehiculosService.decodificarVin(vin);
+  }
+
   @Get(':id')
   async buscarPorId(@Param('id') id: string) {
     return this.vehiculosService.buscarPorId(id);
