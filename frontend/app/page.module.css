@@ -1108,8 +1108,13 @@
   color: var(--text-primary);
 }
 
-.recentTable tr:hover td {
+.recentTable tr:hover td,
+.clickableRow:hover td {
   background: var(--bg-hover);
+}
+
+.clickableRow {
+  cursor: pointer;
 }
 
 .plateBadge {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import styles from '../page.module.css';
 import { useDashboard } from './DashboardContext';
 import {
@@ -10,6 +11,7 @@ import {
 } from '../../hooks/dashboard/useDashboardMetricas';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { userRole } = useDashboard();
   const [activeTab, setActiveTab] = useState<'general' | 'mision' | 'politicas'>('general');
 
@@ -317,7 +319,12 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {metricas.ultimasOrdenes.map((ot) => (
-                  <tr key={ot.id}>
+                  <tr
+                    key={ot.id}
+                    className={styles.clickableRow}
+                    onClick={() => router.push(`/ordenes?id=${ot.id.slice(0, 8)}`)}
+                    title={`Ver detalles de orden #${ot.id.slice(0, 8).toUpperCase()}`}
+                  >
                     <td>
                       <span className={styles.plateBadge}>{ot.vehiculo?.patente || 'S/P'}</span>
                     </td>
