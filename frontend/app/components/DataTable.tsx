@@ -28,6 +28,7 @@ export interface DataTableProps<T> {
   storageKey?: string; // Clave de localStorage para guardar layout
   title?: string;
   searchPlaceholder?: string;
+  initialQuery?: string;
   enableSearch?: boolean; // Default true
   enableColumnVisibility?: boolean; // Default true
   enablePagination?: boolean; // Default true
@@ -61,6 +62,7 @@ export default function DataTable<T>({
   storageKey,
   title,
   searchPlaceholder = 'Buscar en todos los registros...',
+  initialQuery = '',
   enableSearch = true,
   enableColumnVisibility = true,
   enablePagination = true,
@@ -90,7 +92,13 @@ export default function DataTable<T>({
   const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultColumnIds);
   const [pageSize, setPageSize] = useState<number>(defaultPageSize);
   const [page, setPage] = useState<number>(1);
-  const [query, setQuery] = useState<string>('');
+  const [query, setQuery] = useState<string>(initialQuery);
+
+  useEffect(() => {
+    if (initialQuery !== undefined) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [internalSort, setInternalSort] = useState<{ id: string; direction: 'asc' | 'desc' } | null>(null);
   const activeSort = controlledSort !== undefined ? controlledSort : internalSort;

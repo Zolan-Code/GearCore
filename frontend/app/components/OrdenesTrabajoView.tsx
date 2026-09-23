@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './ordenes-trabajo.module.css';
 import DataTable, { Column } from './DataTable';
@@ -129,6 +130,9 @@ function renderFallaIcon(id: string) {
 const NIVELES_COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno'];
 
 export default function OrdenesTrabajoView({ userRole, userId }: Props) {
+  const searchParams = useSearchParams();
+  const busquedaParam = searchParams.get('id') || searchParams.get('search') || '';
+
   const {
     data: ordenes = [],
     isLoading: loadingOTs,
@@ -644,6 +648,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         keyExtractor={(ot) => ot.id}
         storageKey="ordenes-table-layout"
         searchPlaceholder="Buscar por patente, cliente, marca o falla..."
+        initialQuery={busquedaParam}
         loading={loadingOTs}
         loadingMessage="Cargando órdenes de trabajo..."
         error={errorOTs ? errOTs : null}
@@ -711,6 +716,18 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
           </div>
         }
         columns={[
+          {
+            id: 'id',
+            header: 'OT #',
+            width: '110px',
+            accessor: 'id',
+            cell: (ot) => (
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '12px', color: 'var(--accent-primary)' }}>
+                #{ot.id.slice(0, 8)}
+              </span>
+            ),
+            filterFn: (ot, q) => ot.id.toLowerCase().includes(q.replace('#', '').trim()),
+          },
           {
             id: 'patente',
             header: 'Patente',

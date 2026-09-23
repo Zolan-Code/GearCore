@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import styles from './clientes-vehiculos.module.css';
 import { fetchWithAuth } from '../../lib/api';
 import {
@@ -529,16 +530,33 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <div className={styles.historyList}>
                 {otHistory.map((ot) => {
                   const statusClass = (styles as any)[`status_${ot.estado}`] || styles.statusBadge;
+                  const otIdCorto = ot.id.slice(0, 8);
                   return (
-                    <div key={ot.id} className={styles.otCard}>
+                    <Link
+                      key={ot.id}
+                      href={`/ordenes?id=${otIdCorto}`}
+                      className={styles.otCard}
+                      title={`Ir a gestionar Orden de Trabajo #${otIdCorto}`}
+                      style={{ textDecoration: 'none', color: 'inherit', display: 'flex', cursor: 'pointer' }}
+                    >
                       <div className={styles.otCardHeader}>
-                        <span className={styles.otNumber}>OT #{ot.id.slice(0, 8)}</span>
-                        <span className={`${styles.statusBadge} ${statusClass}`}>
-                          {ot.estado.replace('_', ' ')}
-                        </span>
-                        <span className={styles.otDate}>
-                          Ingreso: {new Date(ot.fechaRecepcion).toLocaleDateString('es-CL')}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className={styles.otNumber}>OT #{otIdCorto}</span>
+                          <span className={`${styles.statusBadge} ${statusClass}`}>
+                            {ot.estado.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className={styles.otDate}>
+                            Ingreso: {new Date(ot.fechaRecepcion).toLocaleDateString('es-CL')}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-primary)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                            <span>Ver OT</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </span>
+                        </div>
                       </div>
 
                       <div className={styles.otFailure}>
@@ -572,7 +590,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                           ))}
                         </div>
                       )}
-                    </div>
+                    </Link>
                   );
                 })}
               </div>

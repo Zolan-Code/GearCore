@@ -1257,17 +1257,38 @@
   background: #dc2626;
 }
 
-/* Modal Detalle Completo de OT (Ficha Integral) */
+/* Modal Detalle Completo de OT (Ficha Integral / Gestión Unificada) */
 .modalContentLarge {
-  background: #ffffff;
+  background: var(--bg-surface-elevated);
   border-radius: 20px;
   width: 100%;
   max-width: 880px;
   max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--popover-shadow);
   display: flex;
   flex-direction: column;
+}
+
+.modalContentLarge .modalHeader {
+  flex-shrink: 0;
+  position: static;
+}
+
+.modalContentLarge .tabNav {
+  flex-shrink: 0;
+}
+
+.modalContentLarge .modalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modalContentLarge .modalFooter {
+  flex-shrink: 0;
+  position: static;
 }
 
 .otCardHint {
@@ -1438,6 +1459,14 @@
   border-bottom: 1px solid var(--border-color);
   padding: 0 24px;
   background: var(--bg-surface);
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabNav::-webkit-scrollbar {
+  display: none;
 }
 
 .tabNavItem {
@@ -1453,6 +1482,8 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tabNavItem:hover {
@@ -1604,7 +1635,8 @@
     padding: 8px;
   }
 
-  .modalContent {
+  .modalContent,
+  .modalContentLarge {
     max-height: calc(100vh - 16px);
     border-radius: 14px;
   }
@@ -1618,14 +1650,17 @@
   }
 
   .tabNav {
-    padding: 0 12px;
+    padding: 0 8px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
   }
 
   .tabNavItem {
     padding: 10px 12px;
     font-size: 12.5px;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .modalBody {

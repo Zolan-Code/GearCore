@@ -770,7 +770,7 @@ export default function InventarioView({ userRole }: Props) {
             accessor: 'stockMinimo',
             header: 'Stock Mínimo',
             cell: (r) => (
-              <span style={{ color: '#64748b', fontWeight: 600 }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                 {r.stockMinimo} uds
               </span>
             ),
@@ -790,7 +790,7 @@ export default function InventarioView({ userRole }: Props) {
             accessor: 'precioVenta',
             header: 'P. Venta',
             cell: (r) => (
-              <span className={styles.priceText} style={{ color: '#1e1b4b' }}>
+              <span className={styles.priceVentaText}>
                 ${r.precioVenta.toLocaleString('es-CL')}
               </span>
             ),

@@ -438,6 +438,11 @@
   color: var(--text-primary);
 }
 
+.priceVentaText {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .marginBadge {
   display: inline-block;
   padding: 2px 7px;
