@@ -51,6 +51,72 @@ export interface DataTableProps<T> {
   onSortChange?: (sort: { id: string; direction: 'asc' | 'desc' }) => void;
 }
 
+export interface ColumnPreset {
+  id: string;
+  name: string;
+  order: string[];
+  visible: string[];
+  pageSize?: number;
+  createdAt: string;
+}
+
+function parseStoredLayout(
+  raw: string,
+  defaultColumnIds: string[]
+): { presets: ColumnPreset[]; activePresetId: string | null } {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.presets)) {
+      const validPresets: ColumnPreset[] = parsed.presets.map((p: any, idx: number) => {
+        const validOrder = Array.isArray(p.order)
+          ? p.order.filter((id: string) => defaultColumnIds.includes(id))
+          : [];
+        const missing = defaultColumnIds.filter((id) => !validOrder.includes(id));
+        const validVisible = Array.isArray(p.visible)
+          ? p.visible.filter((id: string) => defaultColumnIds.includes(id))
+          : defaultColumnIds;
+        return {
+          id: p.id || `preset-${idx + 1}`,
+          name: p.name || `Vista ${idx + 1}`,
+          order: [...validOrder, ...missing],
+          visible: validVisible.length > 0 ? validVisible : defaultColumnIds,
+          pageSize: p.pageSize,
+          createdAt: p.createdAt || new Date().toISOString(),
+        };
+      });
+      return {
+        presets: validPresets,
+        activePresetId: parsed.activePresetId || null,
+      };
+    } else if (parsed && (parsed.order || parsed.visible)) {
+      const validOrder = Array.isArray(parsed.order)
+        ? parsed.order.filter((id: string) => defaultColumnIds.includes(id))
+        : [];
+      const missing = defaultColumnIds.filter((id) => !validOrder.includes(id));
+      const validVisible = Array.isArray(parsed.visible)
+        ? parsed.visible.filter((id: string) => defaultColumnIds.includes(id))
+        : defaultColumnIds;
+      const legacyPreset: ColumnPreset = {
+        id: 'preset-migrated',
+        name: 'Vista personalizada',
+        order: [...validOrder, ...missing],
+        visible: validVisible.length > 0 ? validVisible : defaultColumnIds,
+        pageSize: parsed.pageSize,
+        createdAt: new Date().toISOString(),
+      };
+      return {
+        presets: [legacyPreset],
+        activePresetId: legacyPreset.id,
+      };
+    }
+  } catch (e) {
+    console.warn('Error al parsear layout de localStorage:', e);
+  }
+  return { presets: [], activePresetId: null };
+}
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 function getColumnId<T>(col: Column<T>, idx: number): string {
   return col.id || col.key || (typeof col.accessor === 'string' ? col.accessor : `col_${idx}`);
 }
@@ -67,7 +133,7 @@ export default function DataTable<T>({
   enableColumnVisibility = true,
   enablePagination = true,
   defaultPageSize = 10,
-  pageSizeOptions = [10, 25, 50, 100],
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   loading = false,
   loadingMessage = 'Cargando registros...',
   error = null,
@@ -105,6 +171,10 @@ export default function DataTable<T>({
   const sort = activeSort;
   const [layoutSaved, setLayoutSaved] = useState<boolean>(false);
   const [hasSavedLayoutInStorage, setHasSavedLayoutInStorage] = useState<boolean>(false);
+  const [presets, setPresets] = useState<ColumnPreset[]>([]);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [isCreatingPreset, setIsCreatingPreset] = useState<boolean>(false);
+  const [newPresetName, setNewPresetName] = useState<string>('');
 
   // Popovers abiertos
   const [showColumnPopover, setShowColumnPopover] = useState<boolean>(false);
@@ -115,36 +185,51 @@ export default function DataTable<T>({
   const [draggedColId, setDraggedColId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
 
-  // Referencias para cerrar popovers al hacer click fuera
+  // Referencias para cerrar popovers al hacer click fuera y control de carga única
   const columnPopoverRef = useRef<HTMLDivElement>(null);
   const savedLayoutPopoverRef = useRef<HTMLDivElement>(null);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
+  const lastLoadedKeyRef = useRef<string | null>(null);
 
-  // Cargar layout desde localStorage al montar
+  // Cargar layout desde localStorage una sola vez al montar o si cambia storageKey
   useEffect(() => {
     if (!storageKey || typeof window === 'undefined') return;
+    if (lastLoadedKeyRef.current === storageKey) return;
+    lastLoadedKeyRef.current = storageKey;
+
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
-        const parsed = JSON.parse(saved) as {
-          order?: string[];
-          visible?: string[];
-          pageSize?: number;
-        };
-        if (Array.isArray(parsed.order) && parsed.order.length > 0) {
-          // Filtrar por si hubo cambios de columnas en código
-          const validOrder = parsed.order.filter((id) => defaultColumnIds.includes(id));
-          const missing = defaultColumnIds.filter((id) => !validOrder.includes(id));
-          setColumnOrder([...validOrder, ...missing]);
+        const { presets: loadedPresets, activePresetId: loadedActiveId } = parseStoredLayout(
+          saved,
+          defaultColumnIds
+        );
+        if (loadedPresets.length > 0) {
+          setPresets(loadedPresets);
+          setHasSavedLayoutInStorage(true);
+
+          if (loadedActiveId) {
+            const active = loadedPresets.find((p) => p.id === loadedActiveId);
+            if (active) {
+              setActivePresetId(active.id);
+              setColumnOrder(active.order);
+              setVisibleColumns(active.visible);
+              if (active.pageSize && pageSizeOptions.includes(active.pageSize)) {
+                setPageSize((prev) => (prev === active.pageSize ? prev : active.pageSize!));
+              }
+            }
+          } else {
+            setActivePresetId(null);
+          }
+        } else {
+          setPresets([]);
+          setActivePresetId(null);
+          setHasSavedLayoutInStorage(false);
         }
-        if (Array.isArray(parsed.visible) && parsed.visible.length > 0) {
-          const validVisible = parsed.visible.filter((id) => defaultColumnIds.includes(id));
-          if (validVisible.length > 0) setVisibleColumns(validVisible);
-        }
-        if (parsed.pageSize && pageSizeOptions.includes(parsed.pageSize)) {
-          setPageSize(parsed.pageSize);
-        }
-        setHasSavedLayoutInStorage(true);
+      } else {
+        setPresets([]);
+        setActivePresetId(null);
+        setHasSavedLayoutInStorage(false);
       }
     } catch (e) {
       console.warn(`Error al leer layout de localStorage (${storageKey}):`, e);
@@ -165,6 +250,7 @@ export default function DataTable<T>({
         !savedLayoutPopoverRef.current.contains(e.target as Node)
       ) {
         setShowSavedLayoutPopover(false);
+        setIsCreatingPreset(false);
       }
       if (
         filterPopoverRef.current &&
@@ -177,29 +263,173 @@ export default function DataTable<T>({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Guardar layout en localStorage
-  function saveLayout() {
+  // Preset actualmente activo
+  const activePreset = useMemo(
+    () => presets.find((p) => p.id === activePresetId) || null,
+    [presets, activePresetId]
+  );
+
+  // Detectar si el layout ha sido modificado respecto al predeterminado
+  const isModifiedFromDefault =
+    columnOrder.some((id, index) => id !== defaultColumnIds[index]) ||
+    visibleColumns.length !== defaultColumnIds.length ||
+    visibleColumns.some((id) => !defaultColumnIds.includes(id));
+
+  // Detectar si el preset activo tiene modificaciones pendientes sin guardar
+  const isActivePresetModified = activePreset
+    ? columnOrder.some((id, idx) => id !== activePreset.order[idx]) ||
+      visibleColumns.length !== activePreset.visible.length ||
+      visibleColumns.some((id) => !activePreset.visible.includes(id)) ||
+      (activePreset.pageSize && pageSize !== activePreset.pageSize)
+    : false;
+
+  // Estado modificado global
+  const isLayoutDirty = activePreset ? isActivePresetModified : isModifiedFromDefault;
+
+  // Guardar layout en localStorage (permite nombre personalizado)
+  function saveLayout(customName?: string) {
     if (!storageKey || typeof window === 'undefined') return;
     try {
+      let updatedPresets: ColumnPreset[];
+      let targetActiveId: string;
+
+      const trimmedName = customName?.trim();
+
+      if (activePreset && !trimmedName) {
+        // Actualizar preset activo existente
+        targetActiveId = activePreset.id;
+        updatedPresets = presets.map((p) =>
+          p.id === activePreset.id
+            ? { ...p, order: columnOrder, visible: visibleColumns, pageSize }
+            : p
+        );
+      } else {
+        // Crear un nuevo preset
+        targetActiveId = `preset-${Date.now()}`;
+        const newPreset: ColumnPreset = {
+          id: targetActiveId,
+          name: trimmedName || `Vista ${presets.length + 1}`,
+          order: columnOrder,
+          visible: visibleColumns,
+          pageSize,
+          createdAt: new Date().toISOString(),
+        };
+        updatedPresets = [...presets, newPreset];
+      }
+
       const payload = {
+        presets: updatedPresets,
+        activePresetId: targetActiveId,
         order: columnOrder,
         visible: visibleColumns,
         pageSize,
       };
+
       window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      setPresets(updatedPresets);
+      setActivePresetId(targetActiveId);
       setLayoutSaved(true);
       setHasSavedLayoutInStorage(true);
-      setTimeout(() => setLayoutSaved(false), 1800);
+      setIsCreatingPreset(false);
+      setNewPresetName('');
+      setTimeout(() => setLayoutSaved(false), 2000);
     } catch (e) {
       console.error(`Error al guardar layout (${storageKey}):`, e);
     }
   }
 
-  // Restablecer layout predeterminado
+  // Activar un preset existente
+  function applyPreset(preset: ColumnPreset) {
+    setColumnOrder(preset.order);
+    setVisibleColumns(preset.visible);
+    if (preset.pageSize && pageSizeOptions.includes(preset.pageSize)) {
+      setPageSize(preset.pageSize);
+    }
+    setActivePresetId(preset.id);
+    setPage(1);
+
+    if (storageKey && typeof window !== 'undefined') {
+      try {
+        const payload = {
+          presets,
+          activePresetId: preset.id,
+          order: preset.order,
+          visible: preset.visible,
+          pageSize: preset.pageSize || pageSize,
+        };
+        window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      } catch (e) {
+        console.warn(`Error al actualizar preset activo en localStorage:`, e);
+      }
+    }
+    setShowSavedLayoutPopover(false);
+  }
+
+  // Activar vista predeterminada inicial
+  function applyDefaultPreset() {
+    setColumnOrder(defaultColumnIds);
+    setVisibleColumns(defaultColumnIds);
+    setActivePresetId(null);
+    setPage(1);
+
+    if (storageKey && typeof window !== 'undefined') {
+      try {
+        const payload = {
+          presets,
+          activePresetId: null,
+          order: defaultColumnIds,
+          visible: defaultColumnIds,
+          pageSize,
+        };
+        window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      } catch (e) {
+        console.warn(`Error al actualizar preset activo en localStorage:`, e);
+      }
+    }
+    setShowSavedLayoutPopover(false);
+  }
+
+  // Eliminar un preset específico
+  function deletePreset(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const updatedPresets = presets.filter((p) => p.id !== id);
+    const wasActive = activePresetId === id;
+    const nextActiveId = wasActive ? null : activePresetId;
+
+    if (wasActive) {
+      setColumnOrder(defaultColumnIds);
+      setVisibleColumns(defaultColumnIds);
+      setActivePresetId(null);
+    }
+    setPresets(updatedPresets);
+
+    if (storageKey && typeof window !== 'undefined') {
+      try {
+        if (updatedPresets.length === 0) {
+          window.localStorage.removeItem(storageKey);
+          setHasSavedLayoutInStorage(false);
+        } else {
+          const payload = {
+            presets: updatedPresets,
+            activePresetId: nextActiveId,
+          };
+          window.localStorage.setItem(storageKey, JSON.stringify(payload));
+        }
+      } catch (e) {
+        console.warn(`Error al eliminar preset en localStorage:`, e);
+      }
+    }
+  }
+
+  // Restablecer layout predeterminado (elimina todas las vistas y vuelve al inicio)
   function resetLayout() {
     if (storageKey && typeof window !== 'undefined') {
       window.localStorage.removeItem(storageKey);
     }
+    setPresets([]);
+    setActivePresetId(null);
+    setIsCreatingPreset(false);
+    setNewPresetName('');
     setColumnOrder(defaultColumnIds);
     setVisibleColumns(defaultColumnIds);
     setFilters({});
@@ -280,13 +510,6 @@ export default function DataTable<T>({
     }
     setPage(1);
   }
-
-  // Detectar si el layout ha sido modificado respecto al predeterminado
-  const isLayoutDirty =
-    hasSavedLayoutInStorage ||
-    columnOrder.some((id, index) => id !== defaultColumnIds[index]) ||
-    visibleColumns.length !== defaultColumnIds.length ||
-    visibleColumns.some((id) => !defaultColumnIds.includes(id));
 
   // Columnas visibles y ordenadas
   const orderedVisibleColumns = useMemo(() => {
@@ -539,111 +762,257 @@ export default function DataTable<T>({
               </div>
             )}
 
-            {/* Botón de Columnas Personalizadas Guardadas (Persistencia en LocalStorage) */}
+            {/* Menú de Vistas Personalizadas (Presets de Columnas) */}
             {storageKey && (
               <div className={styles.popoverWrapper} ref={savedLayoutPopoverRef}>
-                {hasSavedLayoutInStorage ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowSavedLayoutPopover((prev) => !prev)}
-                      className={`${styles.btnAction} ${styles.btnSavedActive}`}
-                      title="Ver estado de columnas personalizadas guardadas"
-                      aria-expanded={showSavedLayoutPopover}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                      </svg>
-                      <span>Columnas guardadas</span>
-                      <span className={styles.savedDot} title="Configuración personalizada activa" />
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </button>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSavedLayoutPopover((prev) => !prev)}
+                    className={`${styles.btnAction} ${
+                      activePreset
+                        ? styles.btnSavedActive
+                        : isLayoutDirty
+                        ? styles.btnActionHighlight
+                        : ''
+                    } ${layoutSaved ? styles.btnActionSuccess : ''}`}
+                    title="Vistas de columnas personalizadas con nombre"
+                    aria-expanded={showSavedLayoutPopover}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>
+                      {layoutSaved
+                        ? '¡Vista guardada!'
+                        : activePreset
+                        ? activePreset.name
+                        : presets.length > 0
+                        ? `Vistas (${presets.length})`
+                        : 'Vistas guardadas'}
+                    </span>
+                    {activePreset && (
+                      <span
+                        className={styles.savedDot}
+                        title={
+                          isActivePresetModified
+                            ? 'Vista activa con cambios pendientes'
+                            : 'Vista personalizada activa'
+                        }
+                        style={
+                          isActivePresetModified
+                            ? { backgroundColor: '#f59e0b' }
+                            : undefined
+                        }
+                      />
+                    )}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
 
+                  {(activePreset || isLayoutDirty) && (
                     <button
                       type="button"
-                      onClick={resetLayout}
+                      onClick={applyDefaultPreset}
                       className={`${styles.btnAction} ${styles.btnIconOnly}`}
-                      title="Restablecer columnas a valores iniciales"
-                      aria-label="Restablecer layout"
+                      title="Volver a la vista predeterminada"
+                      aria-label="Vista predeterminada"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="1 4 1 10 7 10" />
                         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                       </svg>
                     </button>
-                  </div>
-                ) : isLayoutDirty ? (
-                  <button
-                    type="button"
-                    onClick={saveLayout}
-                    className={`${styles.btnAction} ${styles.btnActionHighlight} ${layoutSaved ? styles.btnActionSuccess : ''}`}
-                    title="Guardar las columnas actuales como tu vista personalizada"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                      <polyline points="17 21 17 13 7 13 7 21" />
-                      <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    <span>{layoutSaved ? '¡Columnas guardadas!' : 'Guardar columnas personalizadas'}</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={saveLayout}
-                    className={`${styles.btnAction} ${layoutSaved ? styles.btnActionSuccess : ''}`}
-                    title="Guardar la configuración actual de columnas como tu vista personalizada"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
-                    <span>{layoutSaved ? '¡Columnas guardadas!' : 'Columnas personalizadas'}</span>
-                  </button>
-                )}
+                  )}
+                </div>
 
-                {showSavedLayoutPopover && hasSavedLayoutInStorage && (
-                  <div className={styles.popoverContent} style={{ width: '270px' }}>
+                {showSavedLayoutPopover && (
+                  <div className={styles.popoverContent} style={{ width: '310px' }}>
                     <div className={styles.popoverHeader}>
-                      <span className={styles.popoverTitle}>Columnas Personalizadas</span>
+                      <span className={styles.popoverTitle}>Vistas de Columnas</span>
                       <span className={styles.popoverSubtitle}>
-                        Configuración guardada en este navegador ({visibleColumns.length} de {columns.length} visibles)
+                        Selecciona o administra tus configuraciones personalizadas
                       </span>
                     </div>
 
-                    <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {isLayoutDirty && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            saveLayout();
-                            setShowSavedLayoutPopover(false);
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* Alerta de cambios no guardados en la vista activa */}
+                      {activePreset && isActivePresetModified && (
+                        <div
+                          style={{
+                            padding: '8px 10px',
+                            background: 'rgba(245, 158, 11, 0.1)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
                           }}
-                          className={`${styles.btnAction} ${styles.btnActionSuccess}`}
-                          style={{ width: '100%', justifyContent: 'center' }}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                            <polyline points="17 21 17 13 7 13 7 21" />
-                          </svg>
-                          Actualizar guardado actual
-                        </button>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                            Has modificado columnas en <strong>{activePreset.name}</strong>.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => saveLayout()}
+                            className={`${styles.btnAction} ${styles.btnActionSuccess}`}
+                            style={{ height: '28px', fontSize: '11.5px', justifyContent: 'center', width: '100%' }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                              <polyline points="17 21 17 13 7 13 7 21" />
+                            </svg>
+                            Guardar cambios en esta vista
+                          </button>
+                        </div>
                       )}
 
+                      {/* Lista de presets */}
+                      <div className={styles.presetList}>
+                        {/* 1. Vista Predeterminada */}
+                        <div
+                          className={`${styles.presetItem} ${
+                            !activePreset && !isModifiedFromDefault ? styles.presetItemActive : ''
+                          }`}
+                          onClick={applyDefaultPreset}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <div className={styles.presetItemLeft}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <line x1="3" y1="9" x2="21" y2="9" />
+                              <line x1="9" y1="21" x2="9" y2="9" />
+                            </svg>
+                            <div className={styles.presetInfo}>
+                              <span className={styles.presetName}>Vista predeterminada</span>
+                              <span className={styles.presetMeta}>
+                                Todas las columnas ({defaultColumnIds.length})
+                              </span>
+                            </div>
+                          </div>
+                          {!activePreset && !isModifiedFromDefault && (
+                            <span className={styles.presetActiveBadge}>Activa</span>
+                          )}
+                        </div>
+
+                        {/* 2. Presets Guardados */}
+                        {presets.map((preset) => {
+                          const isCurrent = activePreset?.id === preset.id;
+                          return (
+                            <div
+                              key={preset.id}
+                              className={`${styles.presetItem} ${isCurrent ? styles.presetItemActive : ''}`}
+                              onClick={() => applyPreset(preset)}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              <div className={styles.presetItemLeft}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                </svg>
+                                <div className={styles.presetInfo}>
+                                  <span className={styles.presetName} title={preset.name}>
+                                    {preset.name}
+                                  </span>
+                                  <span className={styles.presetMeta}>
+                                    {preset.visible.length} columnas visibles
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className={styles.presetActionsRight}>
+                                {isCurrent && (
+                                  <span className={styles.presetActiveBadge}>Activa</span>
+                                )}
+                                <button
+                                  type="button"
+                                  className={styles.presetDeleteBtn}
+                                  onClick={(e) => deletePreset(preset.id, e)}
+                                  title={`Eliminar vista "${preset.name}"`}
+                                  aria-label={`Eliminar vista ${preset.name}`}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Sección para crear nueva vista con nombre */}
+                      <div className={styles.presetCreateBox}>
+                        {isCreatingPreset ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              saveLayout(newPresetName);
+                            }}
+                            style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                          >
+                            <input
+                              type="text"
+                              value={newPresetName}
+                              onChange={(e) => setNewPresetName(e.target.value)}
+                              placeholder={`Nombre de vista (ej. Vista ${presets.length + 1})`}
+                              className={styles.presetInput}
+                              autoFocus
+                              maxLength={40}
+                            />
+                            <div className={styles.presetCreateActions}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsCreatingPreset(false);
+                                  setNewPresetName('');
+                                }}
+                                className={styles.btnPresetCancel}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="submit"
+                                className={styles.btnPresetSave}
+                              >
+                                Guardar
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreatingPreset(true);
+                              setNewPresetName(`Vista ${presets.length + 1}`);
+                            }}
+                            className={styles.btnCreatePresetTrigger}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Guardar vista actual con nombre
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.popoverFooter}>
                       <button
                         type="button"
-                        onClick={() => {
-                          resetLayout();
-                          setShowSavedLayoutPopover(false);
-                        }}
+                        onClick={resetLayout}
                         className={styles.btnResetLayout}
-                        style={{ width: '100%', justifyContent: 'center', padding: '8px' }}
+                        title="Borrar todas las vistas guardadas y volver al origen"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="1 4 1 10 7 10" />
                           <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                         </svg>
-                        Restablecer a vista inicial
+                        Restablecer todo
                       </button>
                     </div>
                   </div>
