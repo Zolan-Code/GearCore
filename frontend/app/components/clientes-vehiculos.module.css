@@ -533,9 +533,9 @@
 }
 
 .clientsSection {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 18px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--border-color);
   padding: 24px;
   box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.03);
 }

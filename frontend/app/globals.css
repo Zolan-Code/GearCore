@@ -85,6 +85,7 @@ body {
 [data-theme="dark"] h5,
 [data-theme="dark"] h6 {
   color: var(--text-primary) !important;
+  background-color: transparent !important;
 }
 
 [data-theme="dark"] [class*="headerTitle"],
@@ -97,6 +98,7 @@ body {
 [data-theme="dark"] [class*="kpiValue"],
 [data-theme="dark"] [class*="statValue"] {
   color: var(--text-primary) !important;
+  background-color: transparent !important;
 }
 
 [data-theme="dark"] [class*="headerSubtitle"],
@@ -107,26 +109,60 @@ body {
 [data-theme="dark"] [class*="metaDetails"],
 [data-theme="dark"] [class*="kpiHeader"] {
   color: var(--text-secondary) !important;
+  background-color: transparent !important;
+}
+
+/* Títulos, subtítulos y textos de encabezado sin fondos ni bordes no deseados */
+[data-theme="dark"] p,
+[data-theme="dark"] [class*="SectionTitle"],
+[data-theme="dark"] [class*="SectionSubtitle"],
+[data-theme="dark"] [class*="clientsSectionTitle"],
+[data-theme="dark"] [class*="clientsSectionSubtitle"],
+[data-theme="dark"] [class*="emptyStateTitle"],
+[data-theme="dark"] [class*="emptyStateText"],
+[data-theme="dark"] [class*="detalleCardTitle"],
+[data-theme="dark"] [class*="repuestosTitle"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border: none !important;
+}
+
+/* Layout grids, wrappers y barras de estado contenedoras (siempre transparentes sin bordes) */
+[data-theme="dark"] [class*="cardsGrid"],
+[data-theme="dark"] [class*="CardsGrid"],
+[data-theme="dark"] [class*="statusTabs"],
+[data-theme="dark"] [class*="tabsGroup"],
+[data-theme="dark"] [class*="tabsContainer"],
+[data-theme="dark"] [class*="clientsHeaderSection"],
+[data-theme="dark"] [class*="headerSection"],
+[data-theme="dark"] [class*="biTwoColumnGrid"],
+[data-theme="dark"] [class*="photosGrid"],
+[data-theme="dark"] [class*="detalleGrid"],
+[data-theme="dark"] [class*="kpiGrid"],
+[data-theme="dark"] [class*="kpisGrid"],
+[data-theme="dark"] [class*="profitGrid"],
+[data-theme="dark"] [class*="formGrid"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border: none !important;
 }
 
 /* Tarjetas y Contenedores */
-[data-theme="dark"] [class*="card"],
-[data-theme="dark"] [class*="Card"],
+[data-theme="dark"] [class*="card"]:not([class*="Grid"]):not([class*="grid"]):not([class*="Header"]):not([class*="header"]):not([class*="Body"]):not([class*="body"]):not([class*="Footer"]):not([class*="footer"]):not([class*="Action"]):not([class*="action"]):not([class*="Title"]):not([class*="title"]):not([class*="Subtitle"]):not([class*="subtitle"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Badge"]):not([class*="badge"]),
+[data-theme="dark"] [class*="Card"]:not([class*="Grid"]):not([class*="grid"]):not([class*="Header"]):not([class*="header"]):not([class*="Body"]):not([class*="body"]):not([class*="Footer"]):not([class*="footer"]):not([class*="Action"]):not([class*="action"]):not([class*="Title"]):not([class*="title"]):not([class*="Subtitle"]):not([class*="subtitle"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Badge"]):not([class*="badge"]),
 [data-theme="dark"] [class*="otCard"],
 [data-theme="dark"] [class*="kpiCard"],
 [data-theme="dark"] [class*="statCard"],
 [data-theme="dark"] [class*="vehicleHeroCard"],
-[data-theme="dark"] [class*="specsGrid"],
-[data-theme="dark"] [class*="clientsSection"],
 [data-theme="dark"] [class*="settingsCard"],
 [data-theme="dark"] [class*="permissionsCard"],
-[data-theme="dark"] [class*="repuestosSection"],
+[data-theme="dark"] [class*="repuestosSection"]:not([class*="Title"]):not([class*="Header"]):not([class*="Subtitle"]),
 [data-theme="dark"] [class*="repuestosTableWrapper"],
 [data-theme="dark"] [class*="filterBar"],
 [data-theme="dark"] [class*="controlsBar"],
 [data-theme="dark"] [class*="tableContainer"],
-[data-theme="dark"] [class*="emptyState"],
-[data-theme="dark"] [class*="detalleCard"] {
+[data-theme="dark"] [class*="emptyState"]:not([class*="Title"]):not([class*="Text"]):not([class*="Icon"]),
+[data-theme="dark"] [class*="detalleCard"]:not([class*="Title"]):not([class*="title"]) {
   background-color: var(--bg-surface) !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary);
@@ -196,18 +232,15 @@ body {
   border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] [class*="cardHeader"] {
+[data-theme="dark"] [class*="cardHeader"],
+[data-theme="dark"] [class*="cardBody"],
+[data-theme="dark"] [class*="cardFooter"] {
   background-color: transparent !important;
   border-color: var(--border-color) !important;
 }
 
 [data-theme="dark"] [class*="modalFooter"] {
   background-color: var(--bg-subtle) !important;
-  border-color: var(--border-color) !important;
-}
-
-[data-theme="dark"] [class*="cardFooter"] {
-  background-color: transparent !important;
   border-color: var(--border-color) !important;
 }
 
@@ -223,8 +256,8 @@ body {
 }
 
 /* Pestañas, Chips y Botones de Filtro */
-[data-theme="dark"] [class*="statusTab"]:not([class*="Active"]),
-[data-theme="dark"] [class*="tabBtn"]:not([class*="Active"]),
+[data-theme="dark"] button[class*="statusTab"]:not([class*="Active"]),
+[data-theme="dark"] [class*="statusTab"]:not([class*="Tabs"]):not([class*="tabs"]):not([class*="Active"]),
 [data-theme="dark"] [class*="faultChip"]:not([class*="Active"]),
 [data-theme="dark"] [class*="fuelOption"]:not([class*="Active"]),
 [data-theme="dark"] [class*="btnSecondary"],
@@ -236,8 +269,8 @@ body {
   color: var(--text-secondary) !important;
 }
 
-[data-theme="dark"] [class*="statusTab"]:hover,
-[data-theme="dark"] [class*="tabBtn"]:hover,
+[data-theme="dark"] button[class*="statusTab"]:hover,
+[data-theme="dark"] [class*="statusTab"]:not([class*="Tabs"]):not([class*="tabs"]):hover,
 [data-theme="dark"] [class*="faultChip"]:hover,
 [data-theme="dark"] [class*="fuelOption"]:hover,
 [data-theme="dark"] [class*="btnSecondary"]:hover,
@@ -247,6 +280,11 @@ body {
   background-color: var(--bg-hover) !important;
   border-color: var(--border-subtle) !important;
   color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] [class*="tabBtnActive"] {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
 }
 
 /* Cajas de notas y diagnóstico en modales */
