@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import styles from './mi-perfil.module.css';
-import { useMiPerfil, useActualizarMiPerfil, Rol } from '../../hooks/usuarios/useUsuarios';
+import { useMiPerfil, useActualizarMiPerfil, Rol, getNombreRol } from '../../hooks/usuarios/useUsuarios';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function MiPerfilView() {
@@ -165,7 +165,7 @@ export default function MiPerfilView() {
                     : styles.roleMecanico
                 }`}
               >
-                Rol: {rol}
+                Rol: {getNombreRol(rol)}
               </span>
               <span className={styles.statusOnlineBadge}>
                 <span className={styles.statusDot} />
@@ -450,22 +450,22 @@ export default function MiPerfilView() {
               <div className={styles.permissionItem}>
                 <div className={styles.permissionCheck}>✓</div>
                 <div className={styles.permissionText}>
-                  <h5>Atención de Clientes y Mesón</h5>
-                  <p>Registro y actualización de datos de contacto de clientes y fichas de vehículos.</p>
+                  <h5>Atención de Clientes y Entendimiento de Necesidades</h5>
+                  <p>Recepción profesional del cliente, levantamiento de requerimientos, registro de fichas de vehículos y seguimiento.</p>
                 </div>
               </div>
               <div className={styles.permissionItem}>
                 <div className={styles.permissionCheck}>✓</div>
                 <div className={styles.permissionText}>
-                  <h5>Gestión de Órdenes de Trabajo</h5>
-                  <p>Apertura de OTs, registro de kilometraje, estado de carrocería y asignación de mecánicos.</p>
+                  <h5>Coordinación de Atención y Reparación</h5>
+                  <p>Apertura de Órdenes de Trabajo, registro de kilometraje, estado de carrocería y coordinación con mecánicos.</p>
                 </div>
               </div>
               <div className={styles.permissionItem}>
                 <div className={styles.permissionCheck}>✓</div>
                 <div className={styles.permissionText}>
-                  <h5>Inventario y Cotizaciones</h5>
-                  <p>Consulta de stock de repuestos disponibles y elaboración de cotizaciones para clientes.</p>
+                  <h5>Soluciones, Inventario y Cotizaciones</h5>
+                  <p>Consulta de repuestos disponibles, elaboración de presupuestos transparentes y ofrecimiento de soluciones al cliente.</p>
                 </div>
               </div>
             </>

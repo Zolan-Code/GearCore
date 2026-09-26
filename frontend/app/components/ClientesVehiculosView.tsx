@@ -115,7 +115,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         <div className={styles.emptyStateTitle} style={{ color: '#0f172a' }}>Acceso Restringido</div>
         <div className={styles.emptyStateText}>
           El rol <strong>Mecánico</strong> no tiene permisos para acceder a la Gestión de Clientes y Vehículos.
-          Este módulo está reservado para <strong>Recepcionista</strong> y <strong>Administrador</strong>.
+          Este módulo está reservado para <strong>Asesor de Servicios</strong> y <strong>Administrador</strong>.
         </div>
       </div>
     );

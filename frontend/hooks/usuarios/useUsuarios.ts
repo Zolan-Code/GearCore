@@ -4,6 +4,14 @@ import { supabase } from '../../lib/supabaseClient';
 
 export type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
 
+export function getNombreRol(rol: Rol | string | null | undefined): string {
+  if (rol === 'ADMINISTRADOR') return 'Administrador';
+  if (rol === 'RECEPCIONISTA') return 'Asesor de Servicios';
+  if (rol === 'MECANICO') return 'Mecánico';
+  return rol || 'Sin Rol';
+}
+
+
 export interface Usuario {
   id: string;
   nombre: string;

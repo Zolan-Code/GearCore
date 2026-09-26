@@ -226,8 +226,8 @@ export default function LoginPage() {
                     }}
                     title="Clic para autocompletar"
                   >
-                    <span><strong>Recepción:</strong> recepcion@gearcore.cl</span>
-                    <span className={styles.demoBadge}>RECEPCIÓN</span>
+                    <span><strong>Asesor de Servicios:</strong> recepcion@gearcore.cl</span>
+                    <span className={styles.demoBadge}>ASESOR</span>
                   </button>
                   <button
                     type="button"

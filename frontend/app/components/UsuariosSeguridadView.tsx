@@ -270,9 +270,9 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
                 onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
                 title="Cambiar rol de usuario"
               >
-                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-                <option value="RECEPCIONISTA">RECEPCIONISTA</option>
-                <option value="MECANICO">MECANICO</option>
+                <option value="ADMINISTRADOR">Administrador</option>
+                <option value="RECEPCIONISTA">Asesor de Servicios</option>
+                <option value="MECANICO">Mecánico</option>
               </select>
             ),
           },
@@ -397,7 +397,7 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
                       onChange={(e) => setNuevoRol(e.target.value as Rol)}
                     >
                       <option value="MECANICO">Mecánico</option>
-                      <option value="RECEPCIONISTA">Recepcionista</option>
+                      <option value="RECEPCIONISTA">Asesor de Servicios</option>
                       <option value="ADMINISTRADOR">Administrador</option>
                     </select>
                   </div>

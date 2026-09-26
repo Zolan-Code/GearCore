@@ -74,3 +74,11 @@ export function getActiveNavHref(pathname: string): string {
   const match = NAV_ITEMS.find((item) => item.href !== '/' && pathname.startsWith(item.href));
   return match ? match.href : pathname;
 }
+
+export function getNombreRol(rol: Rol | string | null | undefined): string {
+  if (rol === 'ADMINISTRADOR') return 'Administrador';
+  if (rol === 'RECEPCIONISTA') return 'Asesor de Servicios';
+  if (rol === 'MECANICO') return 'Mecánico';
+  return rol || 'Sin Rol';
+}
+

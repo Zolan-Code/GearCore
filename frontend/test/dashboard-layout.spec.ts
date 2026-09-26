@@ -5,6 +5,7 @@ import {
   getVisibleNavItems,
   isRouteAllowed,
   getActiveNavHref,
+  getNombreRol,
 } from '../app/(dashboard)/navConfig.ts';
 
 test('Fase 0: Configuración y visibilidad de rutas por rol', async (t) => {
@@ -49,7 +50,7 @@ test('Fase 0: Guardias de ruta (isRouteAllowed)', async (t) => {
     assert.equal(isRouteAllowed('/', 'ADMINISTRADOR'), true);
   });
 
-  await t.test('Rutas administrativas deniegan a Recepcionista y Mecánico', () => {
+  await t.test('Rutas administrativas deniegan a Asesor de Servicios y Mecánico', () => {
     assert.equal(isRouteAllowed('/usuarios', 'RECEPCIONISTA'), false);
     assert.equal(isRouteAllowed('/usuarios', 'MECANICO'), false);
     assert.equal(isRouteAllowed('/usuarios', 'ADMINISTRADOR'), true);
@@ -78,3 +79,10 @@ test('Fase 0: Detección de ruta activa en Sidebar (getActiveNavHref)', () => {
   assert.equal(getActiveNavHref('/cotizaciones/123/detalle'), '/cotizaciones');
   assert.equal(getActiveNavHref('/ordenes/nueva'), '/ordenes');
 });
+
+test('Fase 0: Nombre representativo de roles (getNombreRol)', () => {
+  assert.equal(getNombreRol('RECEPCIONISTA'), 'Asesor de Servicios');
+  assert.equal(getNombreRol('ADMINISTRADOR'), 'Administrador');
+  assert.equal(getNombreRol('MECANICO'), 'Mecánico');
+});
+

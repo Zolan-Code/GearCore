@@ -12,7 +12,7 @@ import { useMiPerfil } from '../../hooks/usuarios/useUsuarios';
 import { useRepuestos } from '../../hooks/repuestos/useRepuestos';
 import { useOrdenesTrabajo } from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
 import { useCotizaciones } from '../../hooks/cotizaciones/useCotizaciones';
-import { NAV_ITEMS, Rol, isRouteAllowed, getActiveNavHref } from './navConfig';
+import { NAV_ITEMS, Rol, isRouteAllowed, getActiveNavHref, getNombreRol } from './navConfig';
 import { DashboardContext, UserProfile } from './DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -358,12 +358,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     (item) => item.id === 'auditoria' && item.roles.includes(userRole)
   );
 
-  const rolLabel =
-    userRole === 'ADMINISTRADOR'
-      ? 'Administrador'
-      : userRole === 'RECEPCIONISTA'
-      ? 'Recepcionista'
-      : 'Mecánico';
+  const rolLabel = getNombreRol(userRole);
 
   const fechaHoy = new Date().toLocaleDateString('es-CL', {
     weekday: 'short',
