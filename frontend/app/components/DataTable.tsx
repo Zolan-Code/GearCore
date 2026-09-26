@@ -1208,14 +1208,25 @@ export default function DataTable<T>({
                 </td>
               </tr>
             ) : loading ? (
-              <tr>
-                <td colSpan={colSpan} className={styles.stateCell}>
-                  <div className={styles.loadingWrapper}>
-                    <div className={styles.spinner} />
-                    <span>{loadingMessage}</span>
-                  </div>
-                </td>
-              </tr>
+              Array.from({ length: Math.min(pageSize, 5) }).map((_, rIdx) => (
+                <tr key={`skeleton-row-${rIdx}`} className={`${styles.skeletonRow} ${styles.loadingWrapper}`}>
+                  {orderedVisibleColumns.map((col, cIdx) => (
+                    <td key={`skeleton-cell-${cIdx}`} className={styles.td}>
+                      <div
+                        className={styles.skeletonBar}
+                        style={{
+                          width:
+                            cIdx === 0
+                              ? '60%'
+                              : cIdx === orderedVisibleColumns.length - 1
+                              ? '45%'
+                              : `${50 + ((rIdx * 7 + cIdx * 13) % 4) * 12}%`,
+                        }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : totalRows === 0 ? (
               <tr>
                 <td colSpan={colSpan} className={styles.stateCell}>
