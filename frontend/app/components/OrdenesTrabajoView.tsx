@@ -655,6 +655,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         errorMessage={`Error al consultar órdenes: ${(errOTs as any)?.message || 'Error del servidor'}`}
         onRetry={() => refetchOTs()}
         emptyMessage="No se encontraron órdenes de trabajo con los filtros aplicados."
+        onRowClick={(ot) => abrirGestionOT(ot, 'tecnico')}
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             {userRole !== 'MECANICO' ? (
@@ -853,6 +854,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 <button
                   type="button"
                   className={styles.btnGestionar}
+                  data-row-click="true"
                   onClick={() => abrirGestionOT(ot, 'tecnico')}
                   title="Abrir gestión técnica, diagnóstico y avance de estado"
                 >
@@ -869,7 +871,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     className={styles.btnWhatsApp}
                     style={{ padding: '6px 9px', borderRadius: '8px', fontSize: '11.5px' }}
                     disabled={cargandoWhatsappId === ot.id}
-                    onClick={() => handleGenerarWhatsapp(ot.id)}
+                    data-prevent-row-click="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerarWhatsapp(ot.id);
+                    }}
                     title="Notificar por WhatsApp al cliente"
                   >
                     {cargandoWhatsappId === ot.id ? (

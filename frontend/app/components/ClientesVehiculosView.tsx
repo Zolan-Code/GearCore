@@ -708,6 +708,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         errorMessage={`Error al cargar clientes: ${(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}`}
         onRetry={() => refetchClientes()}
         emptyMessage="No se encontraron clientes registrados con los criterios seleccionados."
+        onRowClick={(c) => handleOpenClienteModal(c.id)}
         actions={
           userRole !== 'MECANICO' ? (
             <button
@@ -738,6 +739,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <button
                 type="button"
                 className={styles.clientLinkBtn}
+                data-row-click="true"
                 onClick={() => handleOpenClienteModal(c.id)}
                 title="Ver ficha y vehículos del cliente"
               >
@@ -773,16 +775,9 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               (a._count?.vehiculos ?? a.vehiculos?.length ?? 0) -
               (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
             cell: (c) => (
-              <button
-                type="button"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                onClick={() => handleOpenClienteModal(c.id)}
-                title="Ver vehículos del cliente"
-              >
-                <span className={styles.vehicleCountPill}>
-                  {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
-                </span>
-              </button>
+              <span className={styles.vehicleCountPill} title="Vehículos registrados del cliente">
+                {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
+              </span>
             ),
             filterFn: (c, q) => {
               const count = String(c._count?.vehiculos ?? c.vehiculos?.length ?? 0);
@@ -800,6 +795,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 <button
                   type="button"
                   className={styles.clientActionBtn}
+                  data-row-click="true"
                   onClick={() => handleOpenClienteModal(c.id)}
                   title="Ver ficha completa y vehículos"
                 >

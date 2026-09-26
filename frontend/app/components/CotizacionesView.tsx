@@ -392,6 +392,7 @@ export default function CotizacionesView({ userRole }: Props) {
             </button>
           ) : null
         }
+        onRowClick={(c) => handleAbrirEdicion(c)}
         columns={[
           {
             id: 'numero',
@@ -540,6 +541,7 @@ export default function CotizacionesView({ userRole }: Props) {
                   type="button"
                   className={styles.iconBtn}
                   title="Ver detalle o modificar"
+                  data-row-click="true"
                   onClick={() => handleAbrirEdicion(c)}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -553,7 +555,11 @@ export default function CotizacionesView({ userRole }: Props) {
                   type="button"
                   className={styles.iconBtn}
                   title="Trazabilidad de cambios de precio"
-                  onClick={() => handleAbrirHistorial(c)}
+                  data-prevent-row-click="true"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAbrirHistorial(c);
+                  }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
@@ -567,7 +573,11 @@ export default function CotizacionesView({ userRole }: Props) {
                     type="button"
                     className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
                     title="Aprobar presupuesto"
-                    onClick={() => handleCambiarEstado(c, 'APROBADA')}
+                    data-prevent-row-click="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCambiarEstado(c, 'APROBADA');
+                    }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" />
@@ -581,7 +591,11 @@ export default function CotizacionesView({ userRole }: Props) {
                     type="button"
                     className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                     title="Marcar rechazada"
-                    onClick={() => handleCambiarEstado(c, 'RECHAZADA')}
+                    data-prevent-row-click="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCambiarEstado(c, 'RECHAZADA');
+                    }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />

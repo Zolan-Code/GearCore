@@ -701,6 +701,7 @@ export default function InventarioView({ userRole }: Props) {
         errorMessage={`Error al cargar inventario: ${(errInventario as any)?.message || 'Error de conexión'}`}
         onRetry={() => refetchInventario()}
         emptyMessage="No se encontraron repuestos con los criterios seleccionados."
+        onRowClick={(r) => abrirHistorial(r)}
         actions={
           userRole !== 'MECANICO' ? (
             <button
@@ -827,7 +828,11 @@ export default function InventarioView({ userRole }: Props) {
                   type="button"
                   className={styles.btnActionIcon}
                   title="Auditoría / Ajuste manual de stock físico"
-                  onClick={() => abrirAjusteModal(r)}
+                  data-prevent-row-click="true"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    abrirAjusteModal(r);
+                  }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 20h9" />
@@ -840,6 +845,7 @@ export default function InventarioView({ userRole }: Props) {
                   type="button"
                   className={styles.btnActionIcon}
                   title="Ver historial de movimientos"
+                  data-row-click="true"
                   onClick={() => abrirHistorial(r)}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -854,7 +860,11 @@ export default function InventarioView({ userRole }: Props) {
                     type="button"
                     className={styles.btnActionIcon}
                     title="Editar datos del repuesto"
-                    onClick={() => abrirEditarModal(r)}
+                    data-prevent-row-click="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirEditarModal(r);
+                    }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -869,7 +879,11 @@ export default function InventarioView({ userRole }: Props) {
                     type="button"
                     className={`${styles.btnActionIcon} ${styles.btnActionIconDelete}`}
                     title="Eliminar repuesto"
-                    onClick={() => handleEliminarRepuesto(r)}
+                    data-prevent-row-click="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEliminarRepuesto(r);
+                    }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6" />

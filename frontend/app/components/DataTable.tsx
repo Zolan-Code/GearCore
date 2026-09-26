@@ -1254,7 +1254,34 @@ export default function DataTable<T>({
                   <tr
                     key={keyExtractor(row, globalIdx)}
                     className={`${styles.tr} ${isClickable ? styles.trClickable : ''} ${customRowClass}`}
-                    onClick={onRowClick ? () => onRowClick(row, globalIdx) : undefined}
+                    onClick={
+                      onRowClick
+                        ? (e) => {
+                            const target = e.target as HTMLElement | null;
+                            if (
+                              target &&
+                              target.closest(
+                                'button:not([data-row-click="true"]), a:not([data-row-click="true"]), input, select, textarea, [data-prevent-row-click="true"]'
+                              )
+                            ) {
+                              return;
+                            }
+                            onRowClick(row, globalIdx);
+                          }
+                        : undefined
+                    }
+                    role={isClickable ? 'button' : undefined}
+                    tabIndex={isClickable ? 0 : undefined}
+                    onKeyDown={
+                      isClickable
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onRowClick(row, globalIdx);
+                            }
+                          }
+                        : undefined
+                    }
                   >
                     {orderedVisibleColumns.map((col, colIdx) => {
                       const alignStyle: React.CSSProperties = col.align ? { textAlign: col.align } : {};
