@@ -10,7 +10,7 @@ import { CrearRepuestoDto } from './dto/crear-repuesto.dto';
 import { ActualizarRepuestoDto } from './dto/actualizar-repuesto.dto';
 import { AjusteStockDto } from './dto/ajuste-stock.dto';
 import { ImportarRepuestosDto } from './dto/importar-repuestos.dto';
-import { TipoMovimientoStock } from '@prisma/client';
+import { TipoItemInventario, TipoMovimientoStock } from '@prisma/client';
 
 @Injectable()
 export class RepuestosService {
@@ -22,8 +22,16 @@ export class RepuestosService {
   /**
    * Listar repuestos con filtros y métricas globales de inventario (SCRUM-22, SCRUM-24)
    */
-  async listar(filtros: { busqueda?: string; stockBajo?: boolean }) {
+  async listar(filtros: { busqueda?: string; stockBajo?: boolean; tipo?: TipoItemInventario }) {
     const where: any = {};
+
+    const esTipoValido =
+      filtros.tipo === TipoItemInventario.REPUESTO ||
+      filtros.tipo === TipoItemInventario.INSUMO;
+
+    if (esTipoValido) {
+      where.tipo = filtros.tipo;
+    }
 
     if (filtros.busqueda?.trim()) {
       const q = filtros.busqueda.trim();
@@ -45,6 +53,7 @@ export class RepuestosService {
 
     // Calcular KPIs de inventario
     const todosParaKpis = await this.prisma.repuesto.findMany({
+      where: esTipoValido ? { tipo: filtros.tipo } : undefined,
       select: {
         stock: true,
         stockMinimo: true,
@@ -173,6 +182,7 @@ export class RepuestosService {
         data: {
           codigo: codigoNorm,
           nombre: dto.nombre.trim(),
+          tipo: dto.tipo || TipoItemInventario.REPUESTO,
           stock: stockInicial,
           stockMinimo: stockMin,
           precioCompra: dto.precioCompra,
@@ -202,7 +212,7 @@ export class RepuestosService {
       accion: 'CREACION_REPUESTO',
       entidad: 'Repuesto',
       entidadId: repuesto.id,
-      detalles: `Repuesto [${repuesto.codigo}] "${repuesto.nombre}" creado con stock ${repuesto.stock}, precio venta $${repuesto.precioVenta}.`,
+      detalles: `Repuesto [${repuesto.codigo}] "${repuesto.nombre}" (${repuesto.tipo}) creado con stock ${repuesto.stock}, precio venta $${repuesto.precioVenta}.`,
     });
 
     return repuesto;
@@ -249,6 +259,7 @@ export class RepuestosService {
     const data: any = {};
     if (dto.codigo !== undefined) data.codigo = dto.codigo.trim().toUpperCase();
     if (dto.nombre !== undefined) data.nombre = dto.nombre.trim();
+    if (dto.tipo !== undefined) data.tipo = dto.tipo;
     if (dto.stockMinimo !== undefined) data.stockMinimo = dto.stockMinimo;
     if (dto.precioCompra !== undefined) data.precioCompra = dto.precioCompra;
     if (dto.precioVenta !== undefined) data.precioVenta = dto.precioVenta;

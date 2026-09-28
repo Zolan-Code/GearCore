@@ -21,6 +21,7 @@ interface Repuesto {
   id: string;
   codigo: string;
   nombre: string;
+  tipo?: 'REPUESTO' | 'INSUMO';
   stock: number;
   stockMinimo: number;
   precioCompra: number;
@@ -84,6 +85,16 @@ interface Props {
 export default function InventarioView({ userRole }: Props) {
   const searchParams = useSearchParams();
   const busquedaParam = searchParams.get('search') || searchParams.get('codigo') || searchParams.get('id') || '';
+  const rawTipo = searchParams.get('tipo');
+  const tipoParam: 'REPUESTO' | 'INSUMO' | 'TODOS' =
+    rawTipo === 'INSUMO'
+      ? 'INSUMO'
+      : rawTipo === 'REPUESTO'
+      ? 'REPUESTO'
+      : 'TODOS';
+  const esInsumo = tipoParam === 'INSUMO';
+  const esRepuesto = tipoParam === 'REPUESTO';
+  const esGeneral = tipoParam === 'TODOS';
 
   const {
     data: inventarioData,
@@ -92,7 +103,9 @@ export default function InventarioView({ userRole }: Props) {
     isError: errorInventario,
     error: errInventario,
     refetch: refetchInventario,
-  } = useRepuestos();
+  } = useRepuestos({
+    tipo: esInsumo ? 'INSUMO' : esRepuesto ? 'REPUESTO' : undefined,
+  });
 
   const repuestos = (inventarioData?.items || []) as any as Repuesto[];
   const kpis = inventarioData?.kpis || {
@@ -121,6 +134,9 @@ export default function InventarioView({ userRole }: Props) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [formCodigo, setFormCodigo] = useState('');
   const [formNombre, setFormNombre] = useState('');
+  const [formTipo, setFormTipo] = useState<'REPUESTO' | 'INSUMO'>(
+    tipoParam === 'INSUMO' ? 'INSUMO' : 'REPUESTO'
+  );
   const [formStock, setFormStock] = useState<string>('');
   const [formStockMinimo, setFormStockMinimo] = useState<string>('5');
   const [formPrecioCompra, setFormPrecioCompra] = useState<string>('');
@@ -148,6 +164,7 @@ export default function InventarioView({ userRole }: Props) {
     setEditandoId(null);
     setFormCodigo('');
     setFormNombre('');
+    setFormTipo(esInsumo ? 'INSUMO' : 'REPUESTO');
     setFormStock('');
     setFormStockMinimo('5');
     setFormPrecioCompra('');
@@ -163,6 +180,7 @@ export default function InventarioView({ userRole }: Props) {
     setEditandoId(r.id);
     setFormCodigo(r.codigo);
     setFormNombre(r.nombre);
+    setFormTipo(r.tipo || 'REPUESTO');
     setFormStock(r.stock.toString());
     setFormStockMinimo(r.stockMinimo.toString());
     setFormPrecioCompra(r.precioCompra.toString());
@@ -170,13 +188,13 @@ export default function InventarioView({ userRole }: Props) {
     setShowFormModal(true);
   }
 
-  // Guardar (Crear o Editar) Repuesto
+  // Guardar (Crear o Editar) Repuesto / Insumo
   async function handleGuardarRepuesto(e: React.FormEvent) {
     e.preventDefault();
     if (!formCodigo.trim() || !formNombre.trim()) {
       setNotifyModal({
         title: 'Datos Incompletos',
-        message: 'Por favor completa el código y nombre del repuesto.',
+        message: `Por favor completa el código y nombre del ${formTipo === 'INSUMO' ? 'insumo' : 'repuesto'}.`,
         tipo: 'warning',
       });
       return;
@@ -194,6 +212,7 @@ export default function InventarioView({ userRole }: Props) {
         const payload: any = {
           codigo: formCodigo.trim(),
           nombre: formNombre.trim(),
+          tipo: formTipo,
           stockMinimo: stockMinimoNum,
         };
         // Precios solo permitidos para Administrador
@@ -210,8 +229,8 @@ export default function InventarioView({ userRole }: Props) {
         setShowFormModal(false);
         resetForm();
         setNotifyModal({
-          title: 'Repuesto Actualizado',
-          message: `El repuesto [${actualizado.codigo}] ha sido modificado exitosamente.`,
+          title: `${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'} Actualizado`,
+          message: `El artículo [${actualizado.codigo}] ha sido modificado exitosamente.`,
           tipo: 'success',
         });
       } else {
@@ -219,6 +238,7 @@ export default function InventarioView({ userRole }: Props) {
         const nuevo = await crearRepuestoMutation.mutateAsync({
           codigo: formCodigo.trim(),
           nombre: formNombre.trim(),
+          tipo: formTipo,
           stock: stockNum,
           stockMinimo: stockMinimoNum,
           precioCompra: precioCompraNum,
@@ -228,15 +248,15 @@ export default function InventarioView({ userRole }: Props) {
         setShowFormModal(false);
         resetForm();
         setNotifyModal({
-          title: '¡Repuesto Registrado!',
-          message: `Repuesto [${nuevo.codigo}] "${nuevo.nombre}" añadido al inventario.`,
+          title: `¡${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'} Registrado!`,
+          message: `${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'} [${nuevo.codigo}] "${nuevo.nombre}" añadido al inventario.`,
           tipo: 'success',
         });
       }
     } catch (err: any) {
       setNotifyModal({
         title: 'Error al Guardar',
-        message: err.message || 'No se pudo guardar el repuesto.',
+        message: err.message || `No se pudo guardar el ${formTipo === 'INSUMO' ? 'insumo' : 'repuesto'}.`,
         tipo: 'error',
       });
     } finally {
@@ -379,12 +399,13 @@ export default function InventarioView({ userRole }: Props) {
     }
 
     // Usar punto y coma (;) como delimitador estándar para Excel en español
-    const encabezados = 'codigo;nombre;stock;stockMinimo;precioCompra;precioVenta;margenBruto\n';
+    const encabezados = 'codigo;nombre;tipo;stock;stockMinimo;precioCompra;precioVenta;margenBruto\n';
     const filas = repuestos
       .map((r) =>
         [
           `"${r.codigo}"`,
           `"${r.nombre.replace(/"/g, '""')}"`,
+          `"${r.tipo || 'REPUESTO'}"`,
           r.stock,
           r.stockMinimo,
           r.precioCompra,
@@ -399,7 +420,8 @@ export default function InventarioView({ userRole }: Props) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `inventario_gearcore_${new Date().toISOString().slice(0, 10)}.csv`);
+    const prefijoArchivo = tipoParam ? `inventario_${tipoParam.toLowerCase()}` : 'inventario';
+    link.setAttribute('download', `${prefijoArchivo}_gearcore_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -527,7 +549,13 @@ export default function InventarioView({ userRole }: Props) {
       <div className={styles.headerSection}>
         <div>
           <h2 className={styles.headerTitle}>
-            <span>Inventario de Repuestos</span>
+            <span>
+              {esInsumo
+                ? 'Inventario de Insumos de Taller'
+                : esRepuesto
+                ? 'Inventario de Repuestos'
+                : 'Inventario General (Insumos + Repuestos)'}
+            </span>
             {fetchingInventario && !loadingInventario && (
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal', marginLeft: '10px' }}>
                 Actualizando...
@@ -535,7 +563,11 @@ export default function InventarioView({ userRole }: Props) {
             )}
           </h2>
           <p className={styles.headerSubtitle}>
-            Control de stock, alertas automáticas de reposición, precios y trazabilidad física en taller
+            {esInsumo
+              ? 'Control de insumos operativos, consumibles, químicos y materiales de taller'
+              : esRepuesto
+              ? 'Control de piezas mecánicas, repuestos y componentes automotrices'
+              : 'Vista consolidada de stock, repuestos automotrices, insumos operativos y consumibles del taller'}
           </p>
         </div>
 
@@ -583,7 +615,9 @@ export default function InventarioView({ userRole }: Props) {
             </svg>
           </div>
           <div className={styles.kpiInfo}>
-            <span className={styles.kpiLabel}>Total Catálogo</span>
+            <span className={styles.kpiLabel}>
+              {esInsumo ? 'Total Insumos' : esRepuesto ? 'Total Repuestos' : 'Total General'}
+            </span>
             <span className={styles.kpiValue}>{kpis.totalRepuestos} items</span>
           </div>
         </div>
@@ -693,14 +727,26 @@ export default function InventarioView({ userRole }: Props) {
         data={repuestosFiltrados}
         keyExtractor={(r) => r.id}
         storageKey="inventario-table-layout"
-        searchPlaceholder="Buscar por código, repuesto, stock o precio..."
+        searchPlaceholder={
+          esInsumo
+            ? 'Buscar por código, insumo, stock...'
+            : 'Buscar por código, repuesto, stock o precio...'
+        }
         initialQuery={busquedaParam}
         loading={loadingInventario}
-        loadingMessage="Cargando inventario de repuestos..."
+        loadingMessage={
+          esInsumo
+            ? 'Cargando inventario de insumos...'
+            : 'Cargando inventario de repuestos...'
+        }
         error={errorInventario ? errInventario : null}
         errorMessage={`Error al cargar inventario: ${(errInventario as any)?.message || 'Error de conexión'}`}
         onRetry={() => refetchInventario()}
-        emptyMessage="No se encontraron repuestos con los criterios seleccionados."
+        emptyMessage={
+          esInsumo
+            ? 'No se encontraron insumos con los criterios seleccionados.'
+            : 'No se encontraron repuestos con los criterios seleccionados.'
+        }
         onRowClick={(r) => abrirHistorial(r)}
         actions={
           userRole !== 'MECANICO' ? (
@@ -709,13 +755,13 @@ export default function InventarioView({ userRole }: Props) {
               className={styles.btnPrimary}
               style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
               onClick={abrirCrearModal}
-              title="Registrar nuevo repuesto en el catálogo"
+              title={`Registrar nuevo ${esInsumo ? 'insumo' : 'repuesto'} en el catálogo`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              <span>Nuevo Repuesto</span>
+              <span>{esInsumo ? 'Nuevo Insumo' : esRepuesto ? 'Nuevo Repuesto' : 'Nuevo Artículo'}</span>
             </button>
           ) : null
         }
@@ -729,10 +775,43 @@ export default function InventarioView({ userRole }: Props) {
           {
             id: 'nombre',
             accessor: 'nombre',
-            header: 'Repuesto / Insumo',
+            header: esInsumo ? 'Insumo' : esRepuesto ? 'Repuesto' : 'Repuesto / Insumo',
             cell: (r) => (
               <div>
-                <p className={styles.repuestoName}>{r.nombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <p className={styles.repuestoName}>{r.nombre}</p>
+                  {r.tipo === 'INSUMO' ? (
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(20, 184, 166, 0.12)',
+                        color: '#0d9488',
+                        border: '1px solid rgba(20, 184, 166, 0.25)',
+                      }}
+                    >
+                      Insumo
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        color: '#2563eb',
+                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                      }}
+                    >
+                      Repuesto
+                    </span>
+                  )}
+                </div>
                 <p className={styles.repuestoUsage}>
                   Usado en {r._count?.usosEnOT || 0} OT(s)
                 </p>
@@ -902,7 +981,11 @@ export default function InventarioView({ userRole }: Props) {
         <div className={styles.modalOverlay} onClick={() => setShowFormModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>{editandoId ? 'Editar Repuesto' : 'Registrar Nuevo Repuesto'}</h3>
+              <h3>
+                {editandoId
+                  ? `Editar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`
+                  : `Registrar Nuevo ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`}
+              </h3>
               <button
                 type="button"
                 className={styles.closeBtn}
@@ -916,17 +999,50 @@ export default function InventarioView({ userRole }: Props) {
               <div className={styles.modalBody}>
                 <div className={styles.rowTwoCols}>
                   <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Tipo de Artículo *</label>
+                    <select
+                      className={styles.formInput}
+                      value={formTipo}
+                      onChange={(e) => setFormTipo(e.target.value as 'REPUESTO' | 'INSUMO')}
+                      required
+                    >
+                      <option value="REPUESTO">Repuesto (Pieza / Mecánica)</option>
+                      <option value="INSUMO">Insumo de Taller (Consumible / Químico)</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.formGroup}>
                     <label className={styles.formLabel}>Código / SKU *</label>
                     <input
                       type="text"
                       className={styles.formInput}
-                      placeholder="Ej: BOS-001"
+                      placeholder={formTipo === 'INSUMO' ? 'Ej: INS-001' : 'Ej: BOS-001'}
                       value={formCodigo}
                       onChange={(e) => setFormCodigo(e.target.value.toUpperCase())}
                       required
                     />
                   </div>
+                </div>
 
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    {formTipo === 'INSUMO' ? 'Nombre del Insumo *' : 'Nombre del Repuesto *'}
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.formInput}
+                    placeholder={
+                      formTipo === 'INSUMO'
+                        ? 'Ej: Paños de Microfibra / Desengrasante Industrial'
+                        : 'Ej: Pastillas de Freno Delanteras Cerámica Bosch'
+                    }
+                    value={formNombre}
+                    onChange={(e) => setFormNombre(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className={styles.rowTwoCols}>
                   <div className={styles.formGroup}>
                     <label className={styles.formLabel}>Stock Mínimo (Alerta) *</label>
                     <input
@@ -939,33 +1055,21 @@ export default function InventarioView({ userRole }: Props) {
                       required
                     />
                   </div>
-                </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Nombre del Repuesto / Insumo *</label>
-                  <input
-                    type="text"
-                    className={styles.formInput}
-                    placeholder="Ej: Pastillas de Freno Delanteras Cerámica Bosch"
-                    value={formNombre}
-                    onChange={(e) => setFormNombre(e.target.value)}
-                    required
-                  />
+                  {!editandoId && (
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>Stock Inicial en Bodega</label>
+                      <input
+                        type="number"
+                        className={styles.formInput}
+                        value={formStock}
+                        onChange={(e) => setFormStock(e.target.value)}
+                        placeholder="Ej: 15"
+                        min={0}
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {!editandoId && (
-                  <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Stock Inicial en Bodega</label>
-                    <input
-                      type="number"
-                      className={styles.formInput}
-                      value={formStock}
-                      onChange={(e) => setFormStock(e.target.value)}
-                      placeholder="Ej: 15"
-                      min={0}
-                    />
-                  </div>
-                )}
 
                 <div className={styles.rowTwoCols}>
                   <div className={styles.formGroup}>

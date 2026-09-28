@@ -16,6 +16,7 @@ export interface Repuesto {
   id: string;
   codigo: string;
   nombre: string;
+  tipo: 'REPUESTO' | 'INSUMO';
   stock: number;
   stockMinimo: number;
   precioCompra: number;
@@ -38,11 +39,18 @@ export interface InventarioResponse {
 }
 
 // Hook principal de Inventario y Repuestos (RF-13 a RF-17)
-export function useRepuestos() {
+export function useRepuestos(filtros?: { busqueda?: string; stockBajo?: boolean; tipo?: string }) {
+  const queryParams = new URLSearchParams();
+  if (filtros?.busqueda) queryParams.set('busqueda', filtros.busqueda);
+  if (filtros?.stockBajo) queryParams.set('stockBajo', 'true');
+  if (filtros?.tipo) queryParams.set('tipo', filtros.tipo);
+  const qs = queryParams.toString();
+  const url = qs ? `/repuestos?${qs}` : '/repuestos';
+
   return useQuery({
-    queryKey: ['repuestos'],
+    queryKey: ['repuestos', filtros?.tipo || 'TODOS', filtros?.busqueda || '', !!filtros?.stockBajo],
     queryFn: async () => {
-      const data = await fetchWithAuth<InventarioResponse>('/repuestos');
+      const data = await fetchWithAuth<InventarioResponse>(url);
       return (
         data || {
           items: [],
@@ -58,7 +66,7 @@ export function useRepuestos() {
   });
 }
 
-// Mutación: Crear Repuesto (SCRUM-22)
+// Mutación: Crear Repuesto o Insumo (SCRUM-22)
 export function useCrearRepuesto() {
   const queryClient = useQueryClient();
 
@@ -66,6 +74,7 @@ export function useCrearRepuesto() {
     mutationFn: async (dto: {
       codigo: string;
       nombre: string;
+      tipo?: 'REPUESTO' | 'INSUMO';
       stock: number;
       stockMinimo: number;
       precioCompra: number;

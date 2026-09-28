@@ -95,15 +95,21 @@ model OrdenTrabajo {
   cotizacion       Cotizacion?
 }
 
+enum TipoItemInventario {
+  REPUESTO
+  INSUMO
+}
+
 model Repuesto {
-  id           String   @id @default(uuid())
-  codigo       String   @unique
+  id           String             @id @default(uuid())
+  codigo       String             @unique
   nombre       String
-  stock        Int      @default(0)
-  stockMinimo  Int      @default(5)
+  tipo         TipoItemInventario @default(REPUESTO)
+  stock        Int                @default(0)
+  stockMinimo  Int                @default(5)
   precioCompra Float
   precioVenta  Float
-  creadoEn     DateTime @default(now())
+  creadoEn     DateTime           @default(now())
 
   usosEnOT    DetalleOTRepuesto[]
   movimientos MovimientoInventario[]

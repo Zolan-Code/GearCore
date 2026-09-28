@@ -1,5 +1,6 @@
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TipoItemInventario } from '@prisma/client';
 
 export class ActualizarRepuestoDto {
   @IsOptional()
@@ -9,6 +10,10 @@ export class ActualizarRepuestoDto {
   @IsOptional()
   @IsString({ message: 'El nombre del repuesto debe ser un texto.' })
   nombre?: string;
+
+  @IsOptional()
+  @IsEnum(TipoItemInventario, { message: 'El tipo debe ser REPUESTO o INSUMO.' })
+  tipo?: TipoItemInventario;
 
   @IsOptional()
   @IsInt({ message: 'El stock mínimo debe ser un número entero.' })

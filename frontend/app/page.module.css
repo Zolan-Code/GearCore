@@ -669,6 +669,70 @@
   background: #f59e0b;
 }
 
+/* Submenús en navegación lateral */
+.navItemChevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.navItemActive .navItemChevron {
+  color: inherit;
+}
+
+.navItemChevronRotated {
+  transform: rotate(90deg);
+}
+
+.navSubList {
+  list-style: none;
+  margin: 4px 0 6px 20px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebarCollapsed .navSubList {
+  display: none;
+}
+
+.navSubListItem {
+  position: relative;
+}
+
+.navSubItem {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.navSubItem:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.navSubItemActive {
+  color: var(--accent-primary) !important;
+  font-weight: 600;
+  background: var(--bg-subtle);
+}
+
+:global([data-theme="dark"]) .navSubItemActive {
+  color: #60a5fa !important;
+  background: #1c1c20;
+}
+
 /* Pie de la barra lateral */
 .sidebarFooter {
   padding-top: 16px;

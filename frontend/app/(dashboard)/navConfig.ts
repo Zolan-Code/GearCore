@@ -1,10 +1,17 @@
 export type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MECANICO';
 
+export interface NavSubItemConfig {
+  id: string;
+  href: string;
+  label: string;
+}
+
 export interface NavItemConfig {
   id: string;
   href: string;
   label: string;
   roles: Rol[];
+  children?: NavSubItemConfig[];
 }
 
 export const NAV_ITEMS: NavItemConfig[] = [
@@ -29,8 +36,25 @@ export const NAV_ITEMS: NavItemConfig[] = [
   {
     id: 'inventario',
     href: '/inventario',
-    label: 'Inventario de Repuestos',
+    label: 'Inventario',
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
+    children: [
+      {
+        id: 'inventario-general',
+        href: '/inventario?tipo=TODOS',
+        label: 'Inventario General',
+      },
+      {
+        id: 'repuestos',
+        href: '/inventario?tipo=REPUESTO',
+        label: 'Repuestos',
+      },
+      {
+        id: 'insumos',
+        href: '/inventario?tipo=INSUMO',
+        label: 'Insumos de Taller',
+      },
+    ],
   },
   {
     id: 'cotizaciones',

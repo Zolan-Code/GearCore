@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchWithAuth } from '../../lib/api';
@@ -12,7 +12,7 @@ import { useMiPerfil } from '../../hooks/usuarios/useUsuarios';
 import { useRepuestos } from '../../hooks/repuestos/useRepuestos';
 import { useOrdenesTrabajo } from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
 import { useCotizaciones } from '../../hooks/cotizaciones/useCotizaciones';
-import { NAV_ITEMS, Rol, isRouteAllowed, getActiveNavHref, getNombreRol } from './navConfig';
+import { NAV_ITEMS, Rol, isRouteAllowed, getActiveNavHref, getNombreRol, NavItemConfig } from './navConfig';
 import { DashboardContext, UserProfile } from './DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -77,17 +77,21 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const queryClient = useQueryClient();
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+function SidebarNavList({
+  visibleNavItems,
+  activeNavHref,
+  pathname,
+  sidebarOpen,
+}: {
+  visibleNavItems: NavItemConfig[];
+  activeNavHref: string;
+  pathname: string;
+  sidebarOpen: boolean;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentTipo = searchParams.get('tipo');
 
-  // Indicador deslizante suave para módulos del sidebar
   const navListRef = useRef<HTMLUListElement>(null);
   const [indicatorReady, setIndicatorReady] = useState(false);
   const [indicatorStyle, setIndicatorStyle] = useState<{
@@ -96,7 +100,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     opacity: number;
   }>({ top: 0, height: 0, opacity: 0 });
 
-  const activeNavHref = getActiveNavHref(pathname);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    inventario: true,
+  });
 
   useEffect(() => {
     function updateIndicator() {
@@ -106,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const li = activeEl.closest('li') || activeEl;
         setIndicatorStyle({
           top: li.offsetTop,
-          height: li.offsetHeight,
+          height: activeEl.offsetHeight || 40,
           opacity: 1,
         });
         setIndicatorReady(true);
@@ -116,10 +122,141 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     updateIndicator();
-    // Re-medir tras la transición de apertura/cierre del sidebar (250ms)
     const timer = setTimeout(updateIndicator, 260);
     return () => clearTimeout(timer);
-  }, [activeNavHref, sidebarOpen]);
+  }, [activeNavHref, sidebarOpen, expandedMenus]);
+
+  return (
+    <ul
+      className={`${styles.navList} ${indicatorReady ? styles.navListAnimated : ''}`}
+      ref={navListRef}
+      style={{ marginTop: '16px' }}
+    >
+      <div
+        className={styles.activeIndicator}
+        style={{
+          transform: `translateY(${indicatorStyle.top}px)`,
+          height: `${indicatorStyle.height}px`,
+          opacity: indicatorStyle.opacity,
+        }}
+        aria-hidden="true"
+      />
+      {visibleNavItems.map((item) => {
+        const isActive = activeNavHref === item.href;
+        const hasChildren = !!item.children && item.children.length > 0;
+        const isExpanded = !!expandedMenus[item.id];
+
+        return (
+          <li key={item.id} className={styles.navListItem}>
+            {hasChildren ? (
+              <button
+                type="button"
+                data-nav-active={isActive ? 'true' : 'false'}
+                onClick={() => {
+                  if (!sidebarOpen) {
+                    router.push(item.children![0]?.href || item.href);
+                    return;
+                  }
+                  setExpandedMenus((prev) => ({
+                    ...prev,
+                    [item.id]: !prev[item.id],
+                  }));
+                }}
+                className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
+                data-tooltip={item.label}
+              >
+                <span className={styles.navItemContent}>
+                  {NAV_ICONS[item.id]}
+                  <span className={styles.navLabel}>{item.label}</span>
+                </span>
+
+                {sidebarOpen && (
+                  <span
+                    className={`${styles.navItemChevron} ${isExpanded ? styles.navItemChevronRotated : ''}`}
+                    aria-hidden="true"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            ) : (
+              <Link
+                href={item.href}
+                data-nav-active={isActive ? 'true' : 'false'}
+                onClick={(e) => {
+                  const li = e.currentTarget.closest('li');
+                  if (li) {
+                    setIndicatorStyle({
+                      top: li.offsetTop,
+                      height: e.currentTarget.offsetHeight || 40,
+                      opacity: 1,
+                    });
+                  }
+                }}
+                className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
+                style={{ textDecoration: 'none' }}
+                data-tooltip={item.label}
+              >
+                <span className={styles.navItemContent}>
+                  {NAV_ICONS[item.id]}
+                  <span className={styles.navLabel}>{item.label}</span>
+                </span>
+                {isActive && <span className={styles.activeDot} />}
+              </Link>
+            )}
+
+            {hasChildren && isExpanded && sidebarOpen && (
+              <ul className={styles.navSubList}>
+                {item.children!.map((sub) => {
+                  const isSubActive =
+                    pathname.startsWith('/inventario') &&
+                    (sub.href.includes('tipo=INSUMO')
+                      ? currentTipo === 'INSUMO'
+                      : sub.href.includes('tipo=REPUESTO')
+                      ? currentTipo === 'REPUESTO'
+                      : currentTipo === 'TODOS' || !currentTipo);
+
+                  return (
+                    <li key={sub.id} className={styles.navSubListItem}>
+                      <Link
+                        href={sub.href}
+                        className={`${styles.navSubItem} ${isSubActive ? styles.navSubItemActive : ''}`}
+                      >
+                        {sub.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const activeNavHref = getActiveNavHref(pathname);
 
   // Inactividad
   const {
@@ -573,52 +710,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
 
-              {/* Lista de navegación con indicador deslizante */}
-              <ul
-                className={`${styles.navList} ${indicatorReady ? styles.navListAnimated : ''}`}
-                ref={navListRef}
-                style={{ marginTop: '16px' }}
-              >
-                <div
-                  className={styles.activeIndicator}
-                  style={{
-                    transform: `translateY(${indicatorStyle.top}px)`,
-                    height: `${indicatorStyle.height}px`,
-                    opacity: indicatorStyle.opacity,
-                  }}
-                  aria-hidden="true"
+              {/* Lista de navegación con submenús e indicador deslizante */}
+              <Suspense fallback={null}>
+                <SidebarNavList
+                  visibleNavItems={visibleNavItems}
+                  activeNavHref={activeNavHref}
+                  pathname={pathname}
+                  sidebarOpen={sidebarOpen}
                 />
-                {visibleNavItems.map((item) => {
-                  const isActive = activeNavHref === item.href;
-                  return (
-                    <li key={item.id} className={styles.navListItem}>
-                      <Link
-                        href={item.href}
-                        data-nav-active={isActive ? 'true' : 'false'}
-                        onClick={(e) => {
-                          const li = e.currentTarget.closest('li');
-                          if (li) {
-                            setIndicatorStyle({
-                              top: li.offsetTop,
-                              height: li.offsetHeight,
-                              opacity: 1,
-                            });
-                          }
-                        }}
-                        className={`${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
-                        style={{ textDecoration: 'none' }}
-                        data-tooltip={item.label}
-                      >
-                        <span className={styles.navItemContent}>
-                          {NAV_ICONS[item.id]}
-                          <span className={styles.navLabel}>{item.label}</span>
-                        </span>
-                        {isActive && <span className={styles.activeDot} />}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              </Suspense>
           </div>
 
           {/* Pie de Barra Lateral (Auditoría, Mi Perfil y Logout) */}

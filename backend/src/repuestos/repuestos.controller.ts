@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { RolUsuario } from '@prisma/client';
+import { RolUsuario, TipoItemInventario } from '@prisma/client';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -29,10 +29,12 @@ export class RepuestosController {
   async listar(
     @Query('busqueda') busqueda?: string,
     @Query('stockBajo') stockBajo?: string,
+    @Query('tipo') tipo?: TipoItemInventario,
   ) {
     return this.repuestosService.listar({
       busqueda,
       stockBajo: stockBajo === 'true' || stockBajo === '1',
+      tipo,
     });
   }
 
