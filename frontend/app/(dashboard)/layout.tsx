@@ -100,9 +100,7 @@ function SidebarNavList({
     opacity: number;
   }>({ top: 0, height: 0, opacity: 0 });
 
-  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
-    inventario: true,
-  });
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     function updateIndicator() {
@@ -216,29 +214,44 @@ function SidebarNavList({
               </Link>
             )}
 
-            {hasChildren && isExpanded && sidebarOpen && (
-              <ul className={styles.navSubList}>
-                {item.children!.map((sub) => {
-                  const isSubActive =
-                    pathname.startsWith('/inventario') &&
-                    (sub.href.includes('tipo=INSUMO')
-                      ? currentTipo === 'INSUMO'
-                      : sub.href.includes('tipo=REPUESTO')
-                      ? currentTipo === 'REPUESTO'
-                      : currentTipo === 'TODOS' || !currentTipo);
+            {hasChildren && sidebarOpen && (
+              <div
+                className={`${styles.navSubMenuWrapper} ${isExpanded ? styles.navSubMenuExpanded : ''}`}
+                aria-hidden={!isExpanded}
+              >
+                <div className={styles.navSubMenuInner}>
+                  <ul className={styles.navSubList}>
+                    {item.children!.map((sub, idx) => {
+                      const isSubActive =
+                        pathname.startsWith('/inventario') &&
+                        (sub.href.includes('tipo=INSUMO')
+                          ? currentTipo === 'INSUMO'
+                          : sub.href.includes('tipo=REPUESTO')
+                          ? currentTipo === 'REPUESTO'
+                          : currentTipo === 'TODOS' || !currentTipo);
 
-                  return (
-                    <li key={sub.id} className={styles.navSubListItem}>
-                      <Link
-                        href={sub.href}
-                        className={`${styles.navSubItem} ${isSubActive ? styles.navSubItemActive : ''}`}
-                      >
-                        {sub.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+                      return (
+                        <li
+                          key={sub.id}
+                          className={styles.navSubListItem}
+                          style={{
+                            transitionDelay: isExpanded ? `${idx * 35}ms` : '0ms',
+                          }}
+                        >
+                          <Link
+                            href={sub.href}
+                            className={`${styles.navSubItem} ${isSubActive ? styles.navSubItemActive : ''}`}
+                            tabIndex={isExpanded ? 0 : -1}
+                          >
+                            <span className={styles.navSubDot} aria-hidden="true" />
+                            <span>{sub.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
             )}
           </li>
         );

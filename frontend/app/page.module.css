@@ -674,7 +674,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--text-muted);
   pointer-events: none;
 }
@@ -687,39 +687,84 @@
   transform: rotate(90deg);
 }
 
+.navSubMenuWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navSubMenuExpanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.navSubMenuInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .navSubList {
   list-style: none;
   margin: 4px 0 6px 20px;
   padding: 0 0 0 12px;
-  border-left: 1px solid var(--border-color);
+  border-left: 1.5px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.sidebarCollapsed .navSubList {
+.sidebarCollapsed .navSubMenuWrapper {
   display: none;
 }
 
 .navSubListItem {
   position: relative;
+  transform: translateX(-5px);
+  opacity: 0;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navSubMenuExpanded .navSubListItem {
+  transform: translateX(0);
+  opacity: 1;
 }
 
 .navSubItem {
   display: flex;
   align-items: center;
+  gap: 8px;
   padding: 6px 10px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
+.navSubDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.6;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
 .navSubItem:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateX(3px);
+}
+
+.navSubItem:hover .navSubDot {
+  background: var(--accent-primary);
+  opacity: 1;
+  transform: scale(1.4);
 }
 
 .navSubItemActive {
@@ -728,9 +773,20 @@
   background: var(--bg-subtle);
 }
 
+.navSubItemActive .navSubDot {
+  background: var(--accent-primary);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--accent-primary);
+}
+
 :global([data-theme="dark"]) .navSubItemActive {
   color: #60a5fa !important;
   background: #1c1c20;
+}
+
+:global([data-theme="dark"]) .navSubItemActive .navSubDot {
+  background: #60a5fa;
+  box-shadow: 0 0 6px #60a5fa;
 }
 
 /* Pie de la barra lateral */

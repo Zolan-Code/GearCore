@@ -1141,7 +1141,11 @@ export default function InventarioView({ userRole }: Props) {
                       <span>Guardando...</span>
                     </>
                   ) : (
-                    <span>{editandoId ? 'Actualizar Repuesto' : 'Registrar Repuesto'}</span>
+                    <span>
+                      {editandoId
+                        ? `Actualizar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`
+                        : `Registrar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`}
+                    </span>
                   )}
                 </button>
               </div>
