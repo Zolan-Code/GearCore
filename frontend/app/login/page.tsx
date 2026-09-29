@@ -113,6 +113,8 @@ export default function LoginPage() {
               src="/assets/logo.png"
               alt="GearCore - Automotive Workshop ERP"
               className={styles.heroImage}
+              width={280}
+              style={{ maxWidth: '280px', width: '100%', height: 'auto' }}
             />
           </div>
           <h1 className={styles.heroTitle}>Bienvenido</h1>

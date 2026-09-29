@@ -260,16 +260,18 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
   // Cerrar dropdown de búsqueda de repuestos/insumos al hacer clic fuera
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (itemSearchRef.current && !itemSearchRef.current.contains(e.target as Node)) {
         setDropdownItemAbierto(false);
       }
     }
     if (dropdownItemAbierto) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [dropdownItemAbierto]);
 
@@ -1886,8 +1888,252 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 {/* PESTAÑA 2: REPUESTOS E INSUMOS UTILIZADOS */}
                 {modalTab === 'repuestos' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                    {/* Resumen superior */}
-                    <div className={styles.dualInventoryHeader}>
+                    {/* ZONA SUPERIOR: Asignador predictivo por SKU o Nombre para Añadir a la OT */}
+                    <div
+                      ref={itemSearchRef}
+                      className={styles.repuestoAddForm}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.12)', color: 'var(--accent-primary)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </span>
+                          <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Asignar Repuesto o Insumo del Almacén:
+                          </label>
+                        </div>
+                        {/* Selector de tipo (Tabs rápidos) */}
+                        <div className={styles.itemTypeTabs} style={{ margin: 0 }}>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'TODOS' ? styles.itemTypeTabBtnActive : ''}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFiltroTipoItemOT('TODOS');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <rect width="18" height="18" x="3" y="3" rx="2" />
+                              <path d="m9 12 2 2 4-4" />
+                            </svg>
+                            <span>Todos</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'REPUESTO' ? styles.itemTypeTabBtnActive : ''}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFiltroTipoItemOT('REPUESTO');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                            </svg>
+                            <span>Solo Repuestos</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'INSUMO' ? styles.itemTypeTabBtnActive : ''}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFiltroTipoItemOT('INSUMO');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                            </svg>
+                            <span>Solo Insumos</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Buscador interactivo por SKU o Nombre */}
+                      {!repuestoSeleccionadoId ? (
+                        <div className={styles.itemSearchWrapper}>
+                          <svg className={styles.itemSearchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          </svg>
+                          <input
+                            type="text"
+                            className={styles.itemSearchInput}
+                            placeholder="Buscar por SKU o nombre de repuesto/insumo (ej: BUJ-01, ACEITE, PAÑO)..."
+                            value={busquedaItemOT}
+                            onChange={(e) => {
+                              setBusquedaItemOT(e.target.value);
+                              setDropdownItemAbierto(true);
+                            }}
+                            onFocus={() => setDropdownItemAbierto(true)}
+                            onTouchStart={(e) => e.stopPropagation()}
+                          />
+
+                          {dropdownItemAbierto && (
+                            <div
+                              className={styles.itemDropdownResults}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onTouchMove={(e) => e.stopPropagation()}
+                            >
+                              {catalogoFiltradoOT.length === 0 ? (
+                                <div style={{ padding: '12px', textAlign: 'center', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                                  No se encontraron artículos que coincidan con "{busquedaItemOT}".
+                                </div>
+                              ) : (
+                                <>
+                                  {catalogoFiltradoOT.slice(0, 8).map((item) => {
+                                    const disponible = item.stock > 0;
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        className={styles.itemResultRow}
+                                        style={{ opacity: disponible ? 1 : 0.6, cursor: disponible ? 'pointer' : 'not-allowed' }}
+                                        onClick={() => {
+                                          if (disponible) {
+                                            setRepuestoSeleccionadoId(item.id);
+                                            setCantidadRepuesto('1');
+                                            setDropdownItemAbierto(false);
+                                            setBusquedaItemOT('');
+                                          }
+                                        }}
+                                      >
+                                        <div className={styles.itemResultLeft}>
+                                          <span className={styles.itemSkuBadge}>[{item.codigo}]</span>
+                                          <strong>{item.nombre}</strong>
+                                          {item.tipo === 'INSUMO' ? (
+                                            <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                                              </svg>
+                                              Insumo
+                                            </span>
+                                          ) : (
+                                            <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                                              </svg>
+                                              Repuesto
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                                          {disponible ? (
+                                            <span style={{ color: '#16a34a', fontWeight: 600 }}>Stock: {item.stock} uds</span>
+                                          ) : (
+                                            <span style={{ color: '#ef4444', fontWeight: 600 }}>Agotado</span>
+                                          )}
+                                          {userRole !== 'MECANICO' && (
+                                            <span style={{ color: 'var(--text-secondary)' }}>
+                                              ${item.precioVenta.toLocaleString('es-CL')}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {catalogoFiltradoOT.length > 8 && (
+                                    <div style={{ padding: '8px 10px', textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)', background: 'var(--bg-subtle)', borderRadius: '0 0 6px 6px' }}>
+                                      Mostrando los primeros 8 de {catalogoFiltradoOT.length} artículos · Escribe para filtrar con precisión
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Artículo Seleccionado - Ficha de asignación rápida */
+                        <div className={styles.selectedItemBox}>
+                          <div className={styles.selectedItemMeta}>
+                            <span className={styles.itemSkuBadge}>[{itemSeleccionado?.codigo}]</span>
+                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
+                              {itemSeleccionado?.nombre}
+                            </strong>
+                            {itemSeleccionado?.tipo === 'INSUMO' ? (
+                              <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                                </svg>
+                                Insumo de Taller
+                              </span>
+                            ) : (
+                              <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                                </svg>
+                                Repuesto Vehicular
+                              </span>
+                            )}
+                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                              Disponible: {itemSeleccionado?.stock} uds
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className={styles.repuestoQtyWrapper}>
+                              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                Cantidad:
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max={itemSeleccionado?.stock || 1}
+                                className={styles.formInput}
+                                value={cantidadRepuesto}
+                                onChange={(e) => setCantidadRepuesto(e.target.value)}
+                                style={{ fontSize: '13px', textAlign: 'center', padding: '6px' }}
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              className={styles.btnPrimary}
+                              style={{ padding: '8px 14px', fontSize: '13px', alignSelf: 'flex-end', height: '36px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                              disabled={guardandoRepuestoOT}
+                              onClick={handleAgregarRepuestoOT}
+                            >
+                              {guardandoRepuestoOT ? (
+                                'Asociando...'
+                              ) : (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  <span>Añadir a OT</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.btnActionSubtle}
+                              style={{ alignSelf: 'flex-end', height: '36px' }}
+                              onClick={() => {
+                                setRepuestoSeleccionadoId('');
+                                setCantidadRepuesto('1');
+                                setDropdownItemAbierto(true);
+                              }}
+                            >
+                              Cambiar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Resumen inferior de lo cargado en la OT */}
+                    <div className={styles.dualInventoryHeader} style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
                       <div>
                         <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>
                           Materiales, Repuestos e Insumos de la OT
@@ -2055,218 +2301,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       ) : (
                         <div className={styles.emptyRepuestosBox}>
                           No hay insumos de taller registrados en esta orden.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ZONA 3: Buscador predictivo por SKU o Nombre para Añadir a la OT */}
-                    <div className={styles.repuestoAddForm} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          Asignar Repuesto o Insumo del Almacén:
-                        </label>
-                        {/* Selector de tipo (Tabs rápidos) */}
-                        <div className={styles.itemTypeTabs} style={{ margin: 0 }}>
-                          <button
-                            type="button"
-                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'TODOS' ? styles.itemTypeTabBtnActive : ''}`}
-                            onClick={() => {
-                              setFiltroTipoItemOT('TODOS');
-                              setDropdownItemAbierto(true);
-                            }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
-                              <rect width="18" height="18" x="3" y="3" rx="2" />
-                              <path d="m9 12 2 2 4-4" />
-                            </svg>
-                            <span>Todos</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'REPUESTO' ? styles.itemTypeTabBtnActive : ''}`}
-                            onClick={() => {
-                              setFiltroTipoItemOT('REPUESTO');
-                              setDropdownItemAbierto(true);
-                            }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
-                              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                            </svg>
-                            <span>Solo Repuestos</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'INSUMO' ? styles.itemTypeTabBtnActive : ''}`}
-                            onClick={() => {
-                              setFiltroTipoItemOT('INSUMO');
-                              setDropdownItemAbierto(true);
-                            }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
-                              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-                            </svg>
-                            <span>Solo Insumos</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Buscador interactivo por SKU o Nombre */}
-                      {!repuestoSeleccionadoId ? (
-                        <div className={styles.itemSearchWrapper} ref={itemSearchRef}>
-                          <svg className={styles.itemSearchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                          </svg>
-                          <input
-                            type="text"
-                            className={styles.itemSearchInput}
-                            placeholder="Buscar por SKU o nombre de repuesto/insumo (ej: BUJ-01, ACEITE, PAÑO)..."
-                            value={busquedaItemOT}
-                            onChange={(e) => {
-                              setBusquedaItemOT(e.target.value);
-                              setDropdownItemAbierto(true);
-                            }}
-                            onFocus={() => setDropdownItemAbierto(true)}
-                          />
-
-                          {dropdownItemAbierto && (
-                            <div className={styles.itemDropdownResults}>
-                              {catalogoFiltradoOT.length === 0 ? (
-                                <div style={{ padding: '12px', textAlign: 'center', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                                  No se encontraron artículos que coincidan con "{busquedaItemOT}".
-                                </div>
-                              ) : (
-                                catalogoFiltradoOT.slice(0, 8).map((item) => {
-                                  const disponible = item.stock > 0;
-                                  return (
-                                    <div
-                                      key={item.id}
-                                      className={styles.itemResultRow}
-                                      style={{ opacity: disponible ? 1 : 0.6, cursor: disponible ? 'pointer' : 'not-allowed' }}
-                                      onClick={() => {
-                                        if (disponible) {
-                                          setRepuestoSeleccionadoId(item.id);
-                                          setCantidadRepuesto('1');
-                                          setDropdownItemAbierto(false);
-                                          setBusquedaItemOT('');
-                                        }
-                                      }}
-                                    >
-                                      <div className={styles.itemResultLeft}>
-                                        <span className={styles.itemSkuBadge}>[{item.codigo}]</span>
-                                        <strong>{item.nombre}</strong>
-                                        {item.tipo === 'INSUMO' ? (
-                                          <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-                                            </svg>
-                                            Insumo
-                                          </span>
-                                        ) : (
-                                          <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                                            </svg>
-                                            Repuesto
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                                        {disponible ? (
-                                          <span style={{ color: '#16a34a', fontWeight: 600 }}>Stock: {item.stock} uds</span>
-                                        ) : (
-                                          <span style={{ color: '#ef4444', fontWeight: 600 }}>Agotado</span>
-                                        )}
-                                        {userRole !== 'MECANICO' && (
-                                          <span style={{ color: 'var(--text-secondary)' }}>
-                                            ${item.precioVenta.toLocaleString('es-CL')}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        /* Artículo Seleccionado - Ficha de asignación rápida */
-                        <div className={styles.selectedItemBox}>
-                          <div className={styles.selectedItemMeta}>
-                            <span className={styles.itemSkuBadge}>[{itemSeleccionado?.codigo}]</span>
-                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
-                              {itemSeleccionado?.nombre}
-                            </strong>
-                            {itemSeleccionado?.tipo === 'INSUMO' ? (
-                              <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-                                </svg>
-                                Insumo de Taller
-                              </span>
-                            ) : (
-                              <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                                </svg>
-                                Repuesto Vehicular
-                              </span>
-                            )}
-                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
-                              Disponible: {itemSeleccionado?.stock} uds
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div className={styles.repuestoQtyWrapper}>
-                              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                Cantidad:
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                max={itemSeleccionado?.stock || 1}
-                                className={styles.formInput}
-                                value={cantidadRepuesto}
-                                onChange={(e) => setCantidadRepuesto(e.target.value)}
-                                style={{ fontSize: '13px', textAlign: 'center', padding: '6px' }}
-                              />
-                            </div>
-
-                            <button
-                              type="button"
-                              className={styles.btnPrimary}
-                              style={{ padding: '8px 14px', fontSize: '13px', alignSelf: 'flex-end', height: '36px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                              disabled={guardandoRepuestoOT}
-                              onClick={handleAgregarRepuestoOT}
-                            >
-                              {guardandoRepuestoOT ? (
-                                'Asociando...'
-                              ) : (
-                                <>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="12" y1="5" x2="12" y2="19" />
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                  </svg>
-                                  <span>Añadir a OT</span>
-                                </>
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              className={styles.btnActionSubtle}
-                              style={{ alignSelf: 'flex-end', height: '36px' }}
-                              onClick={() => {
-                                setRepuestoSeleccionadoId('');
-                                setCantidadRepuesto('1');
-                                setDropdownItemAbierto(true);
-                              }}
-                            >
-                              Cambiar
-                            </button>
-                          </div>
                         </div>
                       )}
                     </div>
