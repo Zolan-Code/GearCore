@@ -532,7 +532,157 @@
   font-weight: 600;
 }
 
-/* Selector de Combustible (SCRUM-11) */
+/* Selector de Combustible Tipo Barra Segmentada (SCRUM-11) */
+.fuelControlWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  width: 100%;
+}
+
+.fuelLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fuelLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fuelInteractiveArea {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.fuelBarAndTicksCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fuelBar {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2.5px;
+  padding: 2.5px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  height: 26px;
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.fuelSegment {
+  background: var(--bg-subtle);
+  border: none;
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  outline: none;
+}
+
+.fuelSegment:hover {
+  transform: scaleY(1.08);
+}
+
+.fuelSegmentFilled {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.fuelTicksContainer {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.fuelTickBtn {
+  position: absolute;
+  transform: translateX(-50%);
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: monospace, -apple-system, sans-serif;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s ease;
+}
+
+.fuelTickBtn:first-child {
+  transform: translateX(0);
+}
+
+.fuelTickBtn:last-child {
+  transform: translateX(-100%);
+}
+
+.fuelTickBtn:hover {
+  color: var(--text-primary);
+}
+
+.fuelTickBtnActive {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.fuelPercentDisplay {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+  min-width: 42px;
+  font-family: monospace, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.fuelPercentDisplayLow {
+  color: var(--text-secondary);
+}
+
+/* Mini Barra de Combustible para Ficha de Detalle */
+.miniFuelBar {
+  display: inline-grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1.5px;
+  width: 64px;
+  height: 11px;
+  padding: 1.5px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.miniFuelSegment {
+  background: var(--bg-subtle);
+  border-radius: 1px;
+}
+
+.miniFuelSegmentFilled {
+  background: #10b981;
+}
+
+/* Legacy fuel selector styles kept for safety */
 .fuelSelector {
   display: flex;
   gap: 6px;
@@ -552,12 +702,6 @@
   cursor: pointer;
   color: var(--text-secondary);
   transition: all 0.15s ease;
-}
-
-.fuelOption:hover {
-  border-color: var(--border-subtle);
-  background: var(--bg-hover);
-  color: var(--text-primary);
 }
 
 .fuelOptionActive {
@@ -1834,9 +1978,9 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .stepperDetail {

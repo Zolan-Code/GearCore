@@ -335,8 +335,8 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
 
       {/* MODAL: CREAR NUEVO USUARIO */}
       {showCrearModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowCrearModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>Crear Nuevo Usuario</h3>
               <button

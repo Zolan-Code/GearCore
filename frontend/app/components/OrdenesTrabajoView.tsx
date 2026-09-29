@@ -175,7 +175,41 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   });
   const [nuevaFalla, setNuevaFalla] = useState('');
   const [nuevoMecanicoId, setNuevoMecanicoId] = useState('');
-  const [nuevoCombustible, setNuevoCombustible] = useState('1/2');
+  const [nuevoCombustible, setNuevoCombustible] = useState('0%');
+  const [fuelHoverSegment, setFuelHoverSegment] = useState<number | null>(null);
+
+  const getFilledSegments = (val: string): number => {
+    const v = (val || '').toLowerCase();
+    if (v.includes('lleno') || v === '100%' || v === 'f') return 8;
+    if (v.includes('7/8') || v.includes('88%') || v.includes('87%')) return 7;
+    if (v.includes('3/4') || v.includes('75%')) return 6;
+    if (v.includes('5/8') || v.includes('62%') || v.includes('63%')) return 5;
+    if (v.includes('1/2') || v.includes('50%') || v.includes('medio')) return 4;
+    if (v.includes('3/8') || v.includes('37%') || v.includes('38%')) return 3;
+    if (v.includes('1/4') || v.includes('25%') || v.includes('cuarto')) return 2;
+    if (v.includes('1/8') || v.includes('12%') || v.includes('13%')) return 1;
+    if (v.includes('reserva') || v.includes('0%') || v.includes('vacio') || v === 'e') return 0;
+    return 0;
+  };
+
+  const handleSelectFuelSegment = (segIndex: number) => {
+    const current = getFilledSegments(nuevoCombustible);
+    if (segIndex === 1 && current === 1) {
+      setNuevoCombustible('0%');
+      return;
+    }
+    const mapping: Record<number, string> = {
+      1: '1/8',
+      2: '1/4',
+      3: '3/8',
+      4: '1/2',
+      5: '5/8',
+      6: '3/4',
+      7: '7/8',
+      8: 'Lleno',
+    };
+    setNuevoCombustible(mapping[segIndex] || '0%');
+  };
   const [nuevosRayones, setNuevosRayones] = useState('');
   const [nuevosValores, setNuevosValores] = useState('');
   const [nuevoKm, setNuevoKm] = useState<string>('');
@@ -358,7 +392,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setPaginaVehiculos(1);
     setNuevaFalla('');
     setNuevoMecanicoId('');
-    setNuevoCombustible('1/2');
+    setNuevoCombustible('0%');
+    setFuelHoverSegment(null);
     setNuevosRayones('');
     setNuevosValores('');
     setNuevoKm('');
@@ -918,8 +953,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
       {/* MODAL 1: CREAR ORDEN DE TRABAJO (SCRUM-10, 11, 21) */}
       {showCrearModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowCrearModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>Nueva Orden de Trabajo (Ingreso Vehículo)</h3>
               <button
@@ -1182,22 +1217,110 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>3. Checklist de Recepción</label>
 
-                  {/* Nivel de Combustible */}
-                  <div style={{ marginTop: '4px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Nivel de Combustible:</span>
-                    <div className={styles.fuelSelector}>
-                      {NIVELES_COMBUSTIBLE.map((nivel) => (
-                        <button
-                          key={nivel}
-                          type="button"
-                          className={`${styles.fuelOption} ${
-                            nuevoCombustible === nivel ? styles.fuelOptionActive : ''
-                          }`}
-                          onClick={() => setNuevoCombustible(nivel)}
-                        >
-                          {nivel}
-                        </button>
-                      ))}
+                  {/* Nivel de Combustible (Barra Segmentada) */}
+                  <div style={{ marginTop: '8px' }}>
+                    <div className={styles.fuelControlWrapper}>
+                      <div className={styles.fuelLabelRow}>
+                        <span className={styles.fuelLabel}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
+                            <path d="M3 22h12" />
+                            <path d="M4 9h10" />
+                            <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
+                            <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
+                          </svg>
+                          Nivel de combustible
+                        </span>
+                      </div>
+
+                      {(() => {
+                        const filledSegs = getFilledSegments(nuevoCombustible);
+                        const displaySegs = fuelHoverSegment !== null ? fuelHoverSegment : filledSegs;
+                        const displayPct = Math.round((displaySegs / 8) * 100);
+
+                        return (
+                          <div className={styles.fuelInteractiveArea}>
+                            <div className={styles.fuelBarAndTicksCol}>
+                              {/* Barra con 8 segmentos */}
+                              <div className={styles.fuelBar}>
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map((seg) => {
+                                  const isFilled = seg <= displaySegs;
+                                  return (
+                                    <button
+                                      key={seg}
+                                      type="button"
+                                      className={`${styles.fuelSegment} ${
+                                        isFilled ? styles.fuelSegmentFilled : ''
+                                      }`}
+                                      onClick={() => handleSelectFuelSegment(seg)}
+                                      onMouseEnter={() => setFuelHoverSegment(seg)}
+                                      onMouseLeave={() => setFuelHoverSegment(null)}
+                                      title={`Nivel ${Math.round((seg / 8) * 100)}%`}
+                                    />
+                                  );
+                                })}
+                              </div>
+
+                              {/* Ticks inferiores E, 1/4, 1/2, 3/4, F */}
+                              <div className={styles.fuelTicksContainer}>
+                                <button
+                                  type="button"
+                                  className={`${styles.fuelTickBtn} ${filledSegs === 0 ? styles.fuelTickBtnActive : ''}`}
+                                  style={{ left: '0%' }}
+                                  onClick={() => setNuevoCombustible('0%')}
+                                  title="Vacío / Reserva (0%)"
+                                >
+                                  E
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`${styles.fuelTickBtn} ${filledSegs === 2 ? styles.fuelTickBtnActive : ''}`}
+                                  style={{ left: '25%' }}
+                                  onClick={() => setNuevoCombustible('1/4')}
+                                  title="Un cuarto (25%)"
+                                >
+                                  1/4
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`${styles.fuelTickBtn} ${filledSegs === 4 ? styles.fuelTickBtnActive : ''}`}
+                                  style={{ left: '50%' }}
+                                  onClick={() => setNuevoCombustible('1/2')}
+                                  title="Medio tanque (50%)"
+                                >
+                                  1/2
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`${styles.fuelTickBtn} ${filledSegs === 6 ? styles.fuelTickBtnActive : ''}`}
+                                  style={{ left: '75%' }}
+                                  onClick={() => setNuevoCombustible('3/4')}
+                                  title="Tres cuartos (75%)"
+                                >
+                                  3/4
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`${styles.fuelTickBtn} ${filledSegs === 8 ? styles.fuelTickBtnActive : ''}`}
+                                  style={{ left: '100%' }}
+                                  onClick={() => setNuevoCombustible('Lleno')}
+                                  title="Tanque lleno (100%)"
+                                >
+                                  F
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Porcentaje en verde a la derecha */}
+                            <div
+                              className={`${styles.fuelPercentDisplay} ${
+                                displayPct === 0 ? styles.fuelPercentDisplayLow : ''
+                              }`}
+                            >
+                              {displayPct}%
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1280,8 +1403,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         });
 
         return (
-          <div className={styles.modalOverlay} onClick={() => setShowGestionModal(false)}>
-            <div className={styles.modalContentLarge} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContentLarge}>
               {/* Header Unificado */}
               <div className={styles.modalHeader}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -2099,9 +2222,25 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                       <div className={styles.detalleInfoRow}>
                         <span className={styles.detalleInfoLabel}>Nivel de Combustible:</span>
-                        <span className={styles.fuelBadge}>
-                          <span>{otActual.nivelCombustible || 'No indicado'}</span>
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <span className={styles.fuelBadge}>
+                            <span>{otActual.nivelCombustible || 'No indicado'}</span>
+                          </span>
+                          {otActual.nivelCombustible && (
+                            <div className={styles.miniFuelBar} title={`Nivel registrado: ${otActual.nivelCombustible}`}>
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((seg) => (
+                                <div
+                                  key={seg}
+                                  className={`${styles.miniFuelSegment} ${
+                                    seg <= getFilledSegments(otActual.nivelCombustible || '')
+                                      ? styles.miniFuelSegmentFilled
+                                      : ''
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className={styles.detalleInfoRow}>
@@ -2217,8 +2356,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
       {/* MODAL 3: NOTIFICACIÓN POR WHATSAPP (SCRUM-20) */}
       {showWhatsappModal && whatsappData && (
-        <div className={styles.modalOverlay} onClick={() => setShowWhatsappModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

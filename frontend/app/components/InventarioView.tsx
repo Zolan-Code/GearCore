@@ -978,8 +978,8 @@ export default function InventarioView({ userRole }: Props) {
 
       {/* MODAL: CREAR / EDITAR REPUESTO */}
       {showFormModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowFormModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>
                 {editandoId
@@ -1152,8 +1152,8 @@ export default function InventarioView({ userRole }: Props) {
 
       {/* MODAL: AJUSTE DE STOCK FÍSICO */}
       {showAjusteModal && repuestoAjustar && (
-        <div className={styles.modalOverlay} onClick={() => setShowAjusteModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>Auditoría / Ajuste de Stock Físico</h3>
               <button
@@ -1274,8 +1274,8 @@ export default function InventarioView({ userRole }: Props) {
 
       {/* MODAL: IMPORTACIÓN CSV */}
       {showImportarModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowImportarModal(false)}>
-          <div className={styles.modalContent} style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent} style={{ maxWidth: '640px' }}>
             <div className={styles.modalHeader}>
               <h3>Importación Masiva de Repuestos (CSV)</h3>
               <button
@@ -1402,8 +1402,8 @@ export default function InventarioView({ userRole }: Props) {
 
       {/* MODAL: HISTORIAL DE MOVIMIENTOS */}
       {showHistorialModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowHistorialModal(false)}>
-          <div className={styles.modalContent} style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent} style={{ maxWidth: '580px' }}>
             <div className={styles.modalHeader}>
               <h3>Bitácora de Movimientos</h3>
               <button

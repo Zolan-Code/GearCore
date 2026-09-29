@@ -779,8 +779,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Modal de Confirmación de Cierre de Sesión */}
         {showLogoutConfirm && (
-          <div className={styles.modalOverlay} onClick={() => setShowLogoutConfirm(false)}>
-            <div className={styles.confirmModalContent} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalOverlay}>
+            <div className={styles.confirmModalContent}>
               <div className={styles.confirmIconBox}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
