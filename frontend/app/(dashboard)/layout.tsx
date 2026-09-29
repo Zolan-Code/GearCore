@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchWithAuth } from '../../lib/api';
 import styles from '../page.module.css';
@@ -77,6 +77,65 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
+function prefetchNavRoute(queryClient: QueryClient, href: string) {
+  try {
+    if (href === '/') {
+      queryClient.prefetchQuery({
+        queryKey: ['dashboard', 'metricas', '', ''],
+        queryFn: () => fetchWithAuth('/dashboard/metricas'),
+      });
+    } else if (href.startsWith('/clientes')) {
+      queryClient.prefetchQuery({
+        queryKey: ['clientes', ''],
+        queryFn: () => fetchWithAuth('/clientes'),
+      });
+    } else if (href.startsWith('/ordenes')) {
+      queryClient.prefetchQuery({
+        queryKey: ['ordenes-trabajo'],
+        queryFn: () => fetchWithAuth('/ordenes-trabajo'),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['mecanicos'],
+        queryFn: () => fetchWithAuth('/ordenes-trabajo/mecanicos'),
+      });
+    } else if (href.startsWith('/cotizaciones')) {
+      queryClient.prefetchQuery({
+        queryKey: ['cotizaciones', 'TODAS', 'TODAS'],
+        queryFn: () => fetchWithAuth('/cotizaciones'),
+      });
+    } else if (href.startsWith('/inventario')) {
+      const tipo = href.includes('tipo=INSUMO')
+        ? 'INSUMO'
+        : href.includes('tipo=REPUESTO')
+        ? 'REPUESTO'
+        : 'TODOS';
+      const qs = tipo !== 'TODOS' ? `?tipo=${tipo}` : '';
+      queryClient.prefetchQuery({
+        queryKey: ['repuestos', tipo, '', false],
+        queryFn: () => fetchWithAuth(`/repuestos${qs}`),
+      });
+    } else if (href.startsWith('/usuarios')) {
+      queryClient.prefetchQuery({
+        queryKey: ['usuarios', undefined, undefined],
+        queryFn: () => fetchWithAuth('/usuarios'),
+      });
+    } else if (href.startsWith('/auditoria')) {
+      queryClient.prefetchQuery({
+        queryKey: ['auditoria'],
+        queryFn: () => fetchWithAuth('/usuarios/auditoria'),
+      });
+    } else if (href.startsWith('/perfil')) {
+      queryClient.prefetchQuery({
+        queryKey: ['perfil'],
+        queryFn: () => fetchWithAuth('/perfil'),
+      });
+    }
+  } catch {
+    // Prefetch oportunista y silencioso
+  }
+}
+
+
 function SidebarNavList({
   visibleNavItems,
   activeNavHref,
@@ -89,6 +148,7 @@ function SidebarNavList({
   sidebarOpen: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const currentTipo = searchParams.get('tipo');
 
@@ -150,6 +210,7 @@ function SidebarNavList({
               <button
                 type="button"
                 data-nav-active={isActive ? 'true' : 'false'}
+                onMouseEnter={() => prefetchNavRoute(queryClient, item.children![0]?.href || item.href)}
                 onClick={() => {
                   if (!sidebarOpen) {
                     router.push(item.children![0]?.href || item.href);
@@ -191,7 +252,9 @@ function SidebarNavList({
             ) : (
               <Link
                 href={item.href}
+                prefetch={true}
                 data-nav-active={isActive ? 'true' : 'false'}
+                onMouseEnter={() => prefetchNavRoute(queryClient, item.href)}
                 onClick={(e) => {
                   const li = e.currentTarget.closest('li');
                   if (li) {
@@ -240,8 +303,10 @@ function SidebarNavList({
                         >
                           <Link
                             href={sub.href}
+                            prefetch={true}
                             className={`${styles.navSubItem} ${isSubActive ? styles.navSubItemActive : ''}`}
                             tabIndex={isExpanded ? 0 : -1}
+                            onMouseEnter={() => prefetchNavRoute(queryClient, sub.href)}
                           >
                             <span className={styles.navSubDot} aria-hidden="true" />
                             <span>{sub.label}</span>
@@ -261,6 +326,7 @@ function SidebarNavList({
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -405,6 +471,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname]);
 
   const userRole = (user?.rol || 'MECANICO') as Rol;
+
+  // Calentamiento en reposo (Warm-up en segundo plano tras login)
+  useEffect(() => {
+    if (!isAuth) return;
+    const timer = setTimeout(() => {
+      // 1. Prefetch de datos en segundo plano según permisos de rol
+      if (userRole !== 'MECANICO') {
+        prefetchNavRoute(queryClient, '/clientes');
+        prefetchNavRoute(queryClient, '/cotizaciones');
+      }
+      prefetchNavRoute(queryClient, '/ordenes');
+      prefetchNavRoute(queryClient, '/inventario?tipo=TODOS');
+      if (userRole === 'ADMINISTRADOR') {
+        prefetchNavRoute(queryClient, '/usuarios');
+        prefetchNavRoute(queryClient, '/auditoria');
+      }
+
+      // 2. Prefetch de bundles Next.js para navegación instantánea
+      try {
+        if (userRole !== 'MECANICO') {
+          router.prefetch('/clientes');
+          router.prefetch('/cotizaciones');
+        }
+        router.prefetch('/ordenes');
+        router.prefetch('/inventario');
+        if (userRole === 'ADMINISTRADOR') {
+          router.prefetch('/usuarios');
+          router.prefetch('/auditoria');
+        }
+      } catch {
+        // Silencioso
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [isAuth, userRole, queryClient, router]);
 
   // Alertas calculadas al vuelo (Ponytail: sin hooks ni tablas adicionales)
   const alertas = useMemo(() => {
@@ -739,9 +841,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {auditoriaItem && (
               <Link
                 href={auditoriaItem.href}
+                prefetch={true}
                 className={`${styles.navItem} ${activeNavHref === auditoriaItem.href ? styles.navItemActive : ''}`}
                 style={{ textDecoration: 'none' }}
                 data-tooltip={auditoriaItem.label}
+                onMouseEnter={() => prefetchNavRoute(queryClient, auditoriaItem.href)}
               >
                 <span className={styles.navItemContent}>
                   {NAV_ICONS[auditoriaItem.id]}
@@ -753,9 +857,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <Link
               href="/perfil"
+              prefetch={true}
               className={`${styles.navItem} ${pathname === '/perfil' ? styles.navItemActive : ''}`}
               style={{ textDecoration: 'none' }}
               data-tooltip="Mi Perfil"
+              onMouseEnter={() => prefetchNavRoute(queryClient, '/perfil')}
             >
               <span className={styles.navItemContent}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

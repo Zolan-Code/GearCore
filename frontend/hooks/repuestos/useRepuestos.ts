@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchWithAuth } from '../../lib/api';
 
 export interface MovimientoStock {
@@ -63,6 +63,7 @@ export function useRepuestos(filtros?: { busqueda?: string; stockBajo?: boolean;
         }
       );
     },
+    placeholderData: keepPreviousData,
   });
 }
 

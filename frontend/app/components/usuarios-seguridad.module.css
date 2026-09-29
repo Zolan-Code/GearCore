@@ -304,6 +304,18 @@
   border: 1px solid #fecaca;
 }
 
+:global([data-theme="dark"]) .statusActive {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+:global([data-theme="dark"]) .statusInactive {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
 .statusDot {
   width: 6px;
   height: 6px;

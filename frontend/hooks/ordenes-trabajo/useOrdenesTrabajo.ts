@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchWithAuth } from '../../lib/api';
 
 export type EstadoOT =
@@ -99,6 +99,7 @@ export function useOrdenesTrabajo() {
       const data = await fetchWithAuth<OrdenTrabajo[]>('/ordenes-trabajo');
       return data || [];
     },
+    placeholderData: keepPreviousData,
   });
 }
 

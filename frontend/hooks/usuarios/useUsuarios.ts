@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchWithAuth } from '../../lib/api';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -59,6 +59,7 @@ export function useUsuarios(params?: { sortBy?: string; sortOrder?: 'asc' | 'des
       const data = await fetchWithAuth<Usuario[]>(url);
       return data || [];
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -75,6 +76,7 @@ export function useAuditoria(params?: { sortBy?: string; sortOrder?: 'asc' | 'de
       const data = await fetchWithAuth<RegistroAuditoria[]>(url);
       return data || [];
     },
+    placeholderData: keepPreviousData,
   });
 }
 

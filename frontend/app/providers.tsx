@@ -11,7 +11,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 60 segundos de validez antes de marcar stale
+            staleTime: 5 * 60 * 1000, // 5 minutos de validez antes de marcar stale
+            gcTime: 15 * 60 * 1000, // 15 minutos en memoria antes de garbage collection
             refetchOnWindowFocus: false, // Evitar refetchs al cambiar de ventana
             retry: 1, // 1 reintento antes de fallar
           },

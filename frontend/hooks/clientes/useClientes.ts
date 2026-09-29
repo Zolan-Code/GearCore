@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchWithAuth } from '../../lib/api';
 
 export interface VehiculoSimple {
@@ -57,6 +57,7 @@ export function useClientes(search?: string) {
       const data = await fetchWithAuth<Cliente[]>(`/clientes${query}`);
       return data || [];
     },
+    placeholderData: keepPreviousData,
   });
 }
 

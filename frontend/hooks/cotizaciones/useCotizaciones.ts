@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchWithAuth, fetchBlobWithAuth } from '../../lib/api';
 
 export type EstadoCotizacion =
@@ -167,6 +167,7 @@ export function useCotizaciones(filtros?: { estado?: EstadoCotizacion; ordenTrab
       const data = await fetchWithAuth<Cotizacion[]>(endpoint);
       return data || [];
     },
+    placeholderData: keepPreviousData,
   });
 }
 

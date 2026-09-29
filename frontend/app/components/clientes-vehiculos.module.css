@@ -438,6 +438,35 @@
   color: #065f46;
 }
 
+:global([data-theme="dark"]) .status_RECIBIDO {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+:global([data-theme="dark"]) .status_DIAGNOSTICO {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+:global([data-theme="dark"]) .status_COTIZACION {
+  background: rgba(168, 85, 247, 0.16);
+  color: #c084fc;
+}
+:global([data-theme="dark"]) .status_APROBADO {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+:global([data-theme="dark"]) .status_EN_REPARACION {
+  background: rgba(99, 102, 241, 0.18);
+  color: #818cf8;
+}
+:global([data-theme="dark"]) .status_CONTROL_CALIDAD {
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
+}
+:global([data-theme="dark"]) .status_ENTREGADO {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+
 /* Estado Vacío */
 .emptyState {
   background: var(--bg-surface);
