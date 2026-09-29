@@ -21,6 +21,13 @@ import {
 } from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
 import { useRepuestos, Repuesto } from '../../hooks/repuestos/useRepuestos';
 import { useVehiculosPaginados } from '../../hooks/vehiculos/useVehiculos';
+import {
+  DanioCarroceria,
+  parsearRegistroCarroceria,
+  serializarRegistroCarroceria,
+  VISTAS_CONFIG,
+} from './inspeccion-carroceria.types';
+import { InspeccionCarroceriaModal } from './InspeccionCarroceriaModal';
 
 interface VehiculoSimple {
   id: string;
@@ -211,6 +218,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setNuevoCombustible(mapping[segIndex] || '0%');
   };
   const [nuevosRayones, setNuevosRayones] = useState('');
+  const [daniosCarroceria, setDaniosCarroceria] = useState<DanioCarroceria[]>([]);
+  const [showInspeccionModal, setShowInspeccionModal] = useState(false);
+  const [showInspeccionDetalleModal, setShowInspeccionDetalleModal] = useState(false);
+  const [inspeccionDetalleData, setInspeccionDetalleData] = useState<{ danios: DanioCarroceria[]; resumen: string }>({ danios: [], resumen: '' });
   const [nuevosValores, setNuevosValores] = useState('');
   const [nuevoKm, setNuevoKm] = useState<string>('');
   const [guardandoOT, setGuardandoOT] = useState(false);
@@ -362,12 +373,13 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
     try {
       setGuardandoOT(true);
+      const rayonesFinal = serializarRegistroCarroceria(daniosCarroceria, nuevosRayones);
       const payload: any = {
         vehiculoId: selectedVehiculo.id,
         fallaReportada: nuevaFalla.trim(),
         mecanicoId: nuevoMecanicoId || undefined,
         nivelCombustible: nuevoCombustible,
-        rayonesCarroceria: nuevosRayones.trim() || undefined,
+        rayonesCarroceria: rayonesFinal.trim() || undefined,
         elementosValor: nuevosValores.trim() || undefined,
         kilometrajeRecepcion: nuevoKm ? parseInt(nuevoKm, 10) : undefined,
       };
@@ -395,6 +407,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setNuevoCombustible('0%');
     setFuelHoverSegment(null);
     setNuevosRayones('');
+    setDaniosCarroceria([]);
     setNuevosValores('');
     setNuevoKm('');
   }
@@ -1325,28 +1338,142 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   </div>
 
                   {/* Rayones / Chapa */}
-                  <div style={{ marginTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Estado de Carrocería / Rayones:</span>
+                  <div style={{ marginTop: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        Estado de Carrocería / Daños:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowInspeccionModal(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: daniosCarroceria.length > 0 ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-subtle)',
+                          border: daniosCarroceria.length > 0 ? '1px solid #3b82f6' : '1px solid var(--border-color)',
+                          color: daniosCarroceria.length > 0 ? '#3b82f6' : 'var(--text-primary)',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                          <circle cx="7" cy="17" r="2" />
+                          <path d="M9 17h6" />
+                          <circle cx="17" cy="17" r="2" />
+                        </svg>
+                        <span>
+                          {daniosCarroceria.length > 0
+                            ? `Mapear en Silueta (${daniosCarroceria.length} detalle${daniosCarroceria.length > 1 ? 's' : ''})`
+                            : 'Mapear en Silueta'}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className={styles.chipQuickOption}
+                        onClick={() => {
+                          setNuevosRayones('Sin daños ni rayones visibles');
+                          setDaniosCarroceria([]);
+                        }}
+                      >
+                        ✓ Sin daños visibles
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.chipQuickOption}
+                        onClick={() => {
+                          setNuevosRayones((prev) => prev ? `${prev} · Rayones leves de uso general` : 'Rayones leves de uso general');
+                        }}
+                      >
+                        + Rayones leves de uso
+                      </button>
+                      {daniosCarroceria.length > 0 && (
+                        <button
+                          type="button"
+                          className={styles.chipQuickOption}
+                          style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                          onClick={() => setDaniosCarroceria([])}
+                        >
+                          ✕ Limpiar puntos ({daniosCarroceria.length})
+                        </button>
+                      )}
+                    </div>
+
                     <input
                       type="text"
                       className={styles.formInput}
-                      placeholder="Ej: Rayón puerta copiloto, choque leve parachoques trasero..."
+                      placeholder="Observaciones generales o detalles de carrocería..."
                       value={nuevosRayones}
                       onChange={(e) => setNuevosRayones(e.target.value)}
-                      style={{ marginTop: '4px' }}
                     />
+
+                    {daniosCarroceria.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {daniosCarroceria.map((d) => (
+                          <span
+                            key={d.id}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'var(--bg-subtle)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '4px',
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              color: 'var(--text-secondary)',
+                            }}
+                          >
+                            <strong style={{ color: 'var(--text-primary)' }}>#{d.numero}</strong> {d.tipo} ({VISTAS_CONFIG[d.vista]?.shortLabel})
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Elementos de Valor */}
-                  <div style={{ marginTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Elementos de Valor / Accesorios dejados:</span>
+                  <div style={{ marginTop: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        Elementos de Valor / Accesorios dejados:
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className={styles.chipQuickOption}
+                        onClick={() => setNuevosValores('Rueda de repuesto + Gata hidráulica + Llave de rueda')}
+                      >
+                        ✓ Estándar (Rueda + Gata + Llave)
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.chipQuickOption}
+                        onClick={() => setNuevosValores('Sin objetos de valor')}
+                      >
+                        ✓ Sin objetos de valor
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.chipQuickOption}
+                        onClick={() => setNuevosValores((prev) => prev ? `${prev} · Documentación al día` : 'Documentación al día')}
+                      >
+                        + Documentos al día
+                      </button>
+                    </div>
                     <input
                       type="text"
                       className={styles.formInput}
                       placeholder="Ej: Rueda de repuesto, gata hidráulica, radio, documentos al día..."
                       value={nuevosValores}
                       onChange={(e) => setNuevosValores(e.target.value)}
-                      style={{ marginTop: '4px' }}
                     />
                   </div>
                 </div>
@@ -2256,10 +2383,51 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                        <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                          <span className={styles.detalleInfoLabel}>Rayones / Daños Carrocería:</span>
+                          {(() => {
+                            const parsed = parsearRegistroCarroceria(otActual.rayonesCarroceria);
+                            if (parsed.danios.length > 0) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInspeccionDetalleData(parsed);
+                                    setShowInspeccionDetalleModal(true);
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    border: '1px solid #3b82f6',
+                                    color: '#3b82f6',
+                                    borderRadius: '5px',
+                                    padding: '3px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                                    <circle cx="7" cy="17" r="2" />
+                                    <path d="M9 17h6" />
+                                    <circle cx="17" cy="17" r="2" />
+                                  </svg>
+                                  <span>Ver Mapa de Daños ({parsed.danios.length})</span>
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                         <span style={{ fontSize: '12px', color: 'var(--text-primary)', background: 'var(--bg-subtle)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                          {otActual.rayonesCarroceria || 'Sin rayones ni daños declarados'}
+                          {(() => {
+                            const parsed = parsearRegistroCarroceria(otActual.rayonesCarroceria);
+                            return parsed.resumen || otActual.rayonesCarroceria || 'Sin rayones ni daños declarados';
+                          })()}
                         </span>
                       </div>
 
@@ -2552,6 +2720,30 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
           </div>
         </div>
       )}
+
+      {/* Modal de Inspección Visual de Carrocería (Creación de OT) */}
+      <InspeccionCarroceriaModal
+        isOpen={showInspeccionModal}
+        onClose={() => setShowInspeccionModal(false)}
+        daniosIniciales={daniosCarroceria}
+        textoInicial={nuevosRayones}
+        onGuardar={(daniosActualizados, textoSerializado) => {
+          setDaniosCarroceria(daniosActualizados);
+          const parsed = parsearRegistroCarroceria(textoSerializado);
+          if (parsed.resumen && (!nuevosRayones.trim() || nuevosRayones === 'Sin daños ni rayones visibles')) {
+            setNuevosRayones(parsed.resumen);
+          }
+        }}
+      />
+
+      {/* Modal de Inspección Visual de Carrocería (Vista Detalle OT - Sólo lectura) */}
+      <InspeccionCarroceriaModal
+        isOpen={showInspeccionDetalleModal}
+        onClose={() => setShowInspeccionDetalleModal(false)}
+        daniosIniciales={inspeccionDetalleData.danios}
+        textoInicial={inspeccionDetalleData.resumen}
+        readOnly={true}
+      />
     </div>
   );
 }

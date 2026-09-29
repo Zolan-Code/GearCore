@@ -532,6 +532,26 @@
   font-weight: 600;
 }
 
+/* Chips Rápidos de Opciones en Checklist (Carrocería, Accesorios) */
+.chipQuickOption {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.chipQuickOption:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
 /* Selector de Combustible Tipo Barra Segmentada (SCRUM-11) */
 .fuelControlWrapper {
   display: flex;
