@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVehiculoDto } from './dto/create-vehiculo.dto';
 import { UpdateVehiculoDto } from './dto/update-vehiculo.dto';
@@ -54,19 +55,69 @@ export class VehiculosService {
     });
   }
 
+  async listarPaginado(pagina: number = 1, limite: number = 3, search?: string) {
+    const skip = (pagina - 1) * limite;
+    const where: Prisma.VehiculoWhereInput = {};
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
+      const terminoLimpio = limpiarPatente(q);
+      where.OR = [
+        { patente: { contains: terminoLimpio || q, mode: 'insensitive' } },
+        { marca: { contains: q, mode: 'insensitive' } },
+        { modelo: { contains: q, mode: 'insensitive' } },
+        { cliente: { nombre: { contains: q, mode: 'insensitive' } } },
+        { cliente: { rut: { contains: q, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [total, items] = await Promise.all([
+      this.prisma.vehiculo.count({ where }),
+      this.prisma.vehiculo.findMany({
+        where,
+        skip,
+        take: limite,
+        orderBy: { creadoEn: 'desc' },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              telefono: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const totalPaginas = Math.ceil(total / limite);
+
+    return {
+      items,
+      total,
+      pagina,
+      limite,
+      totalPaginas,
+    };
+  }
+
   async buscarPorPatente(patenteParcial?: string) {
     if (!patenteParcial || patenteParcial.trim().length === 0) {
       return [];
     }
 
-    const termino = limpiarPatente(patenteParcial);
+    const termino = patenteParcial.trim();
+    const terminoLimpio = limpiarPatente(termino);
 
     return this.prisma.vehiculo.findMany({
       where: {
-        patente: {
-          contains: termino,
-          mode: 'insensitive',
-        },
+        OR: [
+          { patente: { contains: terminoLimpio || termino, mode: 'insensitive' } },
+          { marca: { contains: termino, mode: 'insensitive' } },
+          { modelo: { contains: termino, mode: 'insensitive' } },
+          { cliente: { nombre: { contains: termino, mode: 'insensitive' } } },
+        ],
       },
       take: 10,
       include: {

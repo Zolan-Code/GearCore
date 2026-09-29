@@ -20,6 +20,7 @@ import {
   DetalleOTRepuestoItem,
 } from '../../hooks/ordenes-trabajo/useOrdenesTrabajo';
 import { useRepuestos, Repuesto } from '../../hooks/repuestos/useRepuestos';
+import { useVehiculosPaginados } from '../../hooks/vehiculos/useVehiculos';
 
 interface VehiculoSimple {
   id: string;
@@ -162,8 +163,16 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   // Modal Crear OT
   const [showCrearModal, setShowCrearModal] = useState(false);
   const [vehiculoSearch, setVehiculoSearch] = useState('');
-  const [vehiculoResults, setVehiculoResults] = useState<VehiculoSimple[]>([]);
   const [selectedVehiculo, setSelectedVehiculo] = useState<VehiculoSimple | null>(null);
+  const [paginaVehiculos, setPaginaVehiculos] = useState(1);
+
+  // Consulta paginada de 3 en 3 vehículos en base de datos (con filtrado reactivo)
+  const { data: vehiculosPaginadosData, isLoading: cargandoVehiculosPaginados } = useVehiculosPaginados({
+    pagina: paginaVehiculos,
+    limite: 3,
+    search: vehiculoSearch,
+    enabled: showCrearModal,
+  });
   const [nuevaFalla, setNuevaFalla] = useState('');
   const [nuevoMecanicoId, setNuevoMecanicoId] = useState('');
   const [nuevoCombustible, setNuevoCombustible] = useState('1/2');
@@ -179,7 +188,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [editDiagnostico, setEditDiagnostico] = useState('');
   const [editTrabajo, setEditTrabajo] = useState('');
   const [editFotos, setEditFotos] = useState<string[]>([]);
-  const [nuevaFotoUrl, setNuevaFotoUrl] = useState('');
   const [horasInput, setHorasInput] = useState<string>('');
   const [comentarioHoras, setComentarioHoras] = useState<string>('');
   const [guardandoTecnico, setGuardandoTecnico] = useState(false);
@@ -195,11 +203,32 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [procesandoFotos, setProcesandoFotos] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
-  // Repuestos en OT (SCRUM-23)
+  // Repuestos e Insumos en OT (SCRUM-23)
   const [repuestoSeleccionadoId, setRepuestoSeleccionadoId] = useState('');
   const [cantidadRepuesto, setCantidadRepuesto] = useState('1');
+  const [busquedaItemOT, setBusquedaItemOT] = useState('');
+  const [filtroTipoItemOT, setFiltroTipoItemOT] = useState<'TODOS' | 'REPUESTO' | 'INSUMO'>('TODOS');
+  const [dropdownItemAbierto, setDropdownItemAbierto] = useState(false);
+  const itemSearchRef = useRef<HTMLDivElement>(null);
   const [guardandoRepuestoOT, setGuardandoRepuestoOT] = useState(false);
   const [quitandoRepuestoId, setQuitandoRepuestoId] = useState<string | null>(null);
+
+  // Cerrar dropdown de búsqueda de repuestos/insumos al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (itemSearchRef.current && !itemSearchRef.current.contains(e.target as Node)) {
+        setDropdownItemAbierto(false);
+      }
+    }
+    if (dropdownItemAbierto) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownItemAbierto]);
+
+
 
   // Diálogo modal personalizado (reemplaza alert / confirm)
   const [dialogo, setDialogo] = useState<{
@@ -234,11 +263,13 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     setEditDiagnostico(ot.diagnostico || '');
     setEditTrabajo(ot.trabajoRealizado || '');
     setEditFotos(ot.fotosDiagnostico || []);
-    setNuevaFotoUrl('');
     setHorasInput('');
     setComentarioHoras('');
     setRepuestoSeleccionadoId('');
     setCantidadRepuesto('1');
+    setBusquedaItemOT('');
+    setFiltroTipoItemOT('TODOS');
+    setDropdownItemAbierto(false);
     setShowGestionModal(true);
 
     try {
@@ -254,22 +285,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     }
   }
 
-  // Búsqueda de vehículos para modal
-  useEffect(() => {
-    if (!vehiculoSearch.trim()) {
-      setVehiculoResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetchWithAuth<VehiculoSimple[]>(`/vehiculos/buscar?patente=${encodeURIComponent(vehiculoSearch.trim())}`);
-        setVehiculoResults(res || []);
-      } catch {
-        setVehiculoResults([]);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [vehiculoSearch]);
+
 
   // Manejador cambio de estado (SCRUM-12)
   async function handleCambiarEstado(otId: string, nuevoEstado: EstadoOT) {
@@ -339,6 +355,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   function resetCrearForm() {
     setSelectedVehiculo(null);
     setVehiculoSearch('');
+    setPaginaVehiculos(1);
     setNuevaFalla('');
     setNuevoMecanicoId('');
     setNuevoCombustible('1/2');
@@ -389,34 +406,38 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
       setRepuestoSeleccionadoId('');
       setCantidadRepuesto('1');
+      setBusquedaItemOT('');
+      setDropdownItemAbierto(false);
 
+      const esInsumo = item.tipo === 'INSUMO';
       setDialogo({
         tipo: 'success',
-        titulo: 'Repuesto Asociado',
+        titulo: esInsumo ? 'Insumo Registrado' : 'Repuesto Asociado',
         mensaje: `Se asociaron ${cant} ud(s) de "${item.nombre}" a la OT y se descontaron del inventario.`,
       });
     } catch (err: any) {
       setDialogo({
         tipo: 'error',
-        titulo: 'Error al agregar repuesto',
-        mensaje: err.message || 'No fue posible asociar el repuesto a la OT.',
+        titulo: 'Error al agregar artículo',
+        mensaje: err.message || 'No fue posible asociar el artículo a la OT.',
       });
     } finally {
       setGuardandoRepuestoOT(false);
     }
   }
 
-  // SCRUM-23: Quitar Repuesto de la OT con restitución automática de stock
+  // SCRUM-23: Quitar Repuesto o Insumo de la OT con restitución automática de stock
   function solicitarQuitarRepuesto(detalle: DetalleOTRepuestoItem) {
+    const esInsumo = detalle.repuesto?.tipo === 'INSUMO';
     setDialogo({
       tipo: 'confirm',
       titulo: 'Confirmar Devolución al Stock',
       mensaje: `¿Deseas retirar "${detalle.repuesto.nombre}" (${detalle.cantidad} uds) de esta OT? Se reintegrarán automáticamente +${detalle.cantidad} unidades al stock del inventario.`,
-      onConfirm: () => ejecutarQuitarRepuesto(detalle.id),
+      onConfirm: () => ejecutarQuitarRepuesto(detalle.id, esInsumo),
     });
   }
 
-  async function ejecutarQuitarRepuesto(detalleId: string) {
+  async function ejecutarQuitarRepuesto(detalleId: string, esInsumo: boolean = false) {
     if (!selectedOT) return;
     try {
       setQuitandoRepuestoId(detalleId);
@@ -434,13 +455,15 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
       setDialogo({
         tipo: 'success',
         titulo: 'Stock Reintegrado',
-        mensaje: 'El repuesto fue retirado de la OT y las unidades se devolvieron exitosamente al inventario.',
+        mensaje: esInsumo
+          ? 'El insumo fue retirado de la OT y las unidades se devolvieron exitosamente al inventario.'
+          : 'El repuesto fue retirado de la OT y las unidades se devolvieron exitosamente al inventario.',
       });
     } catch (err: any) {
       setDialogo({
         tipo: 'error',
-        titulo: 'Error al quitar repuesto',
-        mensaje: err.message || 'No se pudo retirar el repuesto.',
+        titulo: 'Error al quitar artículo',
+        mensaje: err.message || 'No se pudo retirar el artículo.',
       });
     } finally {
       setQuitandoRepuestoId(null);
@@ -903,79 +926,191 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowCrearModal(false)}
+                title="Cerrar modal"
               >
-                ✕
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
             <form onSubmit={handleCrearOT}>
               <div className={styles.modalBody}>
-                {/* Paso 1: Selección de Vehículo */}
+                {/* Paso 1: Selección de Vehículo (Buscador + Catálogo Paginado de 3 en 3) */}
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
                     1. Vehículo del Cliente *
-                    {selectedVehiculo && (
-                      <button
-                        type="button"
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px' }}
-                        onClick={() => setSelectedVehiculo(null)}
-                      >
-                        Cambiar vehículo
-                      </button>
-                    )}
                   </label>
 
-                  {selectedVehiculo ? (
-                    <div style={{ padding: '12px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <strong>{selectedVehiculo.marca} {selectedVehiculo.modelo}</strong> ({selectedVehiculo.anio || 'Año S/I'})
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
-                          Propietario: {selectedVehiculo.cliente.nombre} | RUT: {selectedVehiculo.cliente.rut}
+                  <div className={styles.vehiculoStepLayout}>
+                    {selectedVehiculo ? (
+                      <div className={styles.selectedVehiculoCard}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                            <span className={styles.plateBadge}>{selectedVehiculo.patente}</span>
+                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
+                              {selectedVehiculo.marca} {selectedVehiculo.modelo}
+                            </strong>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              ({selectedVehiculo.anio || 'Año S/I'})
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            Propietario: <strong style={{ color: 'var(--text-primary)' }}>{selectedVehiculo.cliente.nombre}</strong>
+                            {selectedVehiculo.cliente.rut ? ` · RUT: ${selectedVehiculo.cliente.rut}` : ''}
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          className={styles.btnActionSubtle}
+                          style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', whiteSpace: 'nowrap' }}
+                          onClick={() => {
+                            setSelectedVehiculo(null);
+                            setVehiculoSearch('');
+                          }}
+                        >
+                          Cambiar vehículo
+                        </button>
                       </div>
-                      <span className={styles.plateBadge}>{selectedVehiculo.patente}</span>
-                    </div>
-                  ) : (
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="text"
-                        className={styles.formInput}
-                        placeholder="Buscar por patente o modelo (ej: AA1000, Sail, Yaris)..."
-                        value={vehiculoSearch}
-                        onChange={(e) => setVehiculoSearch(e.target.value)}
-                        autoFocus
-                      />
-                      {vehiculoResults.length > 0 && (
-                        <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0,
-                          background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px',
-                          marginTop: '4px', zIndex: 50, maxHeight: '200px', overflowY: 'auto',
-                          boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
-                        }}>
-                          {vehiculoResults.map((v) => (
-                            <div
-                              key={v.id}
-                              style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                              onClick={() => {
-                                setSelectedVehiculo(v);
-                                setVehiculoSearch('');
-                                setVehiculoResults([]);
-                                if (v.kilometraje) setNuevoKm(v.kilometraje.toString());
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <strong>{v.patente}</strong>
-                                <span>{v.marca} {v.modelo}</span>
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                Cliente: {v.cliente.nombre}
-                              </div>
-                            </div>
-                          ))}
+                    ) : (
+                      <>
+                        <div className={styles.vehiculoSearchWrapper}>
+                          <input
+                            type="text"
+                            className={styles.formInput}
+                            placeholder="Buscar o filtrar por patente, modelo o cliente..."
+                            value={vehiculoSearch}
+                            onChange={(e) => {
+                              setVehiculoSearch(e.target.value);
+                              setPaginaVehiculos(1);
+                            }}
+                            autoFocus
+                          />
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {/* Catálogo rápido de patentes con paginación de 3 en 3 (Opción A: Grilla horizontal de 3 tarjetas) */}
+                        <div className={styles.vehiculosCatalogPanel}>
+                          <div className={styles.vehiculosCatalogHeader}>
+                            <span className={styles.vehiculosCatalogTitle}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent-primary)' }}>
+                                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                                <circle cx="7" cy="17" r="2" />
+                                <path d="M9 17h6" />
+                                <circle cx="17" cy="17" r="2" />
+                              </svg>
+                              Patentes en Base de Datos
+                            </span>
+                            <span className={styles.vehiculosCatalogCountBadge}>
+                              {cargandoVehiculosPaginados ? '...' : `${vehiculosPaginadosData?.total ?? 0} totales`}
+                            </span>
+                          </div>
+
+                          <div className={styles.vehiculosCatalogList}>
+                            {cargandoVehiculosPaginados ? (
+                              <div className={styles.vehiculosCatalogLoading}>
+                                Cargando vehículos...
+                              </div>
+                            ) : !vehiculosPaginadosData?.items || vehiculosPaginadosData.items.length === 0 ? (
+                              <div className={styles.vehiculosCatalogEmpty}>
+                                {vehiculoSearch ? 'No hay vehículos coincidentes.' : 'No hay vehículos registrados.'}
+                              </div>
+                            ) : (
+                              vehiculosPaginadosData.items.map((v) => {
+                                const estaSeleccionado = selectedVehiculo?.id === v.id;
+                                return (
+                                  <div
+                                    key={v.id}
+                                    className={`${styles.vehiculoCatalogItem} ${estaSeleccionado ? styles.vehiculoCatalogItemActive : ''}`}
+                                    onClick={() => {
+                                      setSelectedVehiculo(v);
+                                      if (v.kilometraje) setNuevoKm(v.kilometraje.toString());
+                                    }}
+                                    title="Seleccionar este vehículo para la orden"
+                                  >
+                                    <div className={styles.vehiculoCatalogItemHeader}>
+                                      <span className={styles.plateBadge}>{v.patente}</span>
+                                      {v.anio && (
+                                        <span className={styles.vehiculoCatalogYearBadge}>{v.anio}</span>
+                                      )}
+                                    </div>
+                                    <div className={styles.vehiculoCatalogItemModel}>
+                                      {v.marca} {v.modelo}
+                                    </div>
+                                    <div className={styles.vehiculoCatalogItemOwner}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                        <circle cx="12" cy="7" r="4" />
+                                      </svg>
+                                      <span>{v.cliente.nombre}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          {/* Barra de Paginación de 3 en 3 (Requerimiento de Usuario: Botones 1, 2...) */}
+                          <div className={styles.vehiculosPaginationBar}>
+                            <span className={styles.vehiculosPaginationInfo}>
+                              Pág. {paginaVehiculos} de {Math.max(1, vehiculosPaginadosData?.totalPaginas ?? 1)}
+                            </span>
+                            <div className={styles.vehiculosPaginationBtns}>
+                              <button
+                                type="button"
+                                className={styles.vehiculoPageBtn}
+                                disabled={paginaVehiculos <= 1 || cargandoVehiculosPaginados}
+                                onClick={() => setPaginaVehiculos((prev) => Math.max(1, prev - 1))}
+                                title="Página anterior"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="15 18 9 12 15 6" />
+                                </svg>
+                              </button>
+
+                              {Array.from({ length: Math.min(5, Math.max(1, vehiculosPaginadosData?.totalPaginas ?? 1)) }, (_, i) => {
+                                const totalPags = Math.max(1, vehiculosPaginadosData?.totalPaginas ?? 1);
+                                let p = i + 1;
+                                if (totalPags > 5 && paginaVehiculos > 3) {
+                                  p = Math.min(totalPags - 4 + i, Math.max(1, paginaVehiculos - 2 + i));
+                                }
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    className={`${styles.vehiculoPageBtn} ${paginaVehiculos === p ? styles.vehiculoPageBtnActive : ''}`}
+                                    onClick={() => setPaginaVehiculos(p)}
+                                    disabled={cargandoVehiculosPaginados}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                type="button"
+                                className={styles.vehiculoPageBtn}
+                                disabled={
+                                  paginaVehiculos >= (vehiculosPaginadosData?.totalPaginas ?? 1) ||
+                                  cargandoVehiculosPaginados
+                                }
+                                onClick={() =>
+                                  setPaginaVehiculos((prev) =>
+                                    Math.min(vehiculosPaginadosData?.totalPaginas ?? 1, prev + 1)
+                                  )
+                                }
+                                title="Página siguiente"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Kilometraje de Ingreso */}
@@ -1122,10 +1257,27 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === otActual.estado);
         const pasoSiguiente = getSiguientePaso(otActual.estado);
         const repuestosAsignados = otActual.detalleRepuestos || [];
+        const repuestosSolo = repuestosAsignados.filter((d) => d.repuesto?.tipo !== 'INSUMO');
+        const insumosSolo = repuestosAsignados.filter((d) => d.repuesto?.tipo === 'INSUMO');
         const totalRepuestos = repuestosAsignados.reduce(
           (acc, item) => acc + item.cantidad * item.precioUnitario,
           0
         );
+
+        const itemSeleccionado = catalogoRepuestos.find((r) => r.id === repuestoSeleccionadoId);
+        const catalogoFiltradoOT = catalogoRepuestos.filter((r) => {
+          if (filtroTipoItemOT !== 'TODOS' && (r.tipo || 'REPUESTO') !== filtroTipoItemOT) {
+            return false;
+          }
+          if (busquedaItemOT.trim()) {
+            const q = busquedaItemOT.toLowerCase().trim();
+            return (
+              (r.codigo && r.codigo.toLowerCase().includes(q)) ||
+              (r.nombre && r.nombre.toLowerCase().includes(q))
+            );
+          }
+          return true;
+        });
 
         return (
           <div className={styles.modalOverlay} onClick={() => setShowGestionModal(false)}>
@@ -1161,7 +1313,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   onClick={() => setShowGestionModal(false)}
                   title="Cerrar modal"
                 >
-                  ✕
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
                 </button>
               </div>
 
@@ -1188,7 +1343,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                     <line x1="12" y1="22.08" x2="12" y2="12" />
                   </svg>
-                  <span>2. Repuestos & Materiales</span>
+                  <span>2. Repuestos & Insumos</span>
                   {repuestosAsignados.length > 0 && (
                     <span className={styles.tabBadge}>{repuestosAsignados.length}</span>
                   )}
@@ -1347,8 +1502,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                               <span>{editTrabajo}</span>
                             </div>
                           ) : (
-                            <span>
-                              🔒 La bitácora de reparación y ejecución se habilitará automáticamente una vez que la cotización sea <strong>aprobada por el cliente</strong>.
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#b45309', flexShrink: 0 }}>
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                              <span>
+                                La bitácora de reparación y ejecución se habilitará automáticamente una vez que la cotización sea <strong>aprobada por el cliente</strong>.
+                              </span>
                             </span>
                           )}
                         </div>
@@ -1364,6 +1525,36 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                         />
                       </div>
                     )}
+
+                    {/* Resumen rápido de Insumos y Repuestos */}
+                    <div className={styles.insumosOTQuickBanner}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent-primary)' }}>
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                          <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                        <span>
+                          <strong>Materiales en OT:</strong> {repuestosSolo.length} repuesto(s) y {insumosSolo.length} insumo(s) de taller registrados.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.btnActionSubtle}
+                        onClick={() => setModalTab('repuestos')}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        <span>Gestionar Insumos / Repuestos</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                      </button>
+                    </div>
 
                     {/* Evidencia Fotográfica */}
                     <div className={styles.formGroup}>
@@ -1398,29 +1589,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           </svg>
                           <span>{procesandoFotos ? 'Procesando imágenes...' : 'Subir desde Dispositivo'}</span>
                         </button>
-
-                        <div className={styles.urlInputRow}>
-                          <input
-                            type="url"
-                            className={styles.formInput}
-                            style={{ flex: 1 }}
-                            placeholder="O pegar URL de imagen..."
-                            value={nuevaFotoUrl}
-                            onChange={(e) => setNuevaFotoUrl(e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className={styles.btnActionSecondary}
-                            onClick={() => {
-                              if (nuevaFotoUrl.trim()) {
-                                setEditFotos((prev) => [...prev, nuevaFotoUrl.trim()]);
-                                setNuevaFotoUrl('');
-                              }
-                            }}
-                          >
-                            + Agregar URL
-                          </button>
-                        </div>
                       </div>
 
                       {editFotos.length > 0 && (
@@ -1452,7 +1620,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                                 }}
                                 title="Eliminar foto"
                               >
-                                ✕
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
                               </button>
                             </div>
                           ))}
@@ -1462,13 +1633,19 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   </div>
                 )}
 
-                {/* PESTAÑA 2: REPUESTOS Y MATERIALES */}
+                {/* PESTAÑA 2: REPUESTOS E INSUMOS UTILIZADOS */}
                 {modalTab === 'repuestos' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>
-                        Repuestos Asignados ({repuestosAsignados.length})
-                      </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                    {/* Resumen superior */}
+                    <div className={styles.dualInventoryHeader}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>
+                          Materiales, Repuestos e Insumos de la OT
+                        </h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {repuestosSolo.length} repuesto(s) automotriz(ces) · {insumosSolo.length} insumo(s) consumible(s)
+                        </span>
+                      </div>
                       {userRole !== 'MECANICO' && repuestosAsignados.length > 0 && (
                         <strong style={{ fontSize: '14px', color: 'var(--accent-primary)' }}>
                           Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
@@ -1476,121 +1653,372 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       )}
                     </div>
 
-                    {repuestosAsignados.length > 0 ? (
-                      <div className={styles.repuestosTableWrapper}>
-                        <table className={styles.repuestosTable}>
-                          <thead>
-                            <tr>
-                              <th>Código</th>
-                              <th>Descripción</th>
-                              <th style={{ textAlign: 'center' }}>Cant.</th>
-                              {userRole !== 'MECANICO' && (
-                                <>
-                                  <th style={{ textAlign: 'right' }}>P. Unitario</th>
-                                  <th style={{ textAlign: 'right' }}>Subtotal</th>
-                                </>
-                              )}
-                              <th style={{ textAlign: 'center', width: '60px' }}>Acción</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {repuestosAsignados.map((d) => (
-                              <tr key={d.id}>
-                                <td>
-                                  <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
-                                </td>
-                                <td>
-                                  <strong>{d.repuesto.nombre}</strong>
-                                </td>
-                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{d.cantidad}</td>
+                    {/* ZONA 1: Repuestos Vehiculares */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                          </svg>
+                          Repuestos
+                        </span>
+                        <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                          Piezas y Componentes Vehiculares ({repuestosSolo.length})
+                        </strong>
+                      </div>
+                      {repuestosSolo.length > 0 ? (
+                        <div className={styles.repuestosTableWrapper}>
+                          <table className={styles.repuestosTable}>
+                            <thead>
+                              <tr>
+                                <th>Código / SKU</th>
+                                <th>Descripción</th>
+                                <th style={{ textAlign: 'center' }}>Cant.</th>
                                 {userRole !== 'MECANICO' && (
                                   <>
-                                    <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
-                                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                                      ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
-                                    </td>
+                                    <th style={{ textAlign: 'right' }}>P. Unitario</th>
+                                    <th style={{ textAlign: 'right' }}>Subtotal</th>
                                   </>
                                 )}
-                                <td style={{ textAlign: 'center' }}>
-                                  <button
-                                    type="button"
-                                    className={styles.btnDeleteRepuesto}
-                                    disabled={quitandoRepuestoId === d.id}
-                                    onClick={() => solicitarQuitarRepuesto(d)}
-                                    title="Quitar repuesto y devolver a inventario"
-                                  >
-                                    {quitandoRepuestoId === d.id ? (
-                                      <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
-                                    ) : (
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="3 6 5 6 21 6" />
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                      </svg>
-                                    )}
-                                  </button>
-                                </td>
+                                <th style={{ textAlign: 'center', width: '60px' }}>Acción</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className={styles.emptyRepuestosBox}>
-                        Aún no se han asignado repuestos a esta orden de trabajo.
-                      </div>
-                    )}
+                            </thead>
+                            <tbody>
+                              {repuestosSolo.map((d) => (
+                                <tr key={d.id}>
+                                  <td>
+                                    <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
+                                  </td>
+                                  <td>
+                                    <strong>{d.repuesto.nombre}</strong>
+                                  </td>
+                                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{d.cantidad}</td>
+                                  {userRole !== 'MECANICO' && (
+                                    <>
+                                      <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
+                                      <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                                        ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
+                                      </td>
+                                    </>
+                                  )}
+                                  <td style={{ textAlign: 'center' }}>
+                                    <button
+                                      type="button"
+                                      className={styles.btnDeleteRepuesto}
+                                      disabled={quitandoRepuestoId === d.id}
+                                      onClick={() => solicitarQuitarRepuesto(d)}
+                                      title="Quitar repuesto y devolver a inventario"
+                                    >
+                                      {quitandoRepuestoId === d.id ? (
+                                        <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                                      ) : (
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6" />
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className={styles.emptyRepuestosBox}>
+                          No hay repuestos vehiculares asociados a esta orden de trabajo.
+                        </div>
+                      )}
+                    </div>
 
-                    {/* Formulario para añadir repuesto */}
-                    <div className={styles.repuestoAddForm}>
-                      <div className={styles.repuestoSelectWrapper}>
-                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                          Seleccionar Repuesto del Almacén:
+                    {/* ZONA 2: Insumos de Taller Utilizados */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                          </svg>
+                          Insumos
+                        </span>
+                        <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                          Insumos y Consumibles de Taller Utilizados ({insumosSolo.length})
+                        </strong>
+                      </div>
+                      {insumosSolo.length > 0 ? (
+                        <div className={styles.repuestosTableWrapper}>
+                          <table className={styles.repuestosTable}>
+                            <thead>
+                              <tr>
+                                <th>Código / SKU</th>
+                                <th>Insumo Utilizado</th>
+                                <th style={{ textAlign: 'center' }}>Cant. Consumida</th>
+                                {userRole !== 'MECANICO' && (
+                                  <>
+                                    <th style={{ textAlign: 'right' }}>P. Unitario</th>
+                                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+                                  </>
+                                )}
+                                <th style={{ textAlign: 'center', width: '60px' }}>Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {insumosSolo.map((d) => (
+                                <tr key={d.id}>
+                                  <td>
+                                    <span className={styles.repuestoCodeBadge}>{d.repuesto.codigo}</span>
+                                  </td>
+                                  <td>
+                                    <strong>{d.repuesto.nombre}</strong>
+                                  </td>
+                                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{d.cantidad}</td>
+                                  {userRole !== 'MECANICO' && (
+                                    <>
+                                      <td style={{ textAlign: 'right' }}>${d.precioUnitario.toLocaleString('es-CL')}</td>
+                                      <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                                        ${(d.cantidad * d.precioUnitario).toLocaleString('es-CL')}
+                                      </td>
+                                    </>
+                                  )}
+                                  <td style={{ textAlign: 'center' }}>
+                                    <button
+                                      type="button"
+                                      className={styles.btnDeleteRepuesto}
+                                      disabled={quitandoRepuestoId === d.id}
+                                      onClick={() => solicitarQuitarRepuesto(d)}
+                                      title="Quitar insumo y devolver a inventario"
+                                    >
+                                      {quitandoRepuestoId === d.id ? (
+                                        <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                                      ) : (
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6" />
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className={styles.emptyRepuestosBox}>
+                          No hay insumos de taller registrados en esta orden.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ZONA 3: Buscador predictivo por SKU o Nombre para Añadir a la OT */}
+                    <div className={styles.repuestoAddForm} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Asignar Repuesto o Insumo del Almacén:
                         </label>
-                        <select
-                          className={styles.formSelect}
-                          value={repuestoSeleccionadoId}
-                          onChange={(e) => {
-                            setRepuestoSeleccionadoId(e.target.value);
-                            setCantidadRepuesto('1');
-                          }}
-                          style={{ fontSize: '13px' }}
-                        >
-                          <option value="">-- Seleccionar repuesto --</option>
-                          {catalogoRepuestos.map((r) => {
-                            const disponible = r.stock > 0;
-                            return (
-                              <option key={r.id} value={r.id} disabled={!disponible}>
-                                [{r.codigo}] {r.nombre} — {disponible ? `Stock: ${r.stock} uds` : 'AGOTADO'}
-                                {userRole !== 'MECANICO' ? ` — $${r.precioVenta.toLocaleString('es-CL')}` : ''}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        {/* Selector de tipo (Tabs rápidos) */}
+                        <div className={styles.itemTypeTabs} style={{ margin: 0 }}>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'TODOS' ? styles.itemTypeTabBtnActive : ''}`}
+                            onClick={() => {
+                              setFiltroTipoItemOT('TODOS');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <rect width="18" height="18" x="3" y="3" rx="2" />
+                              <path d="m9 12 2 2 4-4" />
+                            </svg>
+                            <span>Todos</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'REPUESTO' ? styles.itemTypeTabBtnActive : ''}`}
+                            onClick={() => {
+                              setFiltroTipoItemOT('REPUESTO');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                            </svg>
+                            <span>Solo Repuestos</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'INSUMO' ? styles.itemTypeTabBtnActive : ''}`}
+                            onClick={() => {
+                              setFiltroTipoItemOT('INSUMO');
+                              setDropdownItemAbierto(true);
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
+                              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                            </svg>
+                            <span>Solo Insumos</span>
+                          </button>
+                        </div>
                       </div>
 
-                      <div className={styles.repuestoQtyWrapper}>
-                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                          Cant:
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          className={styles.formInput}
-                          value={cantidadRepuesto}
-                          onChange={(e) => setCantidadRepuesto(e.target.value)}
-                          style={{ fontSize: '13px', textAlign: 'center' }}
-                        />
-                      </div>
+                      {/* Buscador interactivo por SKU o Nombre */}
+                      {!repuestoSeleccionadoId ? (
+                        <div className={styles.itemSearchWrapper} ref={itemSearchRef}>
+                          <svg className={styles.itemSearchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          </svg>
+                          <input
+                            type="text"
+                            className={styles.itemSearchInput}
+                            placeholder="Buscar por SKU o nombre de repuesto/insumo (ej: BUJ-01, ACEITE, PAÑO)..."
+                            value={busquedaItemOT}
+                            onChange={(e) => {
+                              setBusquedaItemOT(e.target.value);
+                              setDropdownItemAbierto(true);
+                            }}
+                            onFocus={() => setDropdownItemAbierto(true)}
+                          />
 
-                      <button
-                        type="button"
-                        className={styles.btnPrimary}
-                        style={{ alignSelf: 'flex-end', padding: '10px 14px', fontSize: '13px' }}
-                        disabled={!repuestoSeleccionadoId || guardandoRepuestoOT}
-                        onClick={handleAgregarRepuestoOT}
-                      >
-                        {guardandoRepuestoOT ? 'Asociando...' : '+ Añadir a OT'}
-                      </button>
+                          {dropdownItemAbierto && (
+                            <div className={styles.itemDropdownResults}>
+                              {catalogoFiltradoOT.length === 0 ? (
+                                <div style={{ padding: '12px', textAlign: 'center', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                                  No se encontraron artículos que coincidan con "{busquedaItemOT}".
+                                </div>
+                              ) : (
+                                catalogoFiltradoOT.slice(0, 8).map((item) => {
+                                  const disponible = item.stock > 0;
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className={styles.itemResultRow}
+                                      style={{ opacity: disponible ? 1 : 0.6, cursor: disponible ? 'pointer' : 'not-allowed' }}
+                                      onClick={() => {
+                                        if (disponible) {
+                                          setRepuestoSeleccionadoId(item.id);
+                                          setCantidadRepuesto('1');
+                                          setDropdownItemAbierto(false);
+                                          setBusquedaItemOT('');
+                                        }
+                                      }}
+                                    >
+                                      <div className={styles.itemResultLeft}>
+                                        <span className={styles.itemSkuBadge}>[{item.codigo}]</span>
+                                        <strong>{item.nombre}</strong>
+                                        {item.tipo === 'INSUMO' ? (
+                                          <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                                            </svg>
+                                            Insumo
+                                          </span>
+                                        ) : (
+                                          <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                                            </svg>
+                                            Repuesto
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                                        {disponible ? (
+                                          <span style={{ color: '#16a34a', fontWeight: 600 }}>Stock: {item.stock} uds</span>
+                                        ) : (
+                                          <span style={{ color: '#ef4444', fontWeight: 600 }}>Agotado</span>
+                                        )}
+                                        {userRole !== 'MECANICO' && (
+                                          <span style={{ color: 'var(--text-secondary)' }}>
+                                            ${item.precioVenta.toLocaleString('es-CL')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* Artículo Seleccionado - Ficha de asignación rápida */
+                        <div className={styles.selectedItemBox}>
+                          <div className={styles.selectedItemMeta}>
+                            <span className={styles.itemSkuBadge}>[{itemSeleccionado?.codigo}]</span>
+                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
+                              {itemSeleccionado?.nombre}
+                            </strong>
+                            {itemSeleccionado?.tipo === 'INSUMO' ? (
+                              <span className={styles.itemTypeInsumoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                                </svg>
+                                Insumo de Taller
+                              </span>
+                            ) : (
+                              <span className={styles.itemTypeRepuestoBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                                </svg>
+                                Repuesto Vehicular
+                              </span>
+                            )}
+                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                              Disponible: {itemSeleccionado?.stock} uds
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className={styles.repuestoQtyWrapper}>
+                              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                Cantidad:
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max={itemSeleccionado?.stock || 1}
+                                className={styles.formInput}
+                                value={cantidadRepuesto}
+                                onChange={(e) => setCantidadRepuesto(e.target.value)}
+                                style={{ fontSize: '13px', textAlign: 'center', padding: '6px' }}
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              className={styles.btnPrimary}
+                              style={{ padding: '8px 14px', fontSize: '13px', alignSelf: 'flex-end', height: '36px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                              disabled={guardandoRepuestoOT}
+                              onClick={handleAgregarRepuestoOT}
+                            >
+                              {guardandoRepuestoOT ? (
+                                'Asociando...'
+                              ) : (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  <span>Añadir a OT</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.btnActionSubtle}
+                              style={{ alignSelf: 'flex-end', height: '36px' }}
+                              onClick={() => {
+                                setRepuestoSeleccionadoId('');
+                                setCantidadRepuesto('1');
+                                setDropdownItemAbierto(true);
+                              }}
+                            >
+                              Cambiar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1739,8 +2167,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       En espera de aprobación comercial en Cotizaciones
                     </span>
                   ) : otActual.estado === 'ENTREGADO' ? (
-                    <span style={{ fontSize: '12px', color: '#047857', background: '#d1fae5', padding: '6px 12px', borderRadius: '8px', fontWeight: 600 }}>
-                      ✓ Vehículo Entregado al Cliente
+                    <span style={{ fontSize: '12px', color: '#047857', background: '#d1fae5', padding: '6px 12px', borderRadius: '8px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Vehículo Entregado al Cliente</span>
                     </span>
                   ) : null}
 
@@ -1799,8 +2230,12 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 type="button"
                 className={styles.closeBtn}
                 onClick={() => setShowWhatsappModal(false)}
+                title="Cerrar modal"
               >
-                ✕
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
@@ -1880,7 +2315,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
               onClick={() => setFotoAmpliada(null)}
               title="Cerrar vista previa"
             >
-              ✕
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
             <img
               src={fotoAmpliada}

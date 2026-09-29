@@ -27,6 +27,7 @@ export interface DetalleOTRepuestoItem {
     id: string;
     codigo: string;
     nombre: string;
+    tipo?: 'REPUESTO' | 'INSUMO';
     stock: number;
     stockMinimo?: number;
     precioVenta: number;

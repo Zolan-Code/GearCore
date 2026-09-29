@@ -127,6 +127,7 @@ export class DashboardService {
             id: true,
             codigo: true,
             nombre: true,
+            tipo: true,
             stock: true,
             precioVenta: true,
           },
@@ -134,13 +135,14 @@ export class DashboardService {
       },
     });
 
-    const repuestosMap = new Map<string, { id: string; codigo: string; nombre: string; cantidad: number; totalGenerado: number }>();
+    const repuestosMap = new Map<string, { id: string; codigo: string; nombre: string; tipo: string; cantidad: number; totalGenerado: number }>();
     for (const d of detallesRepuestos) {
       if (!d.repuesto) continue;
       const prev = repuestosMap.get(d.repuesto.id) || {
         id: d.repuesto.id,
         codigo: d.repuesto.codigo,
         nombre: d.repuesto.nombre,
+        tipo: d.repuesto.tipo || 'REPUESTO',
         cantidad: 0,
         totalGenerado: 0,
       };

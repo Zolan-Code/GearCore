@@ -878,6 +878,62 @@
   color: var(--text-primary);
 }
 
+.cardActionsGroup {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardActionSecondaryRow {
+  display: flex;
+  gap: 6px;
+}
+
+.cardActionSubtle {
+  flex: 1;
+  text-align: center;
+  padding: 5px 8px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.cardActionSubtle:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: var(--bg-hover);
+}
+
+.itemTypeBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.badgeRepuesto {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.badgeInsumo {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
 /* --- Módulo Business Intelligence (SCRUM-35 a SCRUM-38) --- */
 .biHeaderBar {
   display: flex;

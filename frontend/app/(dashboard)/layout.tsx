@@ -413,12 +413,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         list.push({
           id: 'repuestos-bajos',
           tipo: 'stock',
-          titulo: `${repuestosBajos.length} repuesto(s) con stock crítico`,
+          titulo: `${repuestosBajos.length} artículo(s) con stock crítico`,
           desc: repuestosBajos
             .slice(0, 2)
             .map((r) => `${r.nombre} (${r.stock} uds)`)
             .join(', ') + (repuestosBajos.length > 2 ? ' y más...' : ''),
-          href: '/inventario',
+          href: '/inventario?tipo=TODOS',
         });
       }
     }

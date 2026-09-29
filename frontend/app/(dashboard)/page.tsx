@@ -9,6 +9,7 @@ import {
   useDashboardMetricas,
   descargarInformeDashboardPdf,
 } from '../../hooks/dashboard/useDashboardMetricas';
+import { useRepuestos } from '../../hooks/repuestos/useRepuestos';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -24,6 +25,13 @@ export default function DashboardPage() {
     fechaInicio: fechaInicio || undefined,
     fechaFin: fechaFin || undefined,
   });
+
+  // Inventario en vivo (aprovecha la cache de TanStack Query sin peticiones adicionales)
+  const { data: inventarioData } = useRepuestos();
+  const itemsInventario = inventarioData?.items || [];
+  const totalRepuestos = itemsInventario.filter((i) => i.tipo !== 'INSUMO').length;
+  const totalInsumos = itemsInventario.filter((i) => i.tipo === 'INSUMO').length;
+  const totalCriticos = itemsInventario.filter((i) => i.stock <= (i.stockMinimo ?? 5)).length;
 
   const finanzas = metricas?.finanzas;
   const operaciones = metricas?.operaciones;
@@ -236,10 +244,10 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Tarjeta 4: Inventario Crítico y Enlaces */}
+        {/* Tarjeta 4: Inventario de Taller y Enlaces */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <h4>Inventario Operativo</h4>
+            <h4>Inventario de Taller</h4>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m7.5 4.27 9 5.15" />
               <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -248,17 +256,39 @@ export default function DashboardPage() {
           </div>
           <div className={styles.cardBody}>
             <div className={styles.statRow}>
-              <span>Top repuestos en OT</span>
-              <strong>{rankingRepuestos.length} tipos</strong>
+              <span>Repuestos</span>
+              <strong>{totalRepuestos} artículos</strong>
             </div>
             <div className={styles.statRow}>
-              <span>{userRole === 'MECANICO' ? 'Mi Taller' : 'Clientes Registrados'}</span>
-              <strong>Activo</strong>
+              <span>Insumos de Taller</span>
+              <strong>{totalInsumos} insumos</strong>
+            </div>
+            <div className={styles.statRow}>
+              <span>Nivel de Stock</span>
+              {totalCriticos > 0 ? (
+                <strong style={{ color: '#ef4444' }}>{totalCriticos} en alerta</strong>
+              ) : (
+                <strong style={{ color: '#10b981' }}>Niveles Óptimos</strong>
+              )}
             </div>
           </div>
-          <Link href="/inventario" className={styles.cardAction} style={{ textAlign: 'center', textDecoration: 'none' }}>
-            Ver Catálogo de Repuestos
-          </Link>
+          <div className={styles.cardActionsGroup}>
+            <Link
+              href="/inventario?tipo=TODOS"
+              className={styles.cardAction}
+              style={{ textAlign: 'center', textDecoration: 'none', margin: 0 }}
+            >
+              Inventario General →
+            </Link>
+            <div className={styles.cardActionSecondaryRow}>
+              <Link href="/inventario?tipo=REPUESTO" className={styles.cardActionSubtle}>
+                Repuestos
+              </Link>
+              <Link href="/inventario?tipo=INSUMO" className={styles.cardActionSubtle}>
+                Insumos
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -352,9 +382,9 @@ export default function DashboardPage() {
         {/* Panel Izquierdo: Ranking de Repuestos Más Usados (SCRUM-36) */}
         <div className={styles.biPanel}>
           <div className={styles.biPanelTitle}>
-            <span>Repuestos Más Utilizados en Reparaciones</span>
-            <Link href="/inventario" style={{ fontSize: 12, color: '#3b82f6', textDecoration: 'none', fontWeight: 600 }}>
-              Ver catálogo →
+            <span>Repuestos e Insumos Más Utilizados</span>
+            <Link href="/inventario?tipo=TODOS" style={{ fontSize: 12, color: '#3b82f6', textDecoration: 'none', fontWeight: 600 }}>
+              Ver inventario general →
             </Link>
           </div>
 
@@ -370,19 +400,43 @@ export default function DashboardPage() {
                   role="button"
                   tabIndex={0}
                   className={styles.rankingRow}
-                  onClick={() => router.push(`/inventario?search=${encodeURIComponent(item.codigo || item.nombre)}`)}
+                  onClick={() => router.push(`/inventario?tipo=TODOS&search=${encodeURIComponent(item.codigo || item.nombre)}`)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      router.push(`/inventario?search=${encodeURIComponent(item.codigo || item.nombre)}`);
+                      router.push(`/inventario?tipo=TODOS&search=${encodeURIComponent(item.codigo || item.nombre)}`);
                     }
                   }}
-                  title={`Ver repuesto ${item.nombre} (${item.codigo}) en Inventario`}
+                  title={`Ver ${item.tipo === 'INSUMO' ? 'insumo' : 'repuesto'} ${item.nombre} (${item.codigo}) en Inventario`}
                 >
                   <div className={styles.rankingLeft}>
                     <div className={styles.rankingBadge}>#{index + 1}</div>
                     <div>
-                      <div className={styles.rankingName}>{item.nombre}</div>
+                      <div className={styles.rankingName}>
+                        {item.nombre}
+                        <span
+                          className={`${styles.itemTypeBadge} ${
+                            item.tipo === 'INSUMO' ? styles.badgeInsumo : styles.badgeRepuesto
+                          }`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                        >
+                          {item.tipo === 'INSUMO' ? (
+                            <>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                              </svg>
+                              Insumo
+                            </>
+                          ) : (
+                            <>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                              </svg>
+                              Repuesto
+                            </>
+                          )}
+                        </span>
+                      </div>
                       <div className={styles.rankingCode}>Código: {item.codigo}</div>
                     </div>
                   </div>

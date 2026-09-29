@@ -33,6 +33,7 @@ export interface DashboardMetricas {
     id: string;
     codigo: string;
     nombre: string;
+    tipo?: 'REPUESTO' | 'INSUMO';
     cantidad: number;
     totalGenerado: number;
   }>;

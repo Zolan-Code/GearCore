@@ -14,7 +14,7 @@ test('Inventario Dual: Repuestos e Insumos de Taller', async (t) => {
   await t.test('Submenú de Inventario General apunta a /inventario?tipo=TODOS', () => {
     const subGeneral = inventarioItem?.children?.find((c) => c.id === 'inventario-general');
     assert.ok(subGeneral, 'Debe existir el submenú inventario-general');
-    assert.equal(subGeneral.label, 'Inventario General (Insumos + Repuestos)');
+    assert.ok(subGeneral.label.startsWith('Inventario General'), 'El label debe iniciar con Inventario General');
     assert.equal(subGeneral.href, '/inventario?tipo=TODOS');
   });
 

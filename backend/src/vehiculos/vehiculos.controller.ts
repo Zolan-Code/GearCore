@@ -30,6 +30,17 @@ export class VehiculosController {
     return this.vehiculosService.crear(dto);
   }
 
+  @Get()
+  async listarPaginado(
+    @Query('pagina') pagina = '1',
+    @Query('limite') limite = '3',
+    @Query('search') search?: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(pagina, 10) || 1);
+    const limitNum = Math.max(1, Math.min(50, parseInt(limite, 10) || 3));
+    return this.vehiculosService.listarPaginado(pageNum, limitNum, search);
+  }
+
   @Get('buscar')
   async buscarPorPatente(@Query('patente') patente?: string) {
     return this.vehiculosService.buscarPorPatente(patente);
