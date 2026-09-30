@@ -1688,7 +1688,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                   </svg>
-                  <span>1. Diagnóstico & Reparación</span>
+                  <span className={styles.tabTextDesktop}>1. Diagnóstico & Reparación</span>
+                  <span className={styles.tabTextMobile}>1. Diagnóstico</span>
                 </button>
 
                 <button
@@ -1701,7 +1702,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                     <line x1="12" y1="22.08" x2="12" y2="12" />
                   </svg>
-                  <span>2. Repuestos & Insumos</span>
+                  <span className={styles.tabTextDesktop}>2. Repuestos & Insumos</span>
+                  <span className={styles.tabTextMobile}>2. Repuestos</span>
                   {repuestosAsignados.length > 0 && (
                     <span className={styles.tabBadge}>{repuestosAsignados.length}</span>
                   )}
@@ -1718,7 +1720,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <line x1="16" y1="13" x2="8" y2="13" />
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
-                  <span>3. Ficha & Recepción</span>
+                  <span className={styles.tabTextDesktop}>3. Ficha & Recepción</span>
+                  <span className={styles.tabTextMobile}>3. Ficha</span>
                 </button>
               </div>
 
@@ -1734,6 +1737,15 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       Paso {estadoIdx + 1} de 7: {estadoObj.label}
                     </span>
                   </div>
+
+                  {/* Barra lineal compacta para móvil */}
+                  <div className={styles.stepperMobileProgressBar}>
+                    <div
+                      className={styles.stepperMobileProgressFill}
+                      style={{ width: `${Math.round(((estadoIdx + 1) / 7) * 100)}%` }}
+                    />
+                  </div>
+
                   <div className={styles.stepperDetail}>
                     {ESTADOS_OT.map((est, idx) => {
                       const isDone = idx < estadoIdx;
@@ -2132,7 +2144,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                                             </span>
                                           )}
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                                        <div className={styles.itemResultRight}>
                                           {disponible ? (
                                             <span style={{ color: '#16a34a', fontWeight: 600 }}>Stock: {item.stock} uds</span>
                                           ) : (
@@ -2583,8 +2595,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
               </div>
 
               {/* Footer Unificado con Transición de Estado y Guardar */}
-              <div className={styles.modalFooter} style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className={styles.modalFooter}>
+                <div className={styles.modalFooterStepWrapper}>
                   {/* Botón de Transición Secuencial */}
                   {pasoSiguiente ? (
                     <button
@@ -2610,36 +2622,20 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       )}
                     </button>
                   ) : otActual.estado === 'COTIZACION' ? (
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-subtle)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-subtle)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'inline-block', width: '100%', textAlign: 'center' }}>
                       En espera de aprobación comercial en Cotizaciones
                     </span>
                   ) : otActual.estado === 'ENTREGADO' ? (
-                    <span style={{ fontSize: '12px', color: '#047857', background: '#d1fae5', padding: '6px 12px', borderRadius: '8px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ fontSize: '12px', color: '#047857', background: '#d1fae5', padding: '6px 12px', borderRadius: '8px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       <span>Vehículo Entregado al Cliente</span>
                     </span>
                   ) : null}
-
-                  {userRole !== 'MECANICO' && (
-                    <button
-                      type="button"
-                      className={styles.btnWhatsApp}
-                      style={{ padding: '8px 12px', fontSize: '12.5px' }}
-                      disabled={cargandoWhatsappId === otActual.id}
-                      onClick={() => handleGenerarWhatsapp(otActual.id)}
-                      title="Notificar por WhatsApp"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                      </svg>
-                      <span>WhatsApp</span>
-                    </button>
-                  )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className={styles.modalFooterActionsWrapper}>
                   <button
                     type="button"
                     className={styles.btnActionSecondary}
@@ -2647,13 +2643,36 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   >
                     Cerrar
                   </button>
+
+                  {userRole !== 'MECANICO' && (
+                    <button
+                      type="button"
+                      className={styles.btnWhatsApp}
+                      disabled={cargandoWhatsappId === otActual.id}
+                      onClick={() => handleGenerarWhatsapp(otActual.id)}
+                      title="Notificar por WhatsApp"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     className={styles.btnPrimary}
                     onClick={handleGuardarTecnico}
                     disabled={guardandoTecnico}
                   >
-                    {guardandoTecnico ? 'Guardando...' : 'Guardar Cambios'}
+                    {guardandoTecnico ? (
+                      <>
+                        <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />
+                        <span>Guardando...</span>
+                      </>
+                    ) : (
+                      'Guardar Cambios'
+                    )}
                   </button>
                 </div>
               </div>
