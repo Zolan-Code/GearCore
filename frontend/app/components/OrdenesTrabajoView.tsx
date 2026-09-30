@@ -140,6 +140,7 @@ const NIVELES_COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno'];
 export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const searchParams = useSearchParams();
   const busquedaParam = searchParams.get('id') || searchParams.get('search') || '';
+  const estadoParam = searchParams.get('estado');
 
   const {
     data: ordenes = [],
@@ -164,8 +165,20 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState<string | null>(null);
 
   // Filtros
-  const [filtroEstado, setFiltroEstado] = useState<string>('TODAS');
+  const [filtroEstado, setFiltroEstado] = useState<string>(
+    estadoParam && (estadoParam === 'TODAS' || ESTADOS_OT.some((e) => e.id === estadoParam))
+      ? estadoParam
+      : 'TODAS'
+  );
   const [filtroMecanico, setFiltroMecanico] = useState<string>('TODOS');
+
+  // Sincronizar filtro cuando cambie el parámetro de URL (ej: clic desde Pipeline en Dashboard)
+  useEffect(() => {
+    const est = searchParams.get('estado');
+    if (est && (est === 'TODAS' || ESTADOS_OT.some((e) => e.id === est))) {
+      setFiltroEstado(est);
+    }
+  }, [searchParams]);
 
   // Modal Crear OT
   const [showCrearModal, setShowCrearModal] = useState(false);

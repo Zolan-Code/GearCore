@@ -72,22 +72,26 @@ export default function DashboardPage() {
         </div>
 
         <div className={styles.dateFilterGroup}>
-          <label htmlFor="fechaInicio">Desde:</label>
-          <input
-            id="fechaInicio"
-            type="date"
-            value={fechaInicio}
-            onChange={(e) => setFechaInicio(e.target.value)}
-            className={styles.dateInput}
-          />
-          <label htmlFor="fechaFin">Hasta:</label>
-          <input
-            id="fechaFin"
-            type="date"
-            value={fechaFin}
-            onChange={(e) => setFechaFin(e.target.value)}
-            className={styles.dateInput}
-          />
+          <div className={styles.dateFieldWrapper}>
+            <label htmlFor="fechaInicio">Desde:</label>
+            <input
+              id="fechaInicio"
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              className={styles.dateInput}
+            />
+          </div>
+          <div className={styles.dateFieldWrapper}>
+            <label htmlFor="fechaFin">Hasta:</label>
+            <input
+              id="fechaFin"
+              type="date"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              className={styles.dateInput}
+            />
+          </div>
           {(fechaInicio || fechaFin) && (
             <button
               type="button"
@@ -312,7 +316,7 @@ export default function DashboardPage() {
           ].map((step) => {
             const count = operaciones?.pipelineEstados?.[step.key] ?? 0;
             return (
-              <Link key={step.key} href="/ordenes" className={styles.pipelineStep}>
+              <Link key={step.key} href={`/ordenes?estado=${step.key}`} className={styles.pipelineStep}>
                 <span className={styles.pipelineStepLabel}>{step.label}</span>
                 <span className={styles.pipelineStepCount}>{count}</span>
               </Link>

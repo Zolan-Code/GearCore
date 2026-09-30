@@ -393,6 +393,180 @@ export default function CotizacionesView({ userRole }: Props) {
           ) : null
         }
         onRowClick={(c) => handleAbrirEdicion(c)}
+        renderCard={(c) => {
+          const badgeClass =
+            c.estado === 'APROBADA'
+              ? styles.statusAprobada
+              : c.estado === 'RECHAZADA'
+              ? styles.statusRechazada
+              : c.estado === 'ENVIADA'
+              ? styles.statusEnviada
+              : c.estado === 'VENCIDA'
+              ? styles.statusVencida
+              : styles.statusBorrador;
+
+          const clienteNombre = c.ordenTrabajo?.vehiculo?.cliente?.nombre || 'Cliente sin asignar';
+          const vehiculoTexto = c.ordenTrabajo?.vehiculo
+            ? `${c.ordenTrabajo.vehiculo.marca} ${c.ordenTrabajo.vehiculo.modelo} (${c.ordenTrabajo.vehiculo.patente})`
+            : 'Vehículo S/I';
+
+          return (
+            <div
+              key={c.id}
+              className={styles.cotizacionCard}
+              onClick={() => handleAbrirEdicion(c)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAbrirEdicion(c);
+                }
+              }}
+            >
+              {/* Header: Folio, Estado y OT */}
+              <div className={styles.cotCardHeader}>
+                <div className={styles.cotCardHeaderLeft}>
+                  <span className={styles.folioBadge}>
+                    COT-{String(c.numero).padStart(5, '0')}
+                  </span>
+                  <span className={badgeClass}>{c.estado}</span>
+                </div>
+                <div className={styles.cotCardHeaderRight}>
+                  <span className={styles.otBadge}>
+                    #{c.ordenTrabajoId.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Body: Cliente y Vehículo */}
+              <div className={styles.cotCardBody}>
+                <div className={styles.cotCardClientRow}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.7 }}>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <span className={styles.cotCardClientName}>{clienteNombre}</span>
+                </div>
+                <div className={styles.cotCardVehicleRow}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.7 }}>
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                  <span className={styles.cotCardVehicleText}>{vehiculoTexto}</span>
+                </div>
+
+                {/* Importes y Margen */}
+                <div className={styles.cotCardAmountsRow}>
+                  <div className={styles.cotCardTotalBlock}>
+                    <span className={styles.cotCardAmountLabel}>Total Cliente</span>
+                    <span className={styles.cotCardTotalVal}>{formatoMoneda(c.total)}</span>
+                  </div>
+                  {userRole === 'ADMINISTRADOR' && c.porcentajeMargen !== undefined && (
+                    <div className={styles.cotCardMarginBlock}>
+                      <span className={styles.cotCardAmountLabel}>Margen Taller</span>
+                      <div className={styles.marginBadge}>
+                        <span className={(c.margenNeto || 0) >= 0 ? styles.marginValuePositivo : styles.marginValueNegativo}>
+                          {formatoMoneda(c.margenNeto)}
+                        </span>
+                        <span style={{ color: '#64748b', fontSize: '0.72rem' }}>
+                          {c.porcentajeMargen.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer: Acciones */}
+              <div className={styles.cotCardFooter}>
+                <div className={styles.cotCardFooterLeft}>
+                  {/* Descargar PDF */}
+                  <button
+                    type="button"
+                    className={`${styles.iconBtn} ${styles.iconBtnPdf}`}
+                    title="Descargar PDF comercial"
+                    disabled={descargandoPdfId === c.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDescargarPdf(c);
+                    }}
+                  >
+                    {descargandoPdfId === c.id ? (
+                      <span style={{ fontSize: '0.7rem' }}>...</span>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Historial de Auditoría */}
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    title="Historial de cambios"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAbrirHistorial(c);
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </button>
+
+                  {/* Aprobar rápido */}
+                  {c.estado !== 'APROBADA' && (
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
+                      title="Aprobar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCambiarEstado(c, 'APROBADA');
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Rechazar rápido */}
+                  {c.estado !== 'RECHAZADA' && (
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                      title="Rechazar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCambiarEstado(c, 'RECHAZADA');
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.cotCardFooterRight}>
+                  <span className={styles.cotCardVerMas}>
+                    Ver Ficha
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        }}
         columns={[
           {
             id: 'numero',
@@ -710,27 +884,27 @@ export default function CotizacionesView({ userRole }: Props) {
                   <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
                     Partidas en Snapshot de Cotización
                   </h4>
-                  <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                      <thead style={{ background: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}>
+                  <div className={styles.modalTableWrapper}>
+                    <table className={styles.modalTable}>
+                      <thead>
                         <tr>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Tipo</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Descripción</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Cant.</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Precio Unit.</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Subtotal</th>
+                          <th style={{ textAlign: 'left' }}>Tipo</th>
+                          <th style={{ textAlign: 'left' }}>Descripción</th>
+                          <th style={{ textAlign: 'right' }}>Cant.</th>
+                          <th style={{ textAlign: 'right' }}>Precio Unit.</th>
+                          <th style={{ textAlign: 'right' }}>Subtotal</th>
                         </tr>
                       </thead>
                       <tbody>
                         {cotizacionSeleccionada.items?.map((it) => (
-                          <tr key={it.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{it.tipo}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{it.descripcion}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{it.cantidad}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                          <tr key={it.id}>
+                            <td>{it.tipo}</td>
+                            <td>{it.descripcion}</td>
+                            <td style={{ textAlign: 'right' }}>{it.cantidad}</td>
+                            <td style={{ textAlign: 'right' }}>
                               {formatoMoneda(it.precioUnitario)}
                             </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                            <td style={{ textAlign: 'right', fontWeight: 600 }}>
                               {formatoMoneda(it.subtotal)}
                             </td>
                           </tr>
@@ -741,7 +915,7 @@ export default function CotizacionesView({ userRole }: Props) {
                 </div>
 
                 {/* Campos Editables */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className={styles.formGrid2Col}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Horas Hombre Estimadas
@@ -786,7 +960,7 @@ export default function CotizacionesView({ userRole }: Props) {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className={styles.formGrid2Col}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Descuento Comercial (CLP)
@@ -1036,7 +1210,7 @@ export default function CotizacionesView({ userRole }: Props) {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className={styles.formGrid3Col}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Horas Estimadas (HH)
@@ -1093,7 +1267,7 @@ export default function CotizacionesView({ userRole }: Props) {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className={styles.formGrid2Col}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
                       Descuento Comercial (CLP)
