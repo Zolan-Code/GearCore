@@ -234,6 +234,80 @@ export default function UsuariosSeguridadView({ userRole }: Props) {
         errorMessage={`Error al cargar los usuarios: ${(errUsuarios as any)?.message || 'Error de conexión'}`}
         onRetry={() => refetchUsuarios()}
         emptyMessage="No se encontraron usuarios coincidentes."
+        renderCard={(u) => {
+          const initial = (u.nombre || u.email || 'U').charAt(0).toUpperCase();
+          return (
+            <div key={u.id} className={styles.userCard}>
+              {/* Header: Avatar, Nombre, Correo y Switch ON/OFF */}
+              <div className={styles.userCardHeader}>
+                <div className={styles.userCardHeaderLeft}>
+                  <div className={styles.userAvatar}>{initial}</div>
+                  <div className={styles.userCardInfo}>
+                    <h4 className={styles.userCardName}>{u.nombre}</h4>
+                    <p className={styles.userCardEmail}>{u.email}</p>
+                  </div>
+                </div>
+
+                <div className={styles.userCardHeaderRight}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={u.activo}
+                    className={`${styles.toggleSwitch} ${
+                      u.activo ? styles.toggleSwitchOn : styles.toggleSwitchOff
+                    }`}
+                    disabled={actualizandoId === u.id}
+                    onClick={() => handleToggleEstado(u)}
+                    title={u.activo ? `Desactivar usuario (${u.nombre})` : `Activar usuario (${u.nombre})`}
+                    aria-label={u.activo ? `Desactivar usuario ${u.nombre}` : `Activar usuario ${u.nombre}`}
+                  >
+                    <span className={styles.toggleThumb} />
+                    <span className={styles.toggleText}>{u.activo ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector de Rol directo sin truncarse */}
+              <div className={styles.userCardBody}>
+                <div className={styles.userCardRoleRow}>
+                  <label className={styles.userCardRoleLabel}>Rol:</label>
+                  <select
+                    className={`${styles.roleSelector} ${
+                      u.rol === 'ADMINISTRADOR'
+                        ? styles.roleAdmin
+                        : u.rol === 'RECEPCIONISTA'
+                        ? styles.roleRecepcion
+                        : styles.roleMecanico
+                    }`}
+                    value={u.rol}
+                    disabled={actualizandoId === u.id}
+                    onChange={(e) => handleCambiarRol(u.id, e.target.value as Rol)}
+                    title="Cambiar rol de usuario"
+                    style={{ flex: 1 }}
+                  >
+                    <option value="ADMINISTRADOR">Administrador</option>
+                    <option value="RECEPCIONISTA">Asesor de Servicios</option>
+                    <option value="MECANICO">Mecánico</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Footer: OTs asignadas y fecha de registro */}
+              <div className={styles.userCardFooter}>
+                <span className={styles.userCardMeta}>
+                  <strong>{u._count?.ordenesAsignadas || 0}</strong> OTs asignadas
+                </span>
+                <span className={styles.userCardDate}>
+                  Registro: {new Date(u.creadoEn).toLocaleDateString('es-CL', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+            </div>
+          );
+        }}
         columns={[
           {
             id: 'nombre',
