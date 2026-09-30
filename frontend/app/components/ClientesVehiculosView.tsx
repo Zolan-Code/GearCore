@@ -88,6 +88,11 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const skipSearchRef = useRef(false);
   const searchWrapperRef = useRef<HTMLDivElement | null>(null);
 
+  // Búsqueda predictiva de cliente en modal Nuevo Vehículo
+  const [clienteSearchModal, setClienteSearchModal] = useState('');
+  const [showClienteSuggestions, setShowClienteSuggestions] = useState(false);
+  const clienteSearchModalRef = useRef<HTMLDivElement | null>(null);
+
   // Cerrar menú al hacer clic fuera del buscador
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -96,6 +101,12 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         !searchWrapperRef.current.contains(event.target as Node)
       ) {
         setShowDropdown(false);
+      }
+      if (
+        clienteSearchModalRef.current &&
+        !clienteSearchModalRef.current.contains(event.target as Node)
+      ) {
+        setShowClienteSuggestions(false);
       }
     }
 
@@ -211,6 +222,8 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     setVehiculoError(null);
     setVehiculoSuccess(null);
     setVinFeedback(null);
+    setClienteSearchModal('');
+    setShowClienteSuggestions(false);
     setFormVehiculo({
       ...initialFormVehiculo,
       clienteId: clienteIdPreseleccionado || '',
@@ -223,6 +236,8 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     setVinFeedback(null);
     setVehiculoError(null);
     setVehiculoSuccess(null);
+    setClienteSearchModal('');
+    setShowClienteSuggestions(false);
     setFormVehiculo(initialFormVehiculo);
   }
 
@@ -412,6 +427,23 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const isPatenteValid = formVehiculo.patente
     ? validarPatenteChilena(formVehiculo.patente)
     : null;
+
+  // Cliente seleccionado y filtrado para el modal Nuevo Vehículo
+  const clienteSeleccionadoVehiculo = clientes.find(
+    (c) => c.id === formVehiculo.clienteId
+  );
+
+  const filteredClientesModal = clientes.filter((c) => {
+    if (!clienteSearchModal.trim()) return true;
+    const q = clienteSearchModal.toLowerCase();
+    const rutLimpio = c.rut.replace(/[^0-9kK]/g, '').toLowerCase();
+    const qLimpio = q.replace(/[^0-9kK]/g, '');
+    return (
+      c.nombre.toLowerCase().includes(q) ||
+      c.rut.toLowerCase().includes(q) ||
+      (qLimpio.length >= 2 && rutLimpio.includes(qLimpio))
+    );
+  });
 
   return (
     <div className={styles.container}>
@@ -709,6 +741,81 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         onRetry={() => refetchClientes()}
         emptyMessage="No se encontraron clientes registrados con los criterios seleccionados."
         onRowClick={(c) => handleOpenClienteModal(c.id)}
+        renderCard={(c) => {
+          const vehiculosCount = c._count?.vehiculos ?? c.vehiculos?.length ?? 0;
+          return (
+            <div
+              key={c.id}
+              className={styles.clientCard}
+              onClick={() => handleOpenClienteModal(c.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleOpenClienteModal(c.id);
+                }
+              }}
+            >
+              {/* Header: Nombre y RUT */}
+              <div className={styles.clientCardHeader}>
+                <div className={styles.clientCardHeaderLeft}>
+                  <h4 className={styles.clientCardName}>{c.nombre}</h4>
+                </div>
+                <span className={styles.rutBadge}>{c.rut}</span>
+              </div>
+
+              {/* Contacto: Teléfono clicable y Correo */}
+              <div className={styles.clientCardContact}>
+                {c.telefono ? (
+                  <a
+                    href={`tel:${c.telefono}`}
+                    className={styles.clientPhoneLink}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Llamar directamente al cliente"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    <span>{c.telefono}</span>
+                  </a>
+                ) : (
+                  <span className={styles.clientNoContact}>Sin teléfono</span>
+                )}
+
+                {c.email && (
+                  <span className={styles.clientEmailText} title={c.email}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <span>{c.email}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Footer: Contador de Vehículos y enlace */}
+              <div className={styles.clientCardFooter}>
+                <span className={styles.vehicleCountPill}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                    <circle cx="7" cy="17" r="2" />
+                    <path d="M9 17h6" />
+                    <circle cx="17" cy="17" r="2" />
+                  </svg>
+                  <span>{vehiculosCount} {vehiculosCount === 1 ? 'vehículo' : 'vehículos'}</span>
+                </span>
+
+                <span className={styles.clientCardVerMas}>
+                  Ver ficha
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          );
+        }}
         actions={
           userRole !== 'MECANICO' ? (
             <button
@@ -948,21 +1055,105 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                 <label>
                   <span>Cliente Dueño *</span>
                 </label>
-                <select
-                  required
-                  className={styles.inputControl}
-                  value={formVehiculo.clienteId}
-                  onChange={(e) =>
-                    setFormVehiculo({ ...formVehiculo, clienteId: e.target.value })
-                  }
-                >
-                  <option value="">-- Seleccione un cliente --</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} ({c.rut})
-                    </option>
-                  ))}
-                </select>
+
+                {clienteSeleccionadoVehiculo ? (
+                  <div className={styles.clientSelectedBox}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--accent-primary)', flexShrink: 0 }}>
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {clienteSeleccionadoVehiculo.nombre}
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                          RUT: {clienteSeleccionadoVehiculo.rut} {clienteSeleccionadoVehiculo.telefono ? `• Tel: ${clienteSeleccionadoVehiculo.telefono}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.clientChangeBtn}
+                      onClick={() => {
+                        setFormVehiculo((prev) => ({ ...prev, clienteId: '' }));
+                        setClienteSearchModal('');
+                        setShowClienteSuggestions(false);
+                      }}
+                      title="Cambiar cliente asociado"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }} ref={clienteSearchModalRef}>
+                    <div className={styles.clientSearchModalWrapper}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={styles.clientSearchModalIcon}>
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="text"
+                        className={styles.inputControl}
+                        style={{ paddingLeft: '34px', paddingRight: clienteSearchModal ? '32px' : '14px' }}
+                        placeholder="Buscar por nombre o RUT del cliente..."
+                        value={clienteSearchModal}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setClienteSearchModal(val);
+                          setShowClienteSuggestions(val.trim().length > 0);
+                        }}
+                        autoFocus
+                      />
+                      {clienteSearchModal && (
+                        <button
+                          type="button"
+                          className={styles.clientSearchClearBtn}
+                          onClick={() => {
+                            setClienteSearchModal('');
+                            setShowClienteSuggestions(false);
+                          }}
+                          title="Limpiar búsqueda"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {showClienteSuggestions && clienteSearchModal.trim().length > 0 && (
+                      <div className={styles.clientSuggestionsDropdown}>
+                        {filteredClientesModal.slice(0, 6).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={styles.clientSuggestionItem}
+                            onClick={() => {
+                              setFormVehiculo((prev) => ({ ...prev, clienteId: c.id }));
+                              setShowClienteSuggestions(false);
+                              setClienteSearchModal('');
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', gap: '2px', minWidth: 0 }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
+                                {c.nombre}
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                RUT: {c.rut} {c.telefono ? `• ${c.telefono}` : ''}
+                              </span>
+                            </div>
+                            <span className={styles.rutBadgeMini}>{c.rut}</span>
+                          </button>
+                        ))}
+
+                        {filteredClientesModal.length === 0 && (
+                          <div style={{ padding: '14px', textAlign: 'center', fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                            No se encontraron clientes con &quot;{clienteSearchModal}&quot;
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className={styles.formRow2}>
@@ -1169,7 +1360,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
                   </span>
                 </div>
 
-                <div className={styles.specsGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className={styles.specsGrid} style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
                   <div className={styles.specItem}>
                     <span>Teléfono</span>
                     <strong>{selectedClienteModal.telefono || 'No registrado'}</strong>

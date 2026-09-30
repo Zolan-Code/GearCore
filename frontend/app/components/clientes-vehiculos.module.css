@@ -879,25 +879,323 @@
   border: 1px solid #bbf7d0;
 }
 
+/* ==========================================================================
+   TARJETAS MÓVILES DE CLIENTE (<= 768px)
+   ========================================================================== */
+.clientCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clientCard:hover {
+  border-color: var(--accent-primary, #3b82f6);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+}
+
+.clientCard:active {
+  transform: scale(0.99);
+  border-color: var(--accent-primary, #3b82f6);
+}
+
+.clientCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.clientCardHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.clientCardName {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.clientCardContact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.clientPhoneLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #0284c7;
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(2, 132, 199, 0.08);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  font-size: 12px;
+}
+
+.clientPhoneLink:hover {
+  background: rgba(2, 132, 199, 0.16);
+  text-decoration: underline;
+}
+
+:global([data-theme="dark"]) .clientPhoneLink {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.clientEmailText {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.clientNoContact {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.clientCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.clientCardVerMas {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0284c7;
+}
+
+:global([data-theme="dark"]) .clientCardVerMas {
+  color: #38bdf8;
+}
+
+/* ==========================================================================
+   SELECTOR PREDICTIVO DE CLIENTE EN MODAL NUEVO VEHÍCULO
+   ========================================================================== */
+.clientSelectedBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  gap: 12px;
+}
+
+.clientChangeBtn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--accent-primary, #3b82f6);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.clientChangeBtn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-primary, #3b82f6);
+}
+
+.clientSearchModalWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.clientSearchModalIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+}
+
+.clientSearchClearBtn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.clientSearchClearBtn:hover {
+  color: var(--text-primary);
+}
+
+.clientSuggestionsDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--popover-shadow, 0 8px 24px rgba(0, 0, 0, 0.2));
+  z-index: 50;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.clientSuggestionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.clientSuggestionItem:last-child {
+  border-bottom: none;
+}
+
+.clientSuggestionItem:hover {
+  background: var(--bg-hover);
+}
+
+.rutBadgeMini {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   OPTIMIZACIONES MÓVILES (<= 640px)
+   ========================================================================== */
 @media (max-width: 640px) {
   .modalOverlay {
-    padding: 8px;
+    padding: 0 !important;
   }
 
   .modalCard {
-    padding: 16px;
-    border-radius: 14px;
-    max-height: calc(100vh - 16px);
-    gap: 14px;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: 16px 18px !important;
+    gap: 16px !important;
   }
 
   .formRow2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
   }
 
   .specsGrid {
-    grid-template-columns: 1fr !important;
-    padding: 12px 14px;
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+
+  .emptyState {
+    padding: 20px 16px !important;
+    gap: 6px !important;
+  }
+
+  .emptyState svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .emptyStateTitle {
+    font-size: 14px !important;
+  }
+
+  .emptyStateText {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  .vehicleHeroCard {
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+
+  .heroHeader {
+    gap: 12px !important;
+  }
+
+  .plateContainer {
+    gap: 10px !important;
+  }
+
+  .plateText {
+    font-size: 18px !important;
+  }
+
+  .clientVehicleCard {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .clientVehicleCard .btnViewVehicle {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+  }
+
+  .modalFooter button {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
   }
 }
+
