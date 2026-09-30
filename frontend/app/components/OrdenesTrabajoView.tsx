@@ -729,6 +729,112 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
         onRetry={() => refetchOTs()}
         emptyMessage="No se encontraron órdenes de trabajo con los filtros aplicados."
         onRowClick={(ot) => abrirGestionOT(ot, 'tecnico')}
+        renderCard={(ot) => {
+          const estadoObj = ESTADOS_OT.find((e) => e.id === ot.estado) || ESTADOS_OT[0];
+          return (
+            <div
+              className={styles.otCard}
+              onClick={() => abrirGestionOT(ot, 'tecnico')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  abrirGestionOT(ot, 'tecnico');
+                }
+              }}
+            >
+              <div className={styles.otCardHeader}>
+                <div className={styles.otCardHeaderLeft}>
+                  <div className={styles.plateBadge}>
+                    <img
+                      src="/assets/chile-flag.svg"
+                      alt="CL"
+                      className={styles.plateFlag}
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                    <span>{ot.vehiculo.patente}</span>
+                  </div>
+                  <span className={`${styles.statusBadge} ${estadoObj.class}`}>
+                    {estadoObj.label}
+                  </span>
+                </div>
+                <div className={styles.otCardHeaderRight}>
+                  <span className={styles.otCardId}>#{ot.id.slice(0, 8)}</span>
+                </div>
+              </div>
+
+              <div className={styles.otCardBody}>
+                <div className={styles.otCardVehicleRow}>
+                  <span className={styles.otCardVehicleTitle}>
+                    {ot.vehiculo.marca} {ot.vehiculo.modelo}
+                  </span>
+                  <span className={styles.otCardVehicleSub}>
+                    {ot.vehiculo.anio ? `Año ${ot.vehiculo.anio}` : 'Año S/I'}
+                    {ot.kilometrajeRecepcion ? ` • ${ot.kilometrajeRecepcion.toLocaleString('es-CL')} km` : ''}
+                  </span>
+                </div>
+
+                <div className={styles.otCardClientRow}>
+                  <span className={styles.otCardClientName}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>{ot.vehiculo.cliente?.nombre || 'Sin cliente'}</span>
+                  </span>
+                  {userRole !== 'MECANICO' && ot.vehiculo.cliente?.telefono && (
+                    <a
+                      href={`tel:${ot.vehiculo.cliente.telefono.replace(/\s+/g, '')}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className={styles.otCardPhoneBtn}
+                      title="Llamar al cliente"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      </svg>
+                      <span>{ot.vehiculo.cliente.telefono.replace(/^\+*/, '+')}</span>
+                    </a>
+                  )}
+                </div>
+
+                {ot.fallaReportada && (
+                  <p className={styles.otCardFallaText} title={ot.fallaReportada}>
+                    {ot.fallaReportada}
+                  </p>
+                )}
+              </div>
+
+              <div className={styles.otCardFooter}>
+                <div className={styles.otCardMecanicoBadge}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                  <span>{ot.mecanico ? ot.mecanico.nombre : 'Sin asignar'}</span>
+                </div>
+
+                <div className={styles.otCardFooterActions}>
+                  <span className={styles.hoursPill}>
+                    {ot.horasHombre || 0}h
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.btnCardManage}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirGestionOT(ot, 'tecnico');
+                    }}
+                  >
+                    <span>Gestionar</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }}
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             {userRole !== 'MECANICO' ? (

@@ -25,6 +25,7 @@ export interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   keyExtractor: (row: T, index: number) => string | number;
+  renderCard?: (row: T, index: number) => React.ReactNode;
   storageKey?: string; // Clave de localStorage para guardar layout
   title?: string;
   searchPlaceholder?: string;
@@ -125,6 +126,7 @@ export default function DataTable<T>({
   columns,
   data,
   keyExtractor,
+  renderCard,
   storageKey,
   title,
   searchPlaceholder = 'Buscar en todos los registros...',
@@ -620,7 +622,7 @@ export default function DataTable<T>({
   const colSpan = Math.max(1, orderedVisibleColumns.length);
 
   return (
-    <div className={`${styles.wrapper} ${className}`}>
+    <div className={`${styles.wrapper} ${renderCard ? styles.wrapperWithCards : ''} ${className}`}>
       {/* BARRA SUPERIOR DE HERRAMIENTAS (TOOLBAR) */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarTop}>
@@ -666,7 +668,7 @@ export default function DataTable<T>({
           <div className={styles.toolbarActions}>
             {/* Popover de Columnas */}
             {enableColumnVisibility && (
-              <div className={styles.popoverWrapper} ref={columnPopoverRef}>
+              <div className={`${styles.popoverWrapper} ${styles.desktopOnlyToolbarItem}`} ref={columnPopoverRef}>
                 <button
                   type="button"
                   onClick={() => setShowColumnPopover((v) => !v)}
@@ -764,7 +766,7 @@ export default function DataTable<T>({
 
             {/* Menú de Vistas Personalizadas (Presets de Columnas) */}
             {storageKey && (
-              <div className={styles.popoverWrapper} ref={savedLayoutPopoverRef}>
+              <div className={`${styles.popoverWrapper} ${styles.desktopOnlyToolbarItem}`} ref={savedLayoutPopoverRef}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   <button
                     type="button"
@@ -1322,6 +1324,56 @@ export default function DataTable<T>({
           </tbody>
         </table>
       </div>
+
+      {/* VISTA MÓVIL EN TARJETAS (SOLO SI SE PROVEE renderCard) */}
+      {renderCard && (
+        <div className={styles.mobileCardsContainer}>
+          {loading ? (
+            <div className={styles.mobileCardsSkeleton}>
+              {[1, 2, 3].map((n) => (
+                <div key={n} className={styles.mobileCardSkeletonItem}>
+                  <div className={styles.skeletonBar} style={{ width: '40%', height: '18px', marginBottom: '8px' }} />
+                  <div className={styles.skeletonBar} style={{ width: '80%', height: '14px', marginBottom: '6px' }} />
+                  <div className={styles.skeletonBar} style={{ width: '60%', height: '14px' }} />
+                </div>
+              ))}
+            </div>
+          ) : totalRows === 0 ? (
+            <div className={styles.emptyWrapper} style={{ padding: '32px 16px' }}>
+              {emptyIcon || (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              )}
+              <span>{hasActiveFilters ? 'No se encontraron resultados para los filtros aplicados.' : emptyMessage}</span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setFilters({});
+                    setPage(1);
+                  }}
+                  className={styles.btnClearAll}
+                  style={{ marginTop: '8px' }}
+                >
+                  Limpiar búsqueda
+                </button>
+              )}
+            </div>
+          ) : (
+            paginatedData.map((row, rowIdx) => {
+              const globalIdx = enablePagination ? (currentPage - 1) * pageSize + rowIdx : rowIdx;
+              return (
+                <div key={keyExtractor(row, globalIdx)} className={styles.mobileCardWrapper}>
+                  {renderCard(row, globalIdx)}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* BARRA INFERIOR DE PAGINACIÓN */}
       {enablePagination && totalRows > 0 && (

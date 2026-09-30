@@ -939,7 +939,49 @@
   border-color: var(--accent-primary);
 }
 
+/* Vista Móvil en Tarjetas (Oculta por defecto en Desktop) */
+.mobileCardsContainer {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .wrapperWithCards .tableContainer {
+    display: none !important;
+  }
+
+  .wrapperWithCards .mobileCardsContainer {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .mobileCardWrapper {
+    width: 100%;
+  }
+
+  .mobileCardsSkeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mobileCardSkeletonItem {
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 @media (max-width: 640px) {
+  .desktopOnlyToolbarItem {
+    display: none !important;
+  }
+
   .toolbar {
     padding: 12px 14px;
     gap: 10px;
