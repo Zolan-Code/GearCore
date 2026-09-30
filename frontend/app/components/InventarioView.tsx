@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './inventario.module.css';
 import DataTable from './DataTable';
@@ -81,6 +82,12 @@ interface NotifyModalState {
 interface Props {
   userRole: Rol;
 }
+
+const TABS_INVENTARIO = [
+  { id: 'TODOS', label: 'Inventario General', href: '/inventario?tipo=TODOS' },
+  { id: 'REPUESTO', label: 'Repuestos', href: '/inventario?tipo=REPUESTO' },
+  { id: 'INSUMO', label: 'Insumos de Taller', href: '/inventario?tipo=INSUMO' },
+];
 
 export default function InventarioView({ userRole }: Props) {
   const searchParams = useSearchParams();
@@ -604,6 +611,21 @@ export default function InventarioView({ userRole }: Props) {
         </div>
       </div>
 
+      {/* Pestañas Rápidas de Navegación por Tipo */}
+      <div className={styles.tipoTabsContainer}>
+        <div className={styles.tipoTabsGroup}>
+          {TABS_INVENTARIO.map((tab) => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`${styles.tipoTabBtn} ${tipoParam === tab.id ? styles.tipoTabBtnActive : ''}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Grid de KPIs de Inventario */}
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
@@ -748,6 +770,174 @@ export default function InventarioView({ userRole }: Props) {
             : 'No se encontraron repuestos con los criterios seleccionados.'
         }
         onRowClick={(r) => abrirHistorial(r)}
+        renderCard={(r) => {
+          const isCritico = r.enAlerta && !r.agotado;
+          const isAgotado = r.agotado;
+
+          return (
+            <div
+              key={r.id}
+              className={styles.repuestoCard}
+              onClick={() => abrirHistorial(r)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  abrirHistorial(r);
+                }
+              }}
+            >
+              {/* Header: Código SKU, Tipo y Stock Badge */}
+              <div className={styles.repCardHeader}>
+                <div className={styles.repCardHeaderLeft}>
+                  <span className={styles.codeBadge}>{r.codigo}</span>
+                  {r.tipo === 'INSUMO' ? (
+                    <span className={styles.tipoBadgeInsumo}>Insumo</span>
+                  ) : (
+                    <span className={styles.tipoBadgeRepuesto}>Repuesto</span>
+                  )}
+                </div>
+                <div className={styles.repCardHeaderRight}>
+                  <span
+                    className={`${styles.stockBadge} ${
+                      isAgotado
+                        ? styles.stockDanger
+                        : isCritico
+                        ? styles.stockWarning
+                        : styles.stockNormal
+                    }`}
+                  >
+                    <span
+                      className={`${styles.stockDot} ${
+                        isAgotado
+                          ? styles.dotDanger
+                          : isCritico
+                          ? styles.dotWarning
+                          : styles.dotNormal
+                      }`}
+                    />
+                    <span>{r.stock} uds</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Body: Título y Detalles */}
+              <div className={styles.repCardBody}>
+                <p className={styles.repCardTitle}>{r.nombre}</p>
+                <div className={styles.repCardSub}>
+                  <span>Usado en {r._count?.usosEnOT || 0} OT(s)</span>
+                  <span>•</span>
+                  <span>Mín: {r.stockMinimo} uds</span>
+                </div>
+
+                {/* Fila de Precios y Margen */}
+                <div className={styles.repCardPricesRow}>
+                  <div className={styles.repCardPriceBlock}>
+                    <span className={styles.repCardPriceLabel}>Precio Venta</span>
+                    <span className={styles.repCardPriceVal}>
+                      ${r.precioVenta.toLocaleString('es-CL')}
+                    </span>
+                  </div>
+                  {userRole !== 'MECANICO' && (
+                    <div className={styles.repCardPriceBlock} style={{ alignItems: 'flex-end' }}>
+                      <span className={styles.repCardPriceLabel}>Margen Est.</span>
+                      <span
+                        className={`${styles.marginBadge} ${
+                          r.margenPorcentaje > 0 ? styles.marginPositive : ''
+                        }`}
+                      >
+                        +{r.margenPorcentaje}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer: Acciones Rápidas */}
+              <div className={styles.repCardFooter}>
+                <div className={styles.repCardFooterLeft}>
+                  {/* Ajuste manual de stock */}
+                  <button
+                    type="button"
+                    className={styles.btnActionIcon}
+                    title="Ajuste manual de stock"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirAjusteModal(r);
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                  </button>
+
+                  {/* Historial */}
+                  <button
+                    type="button"
+                    className={styles.btnActionIcon}
+                    title="Ver historial de movimientos"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      abrirHistorial(r);
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </button>
+
+                  {/* Editar */}
+                  {userRole !== 'MECANICO' && (
+                    <button
+                      type="button"
+                      className={styles.btnActionIcon}
+                      title="Editar datos"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirEditarModal(r);
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Eliminar (Solo Admin) */}
+                  {userRole === 'ADMINISTRADOR' && (
+                    <button
+                      type="button"
+                      className={`${styles.btnActionIcon} ${styles.btnActionIconDelete}`}
+                      title="Eliminar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEliminarRepuesto(r);
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.repCardFooterRight}>
+                  <span className={styles.repCardVerMas}>
+                    Detalles
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        }}
         actions={
           userRole !== 'MECANICO' ? (
             <button
@@ -1042,9 +1232,9 @@ export default function InventarioView({ userRole }: Props) {
                   />
                 </div>
 
-                <div className={styles.rowTwoCols}>
+                <div className={styles.rowCompactCols}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Stock Mínimo (Alerta) *</label>
+                    <label className={styles.formLabel}>Stock Mínimo *</label>
                     <input
                       type="number"
                       className={styles.formInput}
@@ -1058,7 +1248,7 @@ export default function InventarioView({ userRole }: Props) {
 
                   {!editandoId && (
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Stock Inicial en Bodega</label>
+                      <label className={styles.formLabel}>Stock Inicial</label>
                       <input
                         type="number"
                         className={styles.formInput}
@@ -1071,13 +1261,13 @@ export default function InventarioView({ userRole }: Props) {
                   )}
                 </div>
 
-                <div className={styles.rowTwoCols}>
+                <div className={styles.rowCompactCols}>
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Precio Compra Unitario (Costo por 1 litro/ud) *</label>
+                    <label className={styles.formLabel}>Costo Compra *</label>
                     <input
                       type="number"
                       className={styles.formInput}
-                      placeholder="Ej: 7500 (valor de 1 litro)"
+                      placeholder="Ej: 7500"
                       value={formPrecioCompra}
                       onChange={(e) => setFormPrecioCompra(e.target.value)}
                       min={0}
@@ -1087,11 +1277,11 @@ export default function InventarioView({ userRole }: Props) {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Precio Venta Unitario (PVP por 1 litro/ud) *</label>
+                    <label className={styles.formLabel}>Precio Venta (PVP) *</label>
                     <input
                       type="number"
                       className={styles.formInput}
-                      placeholder="Ej: 12990 (valor de 1 litro)"
+                      placeholder="Ej: 12990"
                       value={formPrecioVenta}
                       onChange={(e) => setFormPrecioVenta(e.target.value)}
                       min={0}
@@ -1143,8 +1333,8 @@ export default function InventarioView({ userRole }: Props) {
                   ) : (
                     <span>
                       {editandoId
-                        ? `Actualizar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`
-                        : `Registrar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`}
+                        ? `Guardar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`
+                        : `Guardar ${formTipo === 'INSUMO' ? 'Insumo' : 'Repuesto'}`}
                     </span>
                   )}
                 </button>
