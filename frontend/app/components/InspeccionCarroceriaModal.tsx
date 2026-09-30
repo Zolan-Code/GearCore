@@ -259,7 +259,6 @@ export const InspeccionCarroceriaModal: React.FC<InspeccionCarroceriaModalProps>
                     placeholder="Ej: Foco trizado, raya profunda..."
                     value={pinActivo.descripcion}
                     onChange={(e) => handleUpdatePin(pinActivo.id, { descripcion: e.target.value })}
-                    autoFocus
                   />
                 </div>
               </div>

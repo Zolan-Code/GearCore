@@ -2346,8 +2346,10 @@
   }
 
   .modalContent {
-    max-height: calc(100vh - 16px);
-    border-radius: 14px;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
   }
 
   .modalHeader {
@@ -2381,7 +2383,7 @@
   }
 
   .modalBody {
-    padding: 14px 12px;
+    padding: 14px 12px 28px 12px;
     gap: 12px;
   }
 

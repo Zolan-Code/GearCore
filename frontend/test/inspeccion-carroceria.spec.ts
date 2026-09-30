@@ -88,4 +88,19 @@ describe('Inspección de Carrocería — Registro Visual e Interactivo de Daños
       assert.strictEqual(fs.existsSync(assetPath), true, `No se encontró el asset: ${assetPath}`);
     }
   });
+
+  it('InspeccionCarroceriaModal implementa optimizaciones táctiles para móviles (100dvh y scroll)', () => {
+    const cssPath = path.join(process.cwd(), 'app', 'components', 'inspeccion-carroceria.module.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    // 100dvh modal fullscreen en mobile
+    assert.strictEqual(css.includes('100dvh'), true, 'El modal debe ocupar 100dvh en móvil');
+    assert.strictEqual(css.includes('scrollbar-width: none'), true, 'Las pestañas deben ocultar barras de scroll en móvil');
+    assert.strictEqual(css.includes('flex-shrink: 0'), true, 'Las pestañas no deben recortarse');
+
+    const modalPath = path.join(process.cwd(), 'app', 'components', 'InspeccionCarroceriaModal.tsx');
+    const modalTsx = fs.readFileSync(modalPath, 'utf8');
+    assert.strictEqual(modalTsx.includes('autoFocus'), false, 'El input de daño no debe tener autoFocus forzado para evitar saltos en móvil');
+  });
 });
+
