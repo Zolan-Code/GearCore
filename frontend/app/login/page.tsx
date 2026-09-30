@@ -128,6 +128,17 @@ export default function LoginPage() {
       {/* Columna Derecha: Card interactiva */}
       <div className={styles.formSide}>
         <div className={styles.card}>
+          {/* Logo compacto visible en móviles */}
+          <div className={styles.mobileBrandHeader}>
+            <img
+              src="/assets/logo.png"
+              alt="GearCore - Automotive Workshop ERP"
+              className={styles.mobileLogo}
+              width={140}
+              height={50}
+            />
+          </div>
+
           {view === 'login' ? (
             /* Vista 1: Iniciar Sesión */
             <>

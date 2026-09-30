@@ -380,42 +380,65 @@
   color: var(--text-muted);
 }
 
+/* Logo compacto para móvil (oculto en escritorio) */
+.mobileBrandHeader {
+  display: none;
+}
+
 /* Adaptación responsive para pantallas medianas / móviles */
 @media (max-width: 900px) {
+  .heroSide {
+    display: none !important;
+  }
+
   .container {
     flex-direction: column;
-  }
-
-  .heroSide {
-    flex: none;
-    min-height: auto;
-    padding: 36px 20px 24px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .logoWrapper {
-    max-width: 220px;
-    margin-bottom: 16px;
-  }
-
-  .heroImage {
-    max-width: 200px;
-  }
-
-  .heroTitle {
-    font-size: 22px;
-  }
-
-  .heroSubtitle {
-    font-size: 14px;
+    justify-content: center;
+    align-items: center;
+    min-height: 100dvh;
+    padding: 16px;
+    background: var(--bg-app);
   }
 
   .formSide {
-    padding: 32px 16px;
+    width: 100%;
+    padding: 0;
+    display: flex;
+    justify-content: center;
   }
 
   .card {
-    padding: 28px 20px;
+    padding: 24px 20px;
+    border-radius: 18px;
+    box-shadow: var(--popover-shadow);
+    max-width: 400px;
+  }
+
+  .mobileBrandHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .mobileLogo {
+    max-width: 140px;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .cardTitle {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .form {
+    gap: 14px;
+  }
+
+  .demoBox {
+    margin-top: 16px;
+    padding: 12px;
   }
 }
