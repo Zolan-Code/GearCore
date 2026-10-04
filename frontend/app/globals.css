@@ -57,6 +57,13 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+}
+
 /* Reglas ergonómicas para Modo Oscuro en componentes generales */
 [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
 [data-theme="dark"] select,

@@ -552,6 +552,21 @@ export default function InventarioView({ userRole }: Props) {
 
   return (
     <div className={styles.container}>
+      {/* Pestañas Rápidas de Navegación por Tipo (General | Repuestos | Insumos) */}
+      <div className={styles.tipoTabsContainer}>
+        <div className={styles.tipoTabsGroup}>
+          {TABS_INVENTARIO.map((tab) => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`${styles.tipoTabBtn} ${tipoParam === tab.id ? styles.tipoTabBtnActive : ''}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Encabezado del Módulo */}
       <div className={styles.headerSection}>
         <div>
@@ -608,21 +623,6 @@ export default function InventarioView({ userRole }: Props) {
             </svg>
             <span>Importar CSV</span>
           </button>
-        </div>
-      </div>
-
-      {/* Pestañas Rápidas de Navegación por Tipo */}
-      <div className={styles.tipoTabsContainer}>
-        <div className={styles.tipoTabsGroup}>
-          {TABS_INVENTARIO.map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`${styles.tipoTabBtn} ${tipoParam === tab.id ? styles.tipoTabBtnActive : ''}`}
-            >
-              {tab.label}
-            </Link>
-          ))}
         </div>
       </div>
 

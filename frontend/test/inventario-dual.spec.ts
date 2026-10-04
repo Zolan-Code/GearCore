@@ -1,34 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { NAV_ITEMS } from '../app/(dashboard)/navConfig.ts';
 
-test('Inventario Dual: Repuestos e Insumos de Taller', async (t) => {
+test('Inventario: Acceso directo en sidebar y navegación por pestañas superiores', async (t) => {
   const inventarioItem = NAV_ITEMS.find((item) => item.id === 'inventario');
 
-  await t.test('Item de inventario tiene submenús configurados (children)', () => {
+  await t.test('Item de inventario es enlace directo en sidebar (sin menú desplegable/children)', () => {
     assert.ok(inventarioItem, 'Debe existir el item inventario en NAV_ITEMS');
-    assert.ok(inventarioItem.children, 'Debe tener arreglo children');
-    assert.equal(inventarioItem.children.length, 3, 'Debe tener exactamente 3 submenús');
+    assert.equal(inventarioItem.href, '/inventario', 'Debe apuntar directamente a /inventario');
+    assert.equal(inventarioItem.children, undefined, 'No debe tener submenús children para no desplegar dropdown');
   });
 
-  await t.test('Submenú de Inventario General apunta a /inventario?tipo=TODOS', () => {
-    const subGeneral = inventarioItem?.children?.find((c) => c.id === 'inventario-general');
-    assert.ok(subGeneral, 'Debe existir el submenú inventario-general');
-    assert.ok(subGeneral.label.startsWith('Inventario General'), 'El label debe iniciar con Inventario General');
-    assert.equal(subGeneral.href, '/inventario?tipo=TODOS');
-  });
-
-  await t.test('Submenú de Repuestos apunta a /inventario?tipo=REPUESTO', () => {
-    const subRepuestos = inventarioItem?.children?.find((c) => c.id === 'repuestos');
-    assert.ok(subRepuestos, 'Debe existir el submenú repuestos');
-    assert.equal(subRepuestos.label, 'Repuestos');
-    assert.equal(subRepuestos.href, '/inventario?tipo=REPUESTO');
-  });
-
-  await t.test('Submenú de Insumos apunta a /inventario?tipo=INSUMO', () => {
-    const subInsumos = inventarioItem?.children?.find((c) => c.id === 'insumos');
-    assert.ok(subInsumos, 'Debe existir el submenú insumos');
-    assert.equal(subInsumos.label, 'Insumos de Taller');
-    assert.equal(subInsumos.href, '/inventario?tipo=INSUMO');
+  await t.test('InventarioView define pestañas superiores para General, Repuestos e Insumos', () => {
+    const viewContent = fs.readFileSync(
+      path.join(process.cwd(), 'app/components/InventarioView.tsx'),
+      'utf-8'
+    );
+    assert.ok(viewContent.includes('/inventario?tipo=TODOS'), 'Debe incluir pestaña a /inventario?tipo=TODOS');
+    assert.ok(viewContent.includes('/inventario?tipo=REPUESTO'), 'Debe incluir pestaña a /inventario?tipo=REPUESTO');
+    assert.ok(viewContent.includes('/inventario?tipo=INSUMO'), 'Debe incluir pestaña a /inventario?tipo=INSUMO');
   });
 });
+

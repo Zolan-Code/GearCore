@@ -1796,48 +1796,56 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     </div>
 
                     {/* Registro de Horas-Hombre Invertidas */}
-                    <div className={styles.formGroup} style={{ background: 'var(--bg-subtle)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label className={styles.formLabel} style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <div className={styles.horasCompactBox}>
+                      <div className={styles.horasCompactHeader}>
+                        <label className={styles.formLabel} style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }} title="Horas de trabajo dedicadas por los mecánicos">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10" />
                             <polyline points="12 6 12 12 16 14" />
                           </svg>
-                          <span>Registro Rápido de Horas-Hombre</span>
+                          <span>Horas-Hombre</span>
+                          {Number(otActual.horasHombre) > 0 && (
+                            <span className={styles.horasAccumulatedBadge} title="Horas acumuladas en esta orden">
+                              {otActual.horasHombre}h
+                            </span>
+                          )}
                         </label>
-                        <strong style={{ fontSize: '13px', color: 'var(--accent-primary)' }}>
-                          Total actual: {otActual.horasHombre || 0} hrs
-                        </strong>
+
+                        <div className={styles.hoursButtonsRowCompact}>
+                          {[0.5, 1].map((h) => (
+                            <button
+                              key={h}
+                              type="button"
+                              className={styles.hourQuickBtnCompact}
+                              onClick={() => {
+                                const actual = parseFloat(horasInput) || 0;
+                                const nuevo = Math.round((actual + h) * 10) / 10;
+                                setHorasInput(nuevo.toString());
+                              }}
+                              title={`Sumar ${h} hora(s)`}
+                            >
+                              +{h}h
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className={styles.hoursButtonsRow}>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Sumar:</span>
-                        {[0.5, 1, 1.5, 2, 3].map((h) => (
-                          <button
-                            key={h}
-                            type="button"
-                            className={styles.hourQuickBtn}
-                            onClick={() => setHorasInput(h.toString())}
-                          >
-                            +{h}h
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className={styles.rowTwoCols} style={{ marginTop: '8px' }}>
+                      <div className={styles.horasInputsRow}>
                         <input
                           type="number"
                           step="0.1"
                           min="0.1"
-                          className={styles.formInput}
-                          placeholder="Horas a sumar (ej: 1.5)"
+                          className={styles.horasInputQty}
+                          placeholder="Ej: 1.5"
+                          title="Cantidad de horas a registrar"
                           value={horasInput}
                           onChange={(e) => setHorasInput(e.target.value)}
                         />
                         <input
                           type="text"
-                          className={styles.formInput}
-                          placeholder="Comentario / tarea realizada (opcional)"
+                          className={styles.horasInputDesc}
+                          placeholder="Tarea (opcional)"
+                          title="Detalle de la tarea realizada"
                           value={comentarioHoras}
                           onChange={(e) => setComentarioHoras(e.target.value)}
                         />
@@ -1846,10 +1854,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                     {/* Diagnóstico Técnico */}
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Diagnóstico Técnico del Mecánico</label>
+                      <label className={styles.formLabel} title="Informe técnico de las fallas detectadas">Diagnóstico Técnico</label>
                       <textarea
                         className={styles.formTextarea}
-                        placeholder="Detalle el diagnóstico realizado (fallas encontradas, componentes afectados)..."
+                        placeholder="Detalle del diagnóstico..."
                         value={editDiagnostico}
                         onChange={(e) => setEditDiagnostico(e.target.value)}
                       />
@@ -1859,8 +1867,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     {otActual.estado === 'RECIBIDO' || otActual.estado === 'DIAGNOSTICO' || otActual.estado === 'COTIZACION' ? (
                       <div className={styles.formGroup}>
                         <label className={styles.formLabel}>
-                          <span>Trabajo Realizado / Bitácora de Reparación</span>
-                          <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>Trabajo Realizado</span>
+                          <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Se habilita cuando el cliente aprueba la cotización">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -1885,24 +1893,22 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                               <span>{editTrabajo}</span>
                             </div>
                           ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} title="La bitácora se habilita cuando el cliente aprueba la cotización">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#b45309', flexShrink: 0 }}>
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                               </svg>
-                              <span>
-                                La bitácora de reparación y ejecución se habilitará automáticamente una vez que la cotización sea <strong>aprobada por el cliente</strong>.
-                              </span>
+                              <span>Se habilitará al aprobar la cotización.</span>
                             </span>
                           )}
                         </div>
                       </div>
                     ) : (
                       <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Trabajo Realizado / Bitácora de Reparación</label>
+                        <label className={styles.formLabel}>Trabajo Realizado</label>
                         <textarea
                           className={styles.formTextarea}
-                          placeholder="Detalle las reparaciones efectuadas, calibraciones, pruebas realizadas..."
+                          placeholder="Detalle del trabajo..."
                           value={editTrabajo}
                           onChange={(e) => setEditTrabajo(e.target.value)}
                         />
@@ -1918,7 +1924,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <line x1="12" y1="22.08" x2="12" y2="12" />
                         </svg>
                         <span>
-                          <strong>Materiales en OT:</strong> {repuestosSolo.length} repuesto(s) y {insumosSolo.length} insumo(s) de taller registrados.
+                          <strong>Materiales:</strong> {repuestosSolo.length} repuesto(s), {insumosSolo.length} insumo(s)
                         </span>
                       </div>
                       <button
@@ -1931,7 +1937,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
-                        <span>Gestionar Insumos / Repuestos</span>
+                        <span>Ver Repuestos</span>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12" />
                           <polyline points="12 5 19 12 12 19" />
@@ -1941,11 +1947,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
                     {/* Evidencia Fotográfica */}
                     <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>
-                        <span>Fotografías de Evidencia ({editFotos.length})</span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          Sube desde PC o cámara/celular
-                        </span>
+                      <label className={styles.formLabel} title="Fotografías de respaldo del vehículo o piezas">
+                        <span>Fotos de Evidencia ({editFotos.length})</span>
                       </label>
 
                       <input
@@ -2058,6 +2061,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <button
                             type="button"
                             className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'REPUESTO' ? styles.itemTypeTabBtnActive : ''}`}
+                            title="Filtrar solo repuestos automotrices"
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
@@ -2069,11 +2073,12 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
                               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                             </svg>
-                            <span>Solo Repuestos</span>
+                            <span>Repuestos</span>
                           </button>
                           <button
                             type="button"
                             className={`${styles.itemTypeTabBtn} ${filtroTipoItemOT === 'INSUMO' ? styles.itemTypeTabBtnActive : ''}`}
+                            title="Filtrar solo insumos de taller"
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
@@ -2085,7 +2090,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '5px' }}>
                               <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                             </svg>
-                            <span>Solo Insumos</span>
+                            <span>Insumos</span>
                           </button>
                         </div>
                       </div>
@@ -2100,7 +2105,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <input
                             type="text"
                             className={styles.itemSearchInput}
-                            placeholder="Buscar por SKU o nombre de repuesto/insumo (ej: BUJ-01, ACEITE, PAÑO)..."
+                            placeholder="Buscar código o nombre..."
                             value={busquedaItemOT}
                             onChange={(e) => {
                               setBusquedaItemOT(e.target.value);
@@ -2649,14 +2654,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 </div>
 
                 <div className={styles.modalFooterActionsWrapper}>
-                  <button
-                    type="button"
-                    className={styles.btnActionSecondary}
-                    onClick={() => setShowGestionModal(false)}
-                  >
-                    Cerrar
-                  </button>
-
                   {userRole !== 'MECANICO' && (
                     <button
                       type="button"
@@ -2719,10 +2716,10 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
             </div>
 
             <div className={styles.modalBody}>
-              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '14px', borderRadius: '12px' }}>
-                <div style={{ fontSize: '13px', color: '#065f46', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className={styles.whatsappBox}>
+                <div className={styles.whatsappHeader}>
                   <span><strong>Destinatario:</strong> +{whatsappData.telefono || 'Sin número definido'}</span>
-                  <span style={{ fontSize: '11px', color: '#047857', background: '#d1fae5', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  <span className={styles.whatsappBadge}>
                     Mensaje Editable
                   </span>
                 </div>
@@ -2730,24 +2727,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                   value={textoWhatsappEditado}
                   onChange={(e) => setTextoWhatsappEditado(e.target.value)}
                   rows={8}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #86efac',
-                    fontFamily: 'inherit',
-                    fontSize: '13.5px',
-                    lineHeight: '1.5',
-                    color: '#1f2937',
-                    background: '#ffffff',
-                    resize: 'vertical',
-                    outline: 'none',
-                  }}
+                  className={styles.whatsappTextarea}
                   placeholder="Redacta o ajusta el mensaje para el cliente..."
                 />
               </div>
-              <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+              <p className={styles.whatsappHint}>
                 Puedes editar directamente el texto antes de enviar. Al pulsar el botón se abrirá WhatsApp con el mensaje personalizado.
               </p>
             </div>
@@ -2762,7 +2746,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
               </button>
               <button
                 type="button"
-                className={styles.btnWhatsApp}
+                className={`${styles.btnWhatsApp} ${styles.btnWhatsAppPrimary}`}
                 style={{ padding: '10px 18px', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 onClick={() => {
                   const fonoLimpio = (whatsappData.telefono || '').replace(/\D/g, '');

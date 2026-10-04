@@ -38,23 +38,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
     href: '/inventario',
     label: 'Inventario',
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'MECANICO'],
-    children: [
-      {
-        id: 'inventario-general',
-        href: '/inventario?tipo=TODOS',
-        label: 'Inventario General',
-      },
-      {
-        id: 'repuestos',
-        href: '/inventario?tipo=REPUESTO',
-        label: 'Repuestos',
-      },
-      {
-        id: 'insumos',
-        href: '/inventario?tipo=INSUMO',
-        label: 'Insumos de Taller',
-      },
-    ],
   },
   {
     id: 'cotizaciones',

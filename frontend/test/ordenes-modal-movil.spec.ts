@@ -30,4 +30,16 @@ test('Mejora Móvil: Modal de Gestión de Orden de Trabajo (Ficha OT)', () => {
   assert.ok(ordenesTsx.includes('modalFooterActionsWrapper'), 'OrdenesTrabajoView debe contener modalFooterActionsWrapper');
   assert.ok(ordenesCss.includes('.modalFooterStepWrapper'), 'ordenes-trabajo.module.css debe definir .modalFooterStepWrapper');
   assert.ok(ordenesCss.includes('.modalFooterActionsWrapper'), 'ordenes-trabajo.module.css debe definir .modalFooterActionsWrapper');
+
+  // 5. UX Limpia para usuarios no expertos
+  assert.ok(!ordenesTsx.includes('Total actual:'), 'No debe mostrar "Total actual:" cuando las horas son cero');
+  assert.ok(ordenesTsx.includes('placeholder="Ej: 1.5"'), 'Placeholders deben ser concisos y no oraciones largas');
+  assert.ok(ordenesTsx.includes('placeholder="Detalle del diagnóstico..."'), 'Placeholder de diagnóstico debe ser breve');
+
+  // 6. WhatsApp en Modo Oscuro
+  assert.ok(ordenesCss.includes('.btnWhatsAppPrimary'), 'ordenes-trabajo.module.css debe definir .btnWhatsAppPrimary');
+  assert.ok(ordenesCss.includes('[data-theme="dark"]) .btnWhatsAppPrimary'), 'Debe definir estilo en modo oscuro para el botón de WhatsApp');
+  assert.ok(ordenesTsx.includes('styles.btnWhatsAppPrimary'), 'OrdenesTrabajoView debe usar btnWhatsAppPrimary en modal de envío');
 });
+
+
