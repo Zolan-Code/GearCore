@@ -88,6 +88,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const skipSearchRef = useRef(false);
   const searchWrapperRef = useRef<HTMLDivElement | null>(null);
   const vehicleSectionRef = useRef<HTMLDivElement | null>(null);
+  const patenteInputRef = useRef<HTMLInputElement | null>(null);
 
   // Búsqueda predictiva de cliente en modal Nuevo Vehículo
   const [clienteSearchModal, setClienteSearchModal] = useState('');
@@ -452,38 +453,55 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
   return (
     <div className={styles.container}>
-      {/* Encabezado y Descripción del Módulo */}
+      {/* Encabezado del Módulo: título, contador y acciones rápidas */}
       <div className={styles.headerSection}>
         <div>
-          <h2 className={styles.headerTitle}>
+          <h2 className={styles.headerTitle} style={{ gap: '10px' }}>
             <span>Gestión de Clientes y Vehículos</span>
+            {!loadingClientes && (
+              <span className={styles.historyCountBadge}>
+                {clientes.length} {clientes.length === 1 ? 'Cliente' : 'Clientes'}
+              </span>
+            )}
             {fetchingClientes && !loadingClientes && (
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '10px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
                 Actualizando...
               </span>
             )}
           </h2>
           <p className={styles.headerSubtitle}>
-            Directorio de clientes, registro y consulta técnica de vehículos con historial de órdenes
+            Directorio de clientes, ficha de vehículos e historial de órdenes de trabajo
           </p>
         </div>
-      </div>
 
-      {/* Directorio de Clientes Registrados */}
-      <div className={styles.clientsHeaderSection}>
-        <div>
-          <h4 className={styles.clientsSectionTitle}>
-            <span>Directorio de Clientes Registrados</span>
-            <span className={styles.historyCountBadge}>{clientes.length} {clientes.length === 1 ? "Cliente" : "Clientes"}</span>
-            {fetchingClientes && !loadingClientes && (
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
-                Actualizando...
-              </span>
-            )}
-          </h4>
-          <p className={styles.clientsSectionSubtitle}>
-            Fichas de clientes, historial de vehículos asociados y datos de contacto directo
-          </p>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => {
+              vehicleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              setTimeout(() => patenteInputRef.current?.focus({ preventScroll: true }), 350);
+            }}
+            title="Ir a la búsqueda de vehículos por patente"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <span>Buscar por patente</span>
+          </button>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => handleAbrirModalVehiculo()}
+            title="Registrar un nuevo vehículo"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Nuevo Vehículo</span>
+          </button>
         </div>
       </div>
 
@@ -622,7 +640,19 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
             id: 'telefono',
             accessor: 'telefono',
             header: 'Teléfono',
-            cell: (c) => c.telefono || '—',
+            cell: (c) =>
+              c.telefono ? (
+                <a
+                  href={`tel:${c.telefono}`}
+                  className={styles.clientPhoneLink}
+                  onClick={(e) => e.stopPropagation()}
+                  title="Llamar al cliente"
+                >
+                  {c.telefono}
+                </a>
+              ) : (
+                '—'
+              ),
             filterFn: (c, q) => (c.telefono || '').toLowerCase().includes(q),
           },
           {
@@ -674,22 +704,22 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
       />
 
       {/* Consulta y Gestión de Vehículos */}
-      <div className={styles.vehiclesHeaderSection}>
+      <div className={styles.vehiclesHeaderSection} ref={vehicleSectionRef}>
         <div>
           <h4 className={styles.clientsSectionTitle}>
-            <span>Consulta y Gestión de Vehículos</span>
+            <span>Consulta de Vehículos</span>
             {selectedVehiculo && (
               <span className={styles.historyCountBadge}>{selectedVehiculo.patente}</span>
             )}
           </h4>
           <p className={styles.clientsSectionSubtitle}>
-            Búsqueda por patente con autocompletado, ficha técnica automotriz e historial de órdenes de trabajo
+            Busca por patente para ver la ficha técnica y el historial de órdenes de trabajo
           </p>
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Acciones */}
-      <div className={styles.toolbar} ref={vehicleSectionRef}>
+      {/* Barra de Búsqueda */}
+      <div className={styles.toolbar}>
         <div className={styles.searchWrapper} ref={searchWrapperRef}>
           <span className={styles.searchIcon}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -698,6 +728,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
             </svg>
           </span>
           <input
+            ref={patenteInputRef}
             type="text"
             className={styles.searchInput}
             placeholder="Buscar vehículo por patente (autocompletado, ej: BBCL10)..."
@@ -756,23 +787,6 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               </div>
             </div>
           )}
-        </div>
-
-        <div className={styles.actionsGroup}>
-
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => handleAbrirModalVehiculo()}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
-              <circle cx="7" cy="17" r="2" />
-              <path d="M9 17h6" />
-              <circle cx="17" cy="17" r="2" />
-            </svg>
-            <span>Nuevo Vehículo</span>
-          </button>
         </div>
       </div>
 

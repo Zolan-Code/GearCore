@@ -1239,3 +1239,22 @@
   }
 }
 
+
+/* Acciones rápidas en la cabecera del módulo (Buscar por patente / Nuevo Vehículo) */
+.headerActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > button {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+}
