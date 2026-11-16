@@ -1821,7 +1821,9 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
               {/* Contenido Dinámico según Pestaña Activa */}
               <div className={styles.modalBody}>
-                {/* Stepper de ciclo de vida compacto */}
+                {/* Stepper de ciclo de vida compacto (solo en la pestaña técnica; el estado
+                    ya se ve en la etiqueta de la cabecera en las demás pestañas) */}
+                {modalTab === 'tecnico' && (
                 <div style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
@@ -1867,6 +1869,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     })}
                   </div>
                 </div>
+                )}
 
                 {/* PESTAÑA 1: DIAGNÓSTICO, REPARACIÓN, HORAS Y FOTOS */}
                 {modalTab === 'tecnico' && (
@@ -2359,7 +2362,8 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           Materiales, Repuestos e Insumos de la OT
                         </h4>
                         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {repuestosSolo.length} repuesto(s) automotriz(ces) · {insumosSolo.length} insumo(s) consumible(s)
+                          {repuestosSolo.length} {repuestosSolo.length === 1 ? 'repuesto' : 'repuestos'} ·{' '}
+                          {insumosSolo.length} {insumosSolo.length === 1 ? 'insumo' : 'insumos'}
                         </span>
                       </div>
                       {userRole !== 'MECANICO' && repuestosAsignados.length > 0 && (
@@ -2442,7 +2446,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                         </div>
                       ) : (
                         <div className={styles.emptyRepuestosBox}>
-                          No hay repuestos vehiculares asociados a esta orden de trabajo.
+                          Sin repuestos asociados a esta orden.
                         </div>
                       )}
                     </div>
@@ -2520,7 +2524,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                         </div>
                       ) : (
                         <div className={styles.emptyRepuestosBox}>
-                          No hay insumos de taller registrados en esta orden.
+                          Sin insumos registrados en esta orden.
                         </div>
                       )}
                     </div>
