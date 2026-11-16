@@ -1491,7 +1491,7 @@
 }
 
 .repuestoAddForm {
-  background: var(--bg-surface);
+  background: var(--bg-subtle);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 14px 16px;
@@ -2964,4 +2964,75 @@
 
 :global([data-theme="dark"]) .btnDialogCancel:hover {
   background: var(--bg-hover);
+}
+
+/* ── Pestaña Repuestos e Insumos: tablas diferenciadas por tipo ── */
+.tablaMateriales {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.tablaMaterialesRepuestos {
+  border-left-color: #3b82f6;
+}
+
+.tablaMaterialesInsumos {
+  border-left-color: #10b981;
+}
+
+.tablaMaterialesRepuestos th {
+  background: rgba(59, 130, 246, 0.08);
+  color: #1d4ed8;
+}
+
+.tablaMaterialesInsumos th {
+  background: rgba(16, 185, 129, 0.08);
+  color: #047857;
+}
+
+.tablaMateriales tbody tr:hover td {
+  background: var(--bg-subtle);
+}
+
+/* Modo oscuro: más especificidad que la regla global [data-theme=dark] table th */
+:global([data-theme="dark"]) .tablaMateriales {
+  background: var(--bg-surface-elevated) !important;
+}
+
+:global([data-theme="dark"]) .tablaMaterialesRepuestos th {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+  color: #93c5fd !important;
+}
+
+:global([data-theme="dark"]) .tablaMaterialesInsumos th {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  color: #6ee7b7 !important;
+}
+
+/* Estado vacío: texto tenue sin fondo (clase propia para que no la pisen las reglas globales) */
+.sinMaterialesTexto {
+  padding: 0 2px 4px;
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Total de materiales (solo roles con acceso a precios) */
+.totalMateriales {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.totalMateriales strong {
+  font-size: 15px;
+  color: var(--text-primary);
 }

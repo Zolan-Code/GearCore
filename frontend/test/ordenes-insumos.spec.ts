@@ -28,12 +28,12 @@ test('OTs: Insumos de Taller, Buscador por SKU/Nombre y Evidencia sin URL', asyn
       'Debe separar repuestosSolo e insumosSolo'
     );
     assert.ok(
-      otViewContent.includes('Insumos y Consumibles de Taller Utilizados'),
-      'Debe contener la sección de Insumos de Taller Utilizados'
+      otViewContent.includes('styles.tablaMaterialesInsumos') && otViewContent.includes('Insumos · {insumosSolo.length}'),
+      'Debe contener la sección de Insumos de Taller Utilizados (tabla y título propios)'
     );
     assert.ok(
-      otViewContent.includes('Piezas y Componentes Vehiculares'),
-      'Debe contener la sección de Repuestos Vehiculares'
+      otViewContent.includes('styles.tablaMaterialesRepuestos') && otViewContent.includes('Repuestos · {repuestosSolo.length}'),
+      'Debe contener la sección de Repuestos Vehiculares (tabla y título propios)'
     );
   });
 

@@ -2355,24 +2355,6 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                       )}
                     </div>
 
-                    {/* Resumen inferior de lo cargado en la OT */}
-                    <div className={styles.dualInventoryHeader} style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>
-                          Materiales, Repuestos e Insumos de la OT
-                        </h4>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {repuestosSolo.length} {repuestosSolo.length === 1 ? 'repuesto' : 'repuestos'} ·{' '}
-                          {insumosSolo.length} {insumosSolo.length === 1 ? 'insumo' : 'insumos'}
-                        </span>
-                      </div>
-                      {userRole !== 'MECANICO' && repuestosAsignados.length > 0 && (
-                        <strong style={{ fontSize: '14px', color: 'var(--accent-primary)' }}>
-                          Total: ${totalRepuestos.toLocaleString('es-CL')} CLP
-                        </strong>
-                      )}
-                    </div>
-
                     {/* ZONA 1: Repuestos Vehiculares */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2380,14 +2362,11 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                           </svg>
-                          Repuestos
+                          Repuestos · {repuestosSolo.length}
                         </span>
-                        <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-                          Piezas y Componentes Vehiculares ({repuestosSolo.length})
-                        </strong>
                       </div>
                       {repuestosSolo.length > 0 ? (
-                        <div className={styles.repuestosTableWrapper}>
+                        <div className={`${styles.tablaMateriales} ${styles.tablaMaterialesRepuestos}`}>
                           <table className={styles.repuestosTable}>
                             <thead>
                               <tr>
@@ -2445,7 +2424,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           </table>
                         </div>
                       ) : (
-                        <div className={styles.emptyRepuestosBox}>
+                        <div className={styles.sinMaterialesTexto}>
                           Sin repuestos asociados a esta orden.
                         </div>
                       )}
@@ -2458,20 +2437,17 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                           </svg>
-                          Insumos
+                          Insumos · {insumosSolo.length}
                         </span>
-                        <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-                          Insumos y Consumibles de Taller Utilizados ({insumosSolo.length})
-                        </strong>
                       </div>
                       {insumosSolo.length > 0 ? (
-                        <div className={styles.repuestosTableWrapper}>
+                        <div className={`${styles.tablaMateriales} ${styles.tablaMaterialesInsumos}`}>
                           <table className={styles.repuestosTable}>
                             <thead>
                               <tr>
                                 <th>Código / SKU</th>
-                                <th>Insumo Utilizado</th>
-                                <th style={{ textAlign: 'center' }}>Cant. Consumida</th>
+                                <th>Descripción</th>
+                                <th style={{ textAlign: 'center' }}>Cant.</th>
                                 {userRole !== 'MECANICO' && (
                                   <>
                                     <th style={{ textAlign: 'right' }}>P. Unitario</th>
@@ -2523,11 +2499,18 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           </table>
                         </div>
                       ) : (
-                        <div className={styles.emptyRepuestosBox}>
+                        <div className={styles.sinMaterialesTexto}>
                           Sin insumos registrados en esta orden.
                         </div>
                       )}
                     </div>
+
+                    {userRole !== 'MECANICO' && repuestosAsignados.length > 0 && (
+                      <div className={styles.totalMateriales}>
+                        <span>Total materiales</span>
+                        <strong>${totalRepuestos.toLocaleString('es-CL')} CLP</strong>
+                      </div>
+                    )}
                   </div>
                 )}
 
