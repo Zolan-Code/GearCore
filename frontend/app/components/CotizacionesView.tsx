@@ -13,6 +13,7 @@ import {
   obtenerCotizacionPdfBlob,
   limpiarTelefonoWhatsApp,
   generarMensajeCotizacionWhatsApp,
+  generarNombreArchivoCotizacion,
   Cotizacion,
   EstadoCotizacion,
   TipoItemCotizacion,
@@ -123,7 +124,7 @@ export default function CotizacionesView({ userRole }: Props) {
   const handleDescargarPdf = async (c: Cotizacion) => {
     try {
       setDescargandoPdfId(c.id);
-      await descargarCotizacionPdf(c.id, c.numero);
+      await descargarCotizacionPdf(c.id, generarNombreArchivoCotizacion(c));
     } catch (err: any) {
       alert('Error al descargar PDF: ' + (err.message || 'Error del servidor'));
     } finally {
@@ -133,7 +134,7 @@ export default function CotizacionesView({ userRole }: Props) {
 
   // Manejador: Enviar documento por WhatsApp
   const handleEnviarWhatsApp = async (c: Cotizacion) => {
-    const nombreArchivo = `Cotizacion-${String(c.numero).padStart(5, '0')}.pdf`;
+    const nombreArchivo = generarNombreArchivoCotizacion(c);
 
     // 1. Abrir el chat de WhatsApp ANTES de cualquier espera (await).
     //    Los navegadores solo permiten window.open inmediatamente después del clic;

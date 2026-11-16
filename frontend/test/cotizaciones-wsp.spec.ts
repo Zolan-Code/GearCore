@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   limpiarTelefonoWhatsApp,
   generarMensajeCotizacionWhatsApp,
+  generarNombreArchivoCotizacion,
 } from '../hooks/cotizaciones/cotizacionHelpers.ts';
 
 test('Cotizaciones: Envío de documento por WhatsApp (Web Share + Fallback)', () => {
@@ -68,5 +69,25 @@ test('Cotizaciones: Envío de documento por WhatsApp (Web Share + Fallback)', ()
   assert.ok(
     cotizacionesCss.includes('.iconBtnWsp'),
     'cotizaciones.module.css debe definir estilos para .iconBtnWsp'
+  );
+});
+
+test('Cotizaciones: Nombre descriptivo del PDF (folio, cliente y patente)', () => {
+  assert.strictEqual(
+    generarNombreArchivoCotizacion({
+      numero: 12,
+      ordenTrabajo: { vehiculo: { patente: 'abcd12', cliente: { nombre: 'José Pérez Muñoz' } } },
+    }),
+    'COT-00012_Jose-Perez-Munoz_ABCD12.pdf',
+  );
+  // Sin datos de vehículo/cliente: solo el folio
+  assert.strictEqual(generarNombreArchivoCotizacion({ numero: 7 }), 'COT-00007.pdf');
+  // Caracteres inválidos en nombres de archivo se eliminan
+  assert.strictEqual(
+    generarNombreArchivoCotizacion({
+      numero: 1,
+      ordenTrabajo: { vehiculo: { patente: 'XY-ZW 34', cliente: { nombre: 'Taller/Ñuñoa: "Sur"' } } },
+    }),
+    'COT-00001_Taller-Nunoa-Sur_XY-ZW-34.pdf',
   );
 });

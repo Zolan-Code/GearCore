@@ -43,3 +43,35 @@ export function generarMensajeCotizacionWhatsApp(c: {
     `Quedamos atentos a sus comentarios o confirmación.`
   );
 }
+
+// Utilidad: Convertir texto libre en un fragmento seguro para nombre de archivo
+// ("José Pérez" → "Jose-Perez"): sin tildes, espacios ni caracteres inválidos.
+function fragmentoArchivo(texto?: string | null, maxLargo = 40): string {
+  if (!texto) return '';
+  return texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, maxLargo)
+    .replace(/-+$/g, '');
+}
+
+// Utilidad: Nombre descriptivo del PDF de cotización
+// Ej: "COT-00012_Juan-Perez_ABCD12.pdf" (folio, cliente y patente del vehículo)
+export function generarNombreArchivoCotizacion(c: {
+  numero: number;
+  ordenTrabajo?: {
+    vehiculo?: {
+      patente?: string;
+      cliente?: { nombre?: string };
+    };
+  };
+}): string {
+  const partes = [
+    `COT-${String(c.numero).padStart(5, '0')}`,
+    fragmentoArchivo(c.ordenTrabajo?.vehiculo?.cliente?.nombre),
+    fragmentoArchivo(c.ordenTrabajo?.vehiculo?.patente, 10).toUpperCase(),
+  ].filter(Boolean);
+  return `${partes.join('_')}.pdf`;
+}

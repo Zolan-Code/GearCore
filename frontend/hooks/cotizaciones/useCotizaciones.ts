@@ -290,21 +290,23 @@ export async function obtenerCotizacionPdfBlob(cotizacionId: string): Promise<Bl
 }
 
 // Utilidad: Descargar PDF de cotización autenticado
-export async function descargarCotizacionPdf(cotizacionId: string, numero: number): Promise<void> {
+export async function descargarCotizacionPdf(cotizacionId: string, nombreArchivo: string): Promise<void> {
   const blob = await obtenerCotizacionPdfBlob(cotizacionId);
 
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Cotizacion-${String(numero).padStart(5, '0')}.pdf`;
+  a.download = nombreArchivo;
   document.body.appendChild(a);
   a.click();
-  window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
+  // Liberar con retraso: revocar de inmediato puede cancelar la descarga en Safari/Firefox
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
 export {
   limpiarTelefonoWhatsApp,
   generarMensajeCotizacionWhatsApp,
+  generarNombreArchivoCotizacion,
 } from './cotizacionHelpers';
 
