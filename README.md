@@ -64,7 +64,7 @@ Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller 
 - **Framework**: [Next.js 14](https://nextjs.org/) (App Router) con React 18 y TypeScript estricto.
 - **Gestión de Estado y Servidor**: [TanStack Query v5](https://tanstack.com/query) con caché reactivo, revalidación en segundo plano e invalidación granular por mutación (staleTime 60s).
 - **Componente Global de Datos**: `DataTable` con ordenamiento tipado, selección de columnas, búsqueda, presets con nombre y vista alternativa en tarjetas para móviles.
-- **Navegación y Layout**: Barra superior global (AppBar) con reloj/fecha dinámica, estado de red, usuario activo y centro de notificaciones; Sidebar colapsable en modo Rail (72px) con tooltips flotantes.
+- **Navegación y Layout**: Barra superior global (AppBar) con fecha dinámica, usuario activo, rol y centro de notificaciones; Sidebar colapsable en modo Rail (72px) con tooltips flotantes.
 - **Inspección Visual**: Siluetas automotrices vectoriales y marcado de coordenadas de impacto en tiempo real.
 - **Estilos**: CSS Modules puros de alto rendimiento, micro-animaciones fluidas sin frameworks pesados, tokenización semántica y modo oscuro (`[data-theme="dark"]`).
 - **PWA**: Manifest para instalación progresiva. El modo offline (IndexedDB + Service Workers) queda como trabajo futuro.

@@ -664,11 +664,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </button>
 
-            <div className={styles.appBarStatus}>
-              <span className={styles.onlineDot} />
-              <span>En Línea</span>
-            </div>
-
             <div className={styles.appBarItem}>
               <span className={styles.appBarLabel}>Usuario:</span>
               <span className={styles.appBarValue}>{user?.nombre || 'Usuario'}</span>
