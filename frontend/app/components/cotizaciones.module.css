@@ -100,15 +100,18 @@
   box-shadow: var(--card-shadow);
 }
 
+/* Tarjeta destacada (solo Administrador): sigue el tema activo.
+   Modo claro: tinte celeste suave con acento lateral. Modo oscuro: degradado oscuro. */
 .kpiCardAdmin {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-color: #334155;
-  color: #ffffff;
+  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+  border-color: #bae6fd;
+  border-left: 4px solid #0ea5e9;
 }
 
 :global([data-theme="dark"]) .kpiCardAdmin {
   background: linear-gradient(135deg, #18181b 0%, #111113 100%);
   border-color: var(--border-color);
+  border-left: 4px solid #38bdf8;
 }
 
 .kpiHeader {
@@ -123,7 +126,7 @@
 }
 
 .kpiCardAdmin .kpiHeader {
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .kpiValue {
@@ -133,6 +136,10 @@
 }
 
 .kpiCardAdmin .kpiValue {
+  color: #0284c7;
+}
+
+:global([data-theme="dark"]) .kpiCardAdmin .kpiValue {
   color: #38bdf8;
 }
 
