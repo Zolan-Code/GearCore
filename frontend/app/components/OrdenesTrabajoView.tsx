@@ -249,6 +249,15 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   const [horasInput, setHorasInput] = useState<string>('');
   const [comentarioHoras, setComentarioHoras] = useState<string>('');
   const [guardandoTecnico, setGuardandoTecnico] = useState(false);
+  const [guardadoOk, setGuardadoOk] = useState(false);
+
+  // Cambios del modal técnico aún no enviados al servidor (diagnóstico, trabajo, fotos u horas)
+  const hayCambiosSinGuardar =
+    !!selectedOT &&
+    (editDiagnostico !== (selectedOT.diagnostico || '') ||
+      editTrabajo !== (selectedOT.trabajoRealizado || '') ||
+      JSON.stringify(editFotos) !== JSON.stringify(selectedOT.fotosDiagnostico || []) ||
+      (parseFloat(horasInput) || 0) > 0);
 
   // Modal WhatsApp
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
@@ -605,40 +614,47 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
   }
 
   // Guardar Técnico (SCRUM-13, 19)
+  // Envía al servidor diagnóstico, trabajo, fotos y horas pendientes, y sincroniza el formulario
+  async function guardarCambiosTecnicos() {
+    if (!selectedOT) return;
+    await actualizarOTMutation.mutateAsync({
+      otId: selectedOT.id,
+      data: {
+        diagnostico: editDiagnostico,
+        trabajoRealizado: editTrabajo,
+        fotosDiagnostico: editFotos,
+      },
+    });
+
+    // Si se ingresaron horas
+    if (horasInput && parseFloat(horasInput) > 0) {
+      await registrarHorasMutation.mutateAsync({
+        otId: selectedOT.id,
+        horas: parseFloat(horasInput),
+        comentario: comentarioHoras || undefined,
+      });
+      setHorasInput('');
+      setComentarioHoras('');
+    }
+
+    // El registro de horas agrega una nota a la bitácora en el servidor: recargar y sincronizar
+    const finalOT = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
+    if (finalOT) {
+      setSelectedOT(finalOT);
+      setEditDiagnostico(finalOT.diagnostico || '');
+      setEditTrabajo(finalOT.trabajoRealizado || '');
+      setEditFotos(finalOT.fotosDiagnostico || []);
+    }
+  }
+
+  // Botón "Guardar Cambios": guarda y deja el modal abierto con una confirmación breve
   async function handleGuardarTecnico() {
     if (!selectedOT) return;
     try {
       setGuardandoTecnico(true);
-      await actualizarOTMutation.mutateAsync({
-        otId: selectedOT.id,
-        data: {
-          diagnostico: editDiagnostico,
-          trabajoRealizado: editTrabajo,
-          fotosDiagnostico: editFotos,
-        },
-      });
-
-      // Si se ingresaron horas
-      if (horasInput && parseFloat(horasInput) > 0) {
-        await registrarHorasMutation.mutateAsync({
-          otId: selectedOT.id,
-          horas: parseFloat(horasInput),
-          comentario: comentarioHoras || undefined,
-        });
-        setHorasInput('');
-        setComentarioHoras('');
-      }
-
-      const finalOT = await fetchWithAuth<OrdenTrabajo>(`/ordenes-trabajo/${selectedOT.id}`);
-      if (finalOT) {
-        setSelectedOT(finalOT);
-      }
-      setShowGestionModal(false);
-      setDialogo({
-        tipo: 'success',
-        titulo: 'Diagnóstico Guardado',
-        mensaje: 'Se actualizaron el diagnóstico técnico, la bitácora y las horas registradas exitosamente.',
-      });
+      await guardarCambiosTecnicos();
+      setGuardadoOk(true);
+      setTimeout(() => setGuardadoOk(false), 2500);
     } catch (err: any) {
       setDialogo({
         tipo: 'error',
@@ -648,6 +664,37 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
     } finally {
       setGuardandoTecnico(false);
     }
+  }
+
+  // Botón de avance de estado: guarda primero lo pendiente para no perder lo escrito
+  async function handleGuardarYAvanzar(otId: string, siguiente: EstadoOT) {
+    if (hayCambiosSinGuardar) {
+      try {
+        setGuardandoTecnico(true);
+        await guardarCambiosTecnicos();
+      } catch (err: any) {
+        setDialogo({
+          tipo: 'error',
+          titulo: 'No se pudo guardar antes de avanzar',
+          mensaje: err.message || 'Los cambios no se guardaron y el estado no se modificó.',
+        });
+        return;
+      } finally {
+        setGuardandoTecnico(false);
+      }
+    }
+    await handleCambiarEstado(otId, siguiente);
+  }
+
+  // Cerrar el modal avisando si hay cambios sin guardar
+  function cerrarGestionModal() {
+    if (
+      hayCambiosSinGuardar &&
+      !window.confirm('Tienes cambios sin guardar (diagnóstico, trabajo realizado u horas). ¿Cerrar y descartarlos?')
+    ) {
+      return;
+    }
+    setShowGestionModal(false);
   }
 
   // Generar WhatsApp (SCRUM-20)
@@ -1681,7 +1728,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 <button
                   type="button"
                   className={styles.closeBtn}
-                  onClick={() => setShowGestionModal(false)}
+                  onClick={cerrarGestionModal}
                   title="Cerrar modal"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1806,7 +1853,7 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           <span>Horas-Hombre</span>
                           {Number(otActual.horasHombre) > 0 && (
                             <span className={styles.horasAccumulatedBadge} title="Horas acumuladas en esta orden">
-                              {otActual.horasHombre}h
+                              {otActual.horasHombre} h acumuladas
                             </span>
                           )}
                         </label>
@@ -1850,6 +1897,9 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                           onChange={(e) => setComentarioHoras(e.target.value)}
                         />
                       </div>
+                      <p className={styles.horasAyuda}>
+                        Las horas se suman al total al presionar «Guardar Cambios» o al avanzar de estado.
+                      </p>
                     </div>
 
                     {/* Diagnóstico Técnico */}
@@ -2620,9 +2670,13 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                     <button
                       type="button"
                       className={styles.btnNextStep}
-                      disabled={actualizandoEstadoId === otActual.id}
-                      onClick={() => handleCambiarEstado(otActual.id, pasoSiguiente.siguiente)}
-                      title={`Avanzar al siguiente estado: ${pasoSiguiente.label}`}
+                      disabled={actualizandoEstadoId === otActual.id || guardandoTecnico}
+                      onClick={() => handleGuardarYAvanzar(otActual.id, pasoSiguiente.siguiente)}
+                      title={
+                        hayCambiosSinGuardar
+                          ? `Guarda los cambios pendientes y avanza: ${pasoSiguiente.label}`
+                          : `Avanzar al siguiente estado: ${pasoSiguiente.label}`
+                      }
                     >
                       {actualizandoEstadoId === otActual.id ? (
                         <>
@@ -2654,6 +2708,12 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
                 </div>
 
                 <div className={styles.modalFooterActionsWrapper}>
+                  {guardadoOk && !hayCambiosSinGuardar ? (
+                    <span className={styles.estadoGuardadoOk} role="status">✓ Cambios guardados</span>
+                  ) : hayCambiosSinGuardar ? (
+                    <span className={styles.estadoSinGuardar} role="status">● Cambios sin guardar</span>
+                  ) : null}
+
                   {userRole !== 'MECANICO' && (
                     <button
                       type="button"
