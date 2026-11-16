@@ -87,6 +87,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipSearchRef = useRef(false);
   const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  const vehicleSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Búsqueda predictiva de cliente en modal Nuevo Vehículo
   const [clienteSearchModal, setClienteSearchModal] = useState('');
@@ -308,6 +309,10 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
     setSearchTerm(vehiculo.patente);
     setLoadingHistory(true);
 
+    setTimeout(() => {
+      vehicleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
     try {
       const [vehiculoDetalle, historial] = await Promise.all([
         fetchWithAuth<Vehiculo>(`/vehiculos/${vehiculo.id}`),
@@ -447,8 +452,243 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
 
   return (
     <div className={styles.container}>
+      {/* Encabezado y Descripción del Módulo */}
+      <div className={styles.headerSection}>
+        <div>
+          <h2 className={styles.headerTitle}>
+            <span>Gestión de Clientes y Vehículos</span>
+            {fetchingClientes && !loadingClientes && (
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '10px' }}>
+                Actualizando...
+              </span>
+            )}
+          </h2>
+          <p className={styles.headerSubtitle}>
+            Directorio de clientes, registro y consulta técnica de vehículos con historial de órdenes
+          </p>
+        </div>
+      </div>
+
+      {/* Directorio de Clientes Registrados */}
+      <div className={styles.clientsHeaderSection}>
+        <div>
+          <h4 className={styles.clientsSectionTitle}>
+            <span>Directorio de Clientes Registrados</span>
+            <span className={styles.historyCountBadge}>{clientes.length} Clientes</span>
+            {fetchingClientes && !loadingClientes && (
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
+                Actualizando...
+              </span>
+            )}
+          </h4>
+          <p className={styles.clientsSectionSubtitle}>
+            Fichas de clientes, historial de vehículos asociados y datos de contacto directo
+          </p>
+        </div>
+      </div>
+
+      <DataTable<Cliente>
+        data={clientes}
+        keyExtractor={(c) => c.id}
+        storageKey="clientes-table-layout"
+        searchPlaceholder="Buscar por cliente, RUT, teléfono o correo..."
+        loading={loadingClientes}
+        loadingMessage="Cargando directorio de clientes..."
+        error={errorClientes ? errClientes : null}
+        errorMessage={`Error al cargar clientes: ${(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}`}
+        onRetry={() => refetchClientes()}
+        emptyMessage="No se encontraron clientes registrados con los criterios seleccionados."
+        onRowClick={(c) => handleOpenClienteModal(c.id)}
+        renderCard={(c) => {
+          const vehiculosCount = c._count?.vehiculos ?? c.vehiculos?.length ?? 0;
+          return (
+            <div
+              key={c.id}
+              className={styles.clientCard}
+              onClick={() => handleOpenClienteModal(c.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleOpenClienteModal(c.id);
+                }
+              }}
+            >
+              {/* Header: Nombre y RUT */}
+              <div className={styles.clientCardHeader}>
+                <div className={styles.clientCardHeaderLeft}>
+                  <h4 className={styles.clientCardName}>{c.nombre}</h4>
+                </div>
+                <span className={styles.rutBadge}>{c.rut}</span>
+              </div>
+
+              {/* Contacto: Teléfono clicable y Correo */}
+              <div className={styles.clientCardContact}>
+                {c.telefono ? (
+                  <a
+                    href={`tel:${c.telefono}`}
+                    className={styles.clientPhoneLink}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Llamar directamente al cliente"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    <span>{c.telefono}</span>
+                  </a>
+                ) : (
+                  <span className={styles.clientNoContact}>Sin teléfono</span>
+                )}
+
+                {c.email && (
+                  <span className={styles.clientEmailText} title={c.email}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <span>{c.email}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Footer: Contador de Vehículos y enlace */}
+              <div className={styles.clientCardFooter}>
+                <span className={styles.vehicleCountPill}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
+                    <circle cx="7" cy="17" r="2" />
+                    <path d="M9 17h6" />
+                    <circle cx="17" cy="17" r="2" />
+                  </svg>
+                  <span>{vehiculosCount} {vehiculosCount === 1 ? 'vehículo' : 'vehículos'}</span>
+                </span>
+
+                <span className={styles.clientCardVerMas}>
+                  Ver ficha
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          );
+        }}
+        actions={
+          userRole !== 'MECANICO' ? (
+            <button
+              type="button"
+              className={styles.btnTablePrimary}
+              style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
+              onClick={() => {
+                setClienteError(null);
+                setClienteSuccess(null);
+                setShowModalCliente(true);
+              }}
+              title="Registrar un nuevo cliente en el sistema"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Nuevo Cliente</span>
+            </button>
+          ) : null
+        }
+        columns={[
+          {
+            id: 'nombre',
+            accessor: 'nombre',
+            header: 'Nombre',
+            cell: (c) => (
+              <button
+                type="button"
+                className={styles.clientLinkBtn}
+                data-row-click="true"
+                onClick={() => handleOpenClienteModal(c.id)}
+                title="Ver ficha y vehículos del cliente"
+              >
+                {c.nombre}
+              </button>
+            ),
+          },
+          {
+            id: 'rut',
+            accessor: 'rut',
+            header: 'RUT',
+            cell: (c) => <span className={styles.rutBadge}>{c.rut}</span>,
+          },
+          {
+            id: 'telefono',
+            accessor: 'telefono',
+            header: 'Teléfono',
+            cell: (c) => c.telefono || '—',
+            filterFn: (c, q) => (c.telefono || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'email',
+            accessor: 'email',
+            header: 'Correo Electrónico',
+            cell: (c) => c.email || '—',
+            filterFn: (c, q) => (c.email || '').toLowerCase().includes(q),
+          },
+          {
+            id: 'vehiculos',
+            header: 'Vehículos',
+            sortable: true,
+            sortFn: (a, b) =>
+              (a._count?.vehiculos ?? a.vehiculos?.length ?? 0) -
+              (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
+            cell: (c) => (
+              <span className={styles.vehicleCountPill} title="Vehículos registrados del cliente">
+                {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
+              </span>
+            ),
+            filterFn: (c, q) => {
+              const count = String(c._count?.vehiculos ?? c.vehiculos?.length ?? 0);
+              return count.includes(q);
+            },
+          },
+          {
+            id: 'acciones',
+            header: 'Acciones',
+            align: 'right',
+            sortable: false,
+            filterable: false,
+            cell: (c) => (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                <button
+                  type="button"
+                  className={styles.clientActionBtn}
+                  data-row-click="true"
+                  onClick={() => handleOpenClienteModal(c.id)}
+                  title="Ver ficha completa y vehículos"
+                >
+                  Ver Ficha
+                </button>
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      {/* Consulta y Gestión de Vehículos */}
+      <div className={styles.vehiclesHeaderSection}>
+        <div>
+          <h4 className={styles.clientsSectionTitle}>
+            <span>Consulta y Gestión de Vehículos</span>
+            {selectedVehiculo && (
+              <span className={styles.historyCountBadge}>{selectedVehiculo.patente}</span>
+            )}
+          </h4>
+          <p className={styles.clientsSectionSubtitle}>
+            Búsqueda por patente con autocompletado, ficha técnica automotriz e historial de órdenes de trabajo
+          </p>
+        </div>
+      </div>
+
       {/* Barra de Búsqueda y Acciones */}
-      <div className={styles.toolbar}>
+      <div className={styles.toolbar} ref={vehicleSectionRef}>
         <div className={styles.searchWrapper} ref={searchWrapperRef}>
           <span className={styles.searchIcon}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -710,209 +950,6 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
           </div>
         </div>
       )}
-
-      {/* Directorio de Clientes Registrados */}
-      <div className={styles.clientsHeaderSection}>
-        <div>
-          <h4 className={styles.clientsSectionTitle}>
-            <span>Directorio de Clientes Registrados</span>
-            <span className={styles.historyCountBadge}>{clientes.length} Clientes</span>
-            {fetchingClientes && !loadingClientes && (
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
-                Actualizando...
-              </span>
-            )}
-          </h4>
-          <p className={styles.clientsSectionSubtitle}>
-            Fichas de clientes, historial de vehículos asociados y datos de contacto directo
-          </p>
-        </div>
-      </div>
-
-      <DataTable<Cliente>
-        data={clientes}
-        keyExtractor={(c) => c.id}
-        storageKey="clientes-table-layout"
-        searchPlaceholder="Buscar por cliente, RUT, teléfono o correo..."
-        loading={loadingClientes}
-        loadingMessage="Cargando directorio de clientes..."
-        error={errorClientes ? errClientes : null}
-        errorMessage={`Error al cargar clientes: ${(errClientes as any)?.message || 'No fue posible conectar con el servidor.'}`}
-        onRetry={() => refetchClientes()}
-        emptyMessage="No se encontraron clientes registrados con los criterios seleccionados."
-        onRowClick={(c) => handleOpenClienteModal(c.id)}
-        renderCard={(c) => {
-          const vehiculosCount = c._count?.vehiculos ?? c.vehiculos?.length ?? 0;
-          return (
-            <div
-              key={c.id}
-              className={styles.clientCard}
-              onClick={() => handleOpenClienteModal(c.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleOpenClienteModal(c.id);
-                }
-              }}
-            >
-              {/* Header: Nombre y RUT */}
-              <div className={styles.clientCardHeader}>
-                <div className={styles.clientCardHeaderLeft}>
-                  <h4 className={styles.clientCardName}>{c.nombre}</h4>
-                </div>
-                <span className={styles.rutBadge}>{c.rut}</span>
-              </div>
-
-              {/* Contacto: Teléfono clicable y Correo */}
-              <div className={styles.clientCardContact}>
-                {c.telefono ? (
-                  <a
-                    href={`tel:${c.telefono}`}
-                    className={styles.clientPhoneLink}
-                    onClick={(e) => e.stopPropagation()}
-                    title="Llamar directamente al cliente"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                    <span>{c.telefono}</span>
-                  </a>
-                ) : (
-                  <span className={styles.clientNoContact}>Sin teléfono</span>
-                )}
-
-                {c.email && (
-                  <span className={styles.clientEmailText} title={c.email}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                      <polyline points="22,6 12,13 2,6" />
-                    </svg>
-                    <span>{c.email}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Footer: Contador de Vehículos y enlace */}
-              <div className={styles.clientCardFooter}>
-                <span className={styles.vehicleCountPill}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2" />
-                    <circle cx="7" cy="17" r="2" />
-                    <path d="M9 17h6" />
-                    <circle cx="17" cy="17" r="2" />
-                  </svg>
-                  <span>{vehiculosCount} {vehiculosCount === 1 ? 'vehículo' : 'vehículos'}</span>
-                </span>
-
-                <span className={styles.clientCardVerMas}>
-                  Ver ficha
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </span>
-              </div>
-            </div>
-          );
-        }}
-        actions={
-          userRole !== 'MECANICO' ? (
-            <button
-              type="button"
-              className={styles.btnTablePrimary}
-              style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
-              onClick={() => {
-                setClienteError(null);
-                setClienteSuccess(null);
-                setShowModalCliente(true);
-              }}
-              title="Registrar un nuevo cliente en el sistema"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>Nuevo Cliente</span>
-            </button>
-          ) : null
-        }
-        columns={[
-          {
-            id: 'nombre',
-            accessor: 'nombre',
-            header: 'Nombre',
-            cell: (c) => (
-              <button
-                type="button"
-                className={styles.clientLinkBtn}
-                data-row-click="true"
-                onClick={() => handleOpenClienteModal(c.id)}
-                title="Ver ficha y vehículos del cliente"
-              >
-                {c.nombre}
-              </button>
-            ),
-          },
-          {
-            id: 'rut',
-            accessor: 'rut',
-            header: 'RUT',
-            cell: (c) => <span className={styles.rutBadge}>{c.rut}</span>,
-          },
-          {
-            id: 'telefono',
-            accessor: 'telefono',
-            header: 'Teléfono',
-            cell: (c) => c.telefono || '—',
-            filterFn: (c, q) => (c.telefono || '').toLowerCase().includes(q),
-          },
-          {
-            id: 'email',
-            accessor: 'email',
-            header: 'Correo Electrónico',
-            cell: (c) => c.email || '—',
-            filterFn: (c, q) => (c.email || '').toLowerCase().includes(q),
-          },
-          {
-            id: 'vehiculos',
-            header: 'Vehículos',
-            sortable: true,
-            sortFn: (a, b) =>
-              (a._count?.vehiculos ?? a.vehiculos?.length ?? 0) -
-              (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
-            cell: (c) => (
-              <span className={styles.vehicleCountPill} title="Vehículos registrados del cliente">
-                {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
-              </span>
-            ),
-            filterFn: (c, q) => {
-              const count = String(c._count?.vehiculos ?? c.vehiculos?.length ?? 0);
-              return count.includes(q);
-            },
-          },
-          {
-            id: 'acciones',
-            header: 'Acciones',
-            align: 'right',
-            sortable: false,
-            filterable: false,
-            cell: (c) => (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-                <button
-                  type="button"
-                  className={styles.clientActionBtn}
-                  data-row-click="true"
-                  onClick={() => handleOpenClienteModal(c.id)}
-                  title="Ver ficha completa y vehículos"
-                >
-                  Ver Ficha
-                </button>
-              </div>
-            ),
-          },
-        ]}
-      />
 
       {/* Modal Registrar Cliente */}
       {showModalCliente && (

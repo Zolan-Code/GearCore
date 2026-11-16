@@ -4,6 +4,30 @@
   gap: 24px;
 }
 
+/* Encabezado del Módulo */
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.headerSubtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
 /* Barra superior de herramientas */
 .toolbar {
   display: flex;
@@ -499,6 +523,14 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
+  margin-bottom: -4px;
+}
+
+.vehiclesHeaderSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
   margin-bottom: -4px;
 }
 
@@ -1119,6 +1151,14 @@
    OPTIMIZACIONES MÓVILES (<= 640px)
    ========================================================================== */
 @media (max-width: 640px) {
+  .headerTitle {
+    font-size: 1.25rem !important;
+  }
+
+  .headerSubtitle {
+    font-size: 0.85rem !important;
+  }
+
   .modalOverlay {
     padding: 0 !important;
   }
