@@ -143,7 +143,13 @@ export function useCambiarEstadoOT() {
         body: JSON.stringify({ estado }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (actualizada) => {
+      // Reflejar el nuevo estado en la lista al instante (la recarga completa tarda unos segundos)
+      if (actualizada?.id) {
+        queryClient.setQueryData<OrdenTrabajo[]>(['ordenes-trabajo'], (lista) =>
+          lista?.map((o) => (o.id === actualizada.id ? actualizada : o)),
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['ordenes-trabajo'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },

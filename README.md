@@ -54,7 +54,7 @@ Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller 
    - Soporte nativo de tema oscuro/claro con tokens HSL de alto contraste adaptados para ambientes de poca luz o talleres, persistencia en almacenamiento local y sincronización con preferencias del sistema operativo.
 
 8. **Suite de Pruebas Automatizadas:**
-   - 87 pruebas unitarias e integrales 100% pasando utilizando el test runner nativo de Node.js, cubriendo navegación RBAC, lógica de negocio de OTs, inspección de carrocería, datatable y diseño móvil.
+   - 88 pruebas unitarias e integrales 100% pasando utilizando el test runner nativo de Node.js, cubriendo navegación RBAC, lógica de negocio de OTs, inspección de carrocería, datatable y diseño móvil.
 
 ---
 
@@ -129,7 +129,7 @@ gearcore/
     ├── hooks/                  # Custom hooks desacoplados por dominio (React Query)
     ├── lib/                    # Cliente de Supabase, API helpers y validadores
     ├── public/                 # Assets estáticos, siluetas vehiculares y blueprints
-    ├── test/                   # Suite de 87 pruebas automatizadas (Node.js test runner)
+    ├── test/                   # Suite de 88 pruebas automatizadas (Node.js test runner)
     ├── .env.local.example
     └── package.json
 ```
@@ -254,13 +254,13 @@ npm run dev
 ## Pruebas y Control de Calidad
 
 ### Pruebas Automatizadas del Frontend
-El proyecto cuenta con una suite completa de **87 pruebas unitarias e integrales** que validan el comportamiento de rutas, componentes, inspección de carrocería, RBAC y diseño móvil:
+El proyecto cuenta con una suite completa de **88 pruebas unitarias e integrales** que validan el comportamiento de rutas, componentes, inspección de carrocería, RBAC y diseño móvil:
 
 ```bash
 cd frontend
 npm test
 ```
-> Resultado esperado: `87 pass, 0 fail`
+> Resultado esperado: `88 pass, 0 fail`
 
 ### Verificación Estricta de Tipos y Compilación (TypeScript)
 Para asegurar que no existan errores de tipado o regresiones:

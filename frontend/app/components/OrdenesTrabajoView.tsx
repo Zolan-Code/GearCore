@@ -668,11 +668,14 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
   // Botón de avance de estado: guarda primero lo pendiente para no perder lo escrito
   async function handleGuardarYAvanzar(otId: string, siguiente: EstadoOT) {
+    // Spinner en el botón de avance durante todo el proceso (guardar + cambiar estado)
+    setActualizandoEstadoId(otId);
     if (hayCambiosSinGuardar) {
       try {
         setGuardandoTecnico(true);
         await guardarCambiosTecnicos();
       } catch (err: any) {
+        setActualizandoEstadoId(null);
         setDialogo({
           tipo: 'error',
           titulo: 'No se pudo guardar antes de avanzar',
@@ -1670,7 +1673,9 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
       {/* MODAL UNIFICADO: GESTIÓN DE ORDEN DE TRABAJO (3 PESTAÑAS) */}
       {showGestionModal && selectedOT && (() => {
-        const otActual = ordenes.find((o) => o.id === selectedOT.id) || selectedOT;
+        // selectedOT es la versión más reciente: cada acción del modal la recarga desde el servidor.
+        // (La lista general tarda en refrescarse y mostraba la etapa anterior por unos segundos.)
+        const otActual = selectedOT;
         const estadoObj = ESTADOS_OT.find((e) => e.id === otActual.estado) || ESTADOS_OT[0];
         const estadoIdx = ESTADOS_OT.findIndex((e) => e.id === otActual.estado);
         const pasoSiguiente = getSiguientePaso(otActual.estado);

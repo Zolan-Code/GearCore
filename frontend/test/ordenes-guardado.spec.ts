@@ -28,3 +28,9 @@ test('Modal de OT: no se pierden cambios sin guardar', () => {
   );
   assert.ok(!guardar.includes('setShowGestionModal(false)'), 'Guardar Cambios no debe cerrar el modal');
 });
+
+test('Modal de OT: muestra el estado nuevo apenas cambia (sin esperar la lista)', () => {
+  assert.ok(ordenesTsx.includes('const otActual = selectedOT;'), 'El modal debe usar la OT recargada (selectedOT), no la lista en caché');
+  const hook = fs.readFileSync(path.resolve('hooks/ordenes-trabajo/useOrdenesTrabajo.ts'), 'utf8');
+  assert.ok(hook.includes("setQueryData<OrdenTrabajo[]>(['ordenes-trabajo']"), 'El cambio de estado debe actualizar la lista en caché al instante');
+});
