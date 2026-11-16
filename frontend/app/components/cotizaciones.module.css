@@ -407,6 +407,41 @@
   color: #f43f5e;
 }
 
+.iconBtnWsp {
+  color: #16a34a;
+}
+
+.iconBtnWsp:hover {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #22c55e;
+}
+
+.btnWsp {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #15803d;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.45rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btnWsp:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #166534;
+}
+
+.btnWsp:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .iconBtnSuccess {
   color: #059669;
 }

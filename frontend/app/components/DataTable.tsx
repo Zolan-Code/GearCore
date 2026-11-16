@@ -2,6 +2,31 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './data-table.module.css';
+import {
+  SearchIcon,
+  CloseIcon,
+  ColumnsIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  BookmarkIcon,
+  ResetIcon,
+  SaveDiskIcon,
+  GridIcon,
+  TrashIcon,
+  PlusIcon,
+  DragGripIcon,
+  FilterFunnelIcon,
+  SortArrowsIcon,
+  AlertCircleIcon,
+  EmptySearchIcon,
+} from './DataTableIcons';
+import { parseStoredLayout } from './dataTableStorage';
+import {
+  getColumnId,
+  filterTableData,
+  sortTableData,
+} from './dataTableHelpers';
 
 export interface Column<T> {
   id?: string;
@@ -15,8 +40,8 @@ export interface Column<T> {
   headerClassName?: string;
   style?: React.CSSProperties;
   headerStyle?: React.CSSProperties;
-  sortable?: boolean; // Por defecto true si tiene accessor o id
-  filterable?: boolean; // Por defecto true si tiene accessor o id
+  sortable?: boolean;
+  filterable?: boolean;
   sortFn?: (a: T, b: T) => number;
   filterFn?: (row: T, filterValue: string) => boolean;
 }
@@ -26,15 +51,15 @@ export interface DataTableProps<T> {
   data: T[];
   keyExtractor: (row: T, index: number) => string | number;
   renderCard?: (row: T, index: number) => React.ReactNode;
-  storageKey?: string; // Clave de localStorage para guardar layout
+  storageKey?: string;
   title?: string;
   searchPlaceholder?: string;
   initialQuery?: string;
-  enableSearch?: boolean; // Default true
-  enableColumnVisibility?: boolean; // Default true
-  enablePagination?: boolean; // Default true
-  defaultPageSize?: number; // Default 10
-  pageSizeOptions?: number[]; // Default [10, 25, 50, 100]
+  enableSearch?: boolean;
+  enableColumnVisibility?: boolean;
+  enablePagination?: boolean;
+  defaultPageSize?: number;
+  pageSizeOptions?: number[];
   loading?: boolean;
   loadingMessage?: string;
   error?: Error | null | unknown;
@@ -61,66 +86,7 @@ export interface ColumnPreset {
   createdAt: string;
 }
 
-function parseStoredLayout(
-  raw: string,
-  defaultColumnIds: string[]
-): { presets: ColumnPreset[]; activePresetId: string | null } {
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && Array.isArray(parsed.presets)) {
-      const validPresets: ColumnPreset[] = parsed.presets.map((p: any, idx: number) => {
-        const validOrder = Array.isArray(p.order)
-          ? p.order.filter((id: string) => defaultColumnIds.includes(id))
-          : [];
-        const missing = defaultColumnIds.filter((id) => !validOrder.includes(id));
-        const validVisible = Array.isArray(p.visible)
-          ? p.visible.filter((id: string) => defaultColumnIds.includes(id))
-          : defaultColumnIds;
-        return {
-          id: p.id || `preset-${idx + 1}`,
-          name: p.name || `Vista ${idx + 1}`,
-          order: [...validOrder, ...missing],
-          visible: validVisible.length > 0 ? validVisible : defaultColumnIds,
-          pageSize: p.pageSize,
-          createdAt: p.createdAt || new Date().toISOString(),
-        };
-      });
-      return {
-        presets: validPresets,
-        activePresetId: parsed.activePresetId || null,
-      };
-    } else if (parsed && (parsed.order || parsed.visible)) {
-      const validOrder = Array.isArray(parsed.order)
-        ? parsed.order.filter((id: string) => defaultColumnIds.includes(id))
-        : [];
-      const missing = defaultColumnIds.filter((id) => !validOrder.includes(id));
-      const validVisible = Array.isArray(parsed.visible)
-        ? parsed.visible.filter((id: string) => defaultColumnIds.includes(id))
-        : defaultColumnIds;
-      const legacyPreset: ColumnPreset = {
-        id: 'preset-migrated',
-        name: 'Vista personalizada',
-        order: [...validOrder, ...missing],
-        visible: validVisible.length > 0 ? validVisible : defaultColumnIds,
-        pageSize: parsed.pageSize,
-        createdAt: new Date().toISOString(),
-      };
-      return {
-        presets: [legacyPreset],
-        activePresetId: legacyPreset.id,
-      };
-    }
-  } catch (e) {
-    console.warn('Error al parsear layout de localStorage:', e);
-  }
-  return { presets: [], activePresetId: null };
-}
-
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-function getColumnId<T>(col: Column<T>, idx: number): string {
-  return col.id || col.key || (typeof col.accessor === 'string' ? col.accessor : `col_${idx}`);
-}
 
 export default function DataTable<T>({
   columns,
@@ -152,10 +118,8 @@ export default function DataTable<T>({
   sort: controlledSort,
   onSortChange,
 }: DataTableProps<T>) {
-  // Lista inicial de IDs de columnas
   const defaultColumnIds = useMemo(() => columns.map(getColumnId), [columns]);
 
-  // Estados de layout
   const [columnOrder, setColumnOrder] = useState<string[]>(defaultColumnIds);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultColumnIds);
   const [pageSize, setPageSize] = useState<number>(defaultPageSize);
@@ -163,14 +127,13 @@ export default function DataTable<T>({
   const [query, setQuery] = useState<string>(initialQuery);
 
   useEffect(() => {
-    if (initialQuery !== undefined) {
-      setQuery(initialQuery);
-    }
+    if (initialQuery !== undefined) setQuery(initialQuery);
   }, [initialQuery]);
+
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [internalSort, setInternalSort] = useState<{ id: string; direction: 'asc' | 'desc' } | null>(null);
-  const activeSort = controlledSort !== undefined ? controlledSort : internalSort;
-  const sort = activeSort;
+  const sort = controlledSort !== undefined ? controlledSort : internalSort;
+
   const [layoutSaved, setLayoutSaved] = useState<boolean>(false);
   const [hasSavedLayoutInStorage, setHasSavedLayoutInStorage] = useState<boolean>(false);
   const [presets, setPresets] = useState<ColumnPreset[]>([]);
@@ -178,22 +141,18 @@ export default function DataTable<T>({
   const [isCreatingPreset, setIsCreatingPreset] = useState<boolean>(false);
   const [newPresetName, setNewPresetName] = useState<string>('');
 
-  // Popovers abiertos
   const [showColumnPopover, setShowColumnPopover] = useState<boolean>(false);
   const [showSavedLayoutPopover, setShowSavedLayoutPopover] = useState<boolean>(false);
   const [activeFilterPopover, setActiveFilterPopover] = useState<string | null>(null);
 
-  // Drag state para reordenar columnas
   const [draggedColId, setDraggedColId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
 
-  // Referencias para cerrar popovers al hacer click fuera y control de carga única
   const columnPopoverRef = useRef<HTMLDivElement>(null);
   const savedLayoutPopoverRef = useRef<HTMLDivElement>(null);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
   const lastLoadedKeyRef = useRef<string | null>(null);
 
-  // Cargar layout desde localStorage una sola vez al montar o si cambia storageKey
   useEffect(() => {
     if (!storageKey || typeof window === 'undefined') return;
     if (lastLoadedKeyRef.current === storageKey) return;
@@ -209,7 +168,6 @@ export default function DataTable<T>({
         if (loadedPresets.length > 0) {
           setPresets(loadedPresets);
           setHasSavedLayoutInStorage(true);
-
           if (loadedActiveId) {
             const active = loadedPresets.find((p) => p.id === loadedActiveId);
             if (active) {
@@ -223,41 +181,24 @@ export default function DataTable<T>({
           } else {
             setActivePresetId(null);
           }
-        } else {
-          setPresets([]);
-          setActivePresetId(null);
-          setHasSavedLayoutInStorage(false);
         }
-      } else {
-        setPresets([]);
-        setActivePresetId(null);
-        setHasSavedLayoutInStorage(false);
       }
     } catch (e) {
       console.warn(`Error al leer layout de localStorage (${storageKey}):`, e);
     }
   }, [storageKey, defaultColumnIds, pageSizeOptions]);
 
-  // Cerrar popovers al hacer click fuera
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        columnPopoverRef.current &&
-        !columnPopoverRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      if (columnPopoverRef.current && !columnPopoverRef.current.contains(target)) {
         setShowColumnPopover(false);
       }
-      if (
-        savedLayoutPopoverRef.current &&
-        !savedLayoutPopoverRef.current.contains(e.target as Node)
-      ) {
+      if (savedLayoutPopoverRef.current && !savedLayoutPopoverRef.current.contains(target)) {
         setShowSavedLayoutPopover(false);
         setIsCreatingPreset(false);
       }
-      if (
-        filterPopoverRef.current &&
-        !filterPopoverRef.current.contains(e.target as Node)
-      ) {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(target)) {
         setActiveFilterPopover(null);
       }
     }
@@ -265,19 +206,16 @@ export default function DataTable<T>({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Preset actualmente activo
   const activePreset = useMemo(
     () => presets.find((p) => p.id === activePresetId) || null,
     [presets, activePresetId]
   );
 
-  // Detectar si el layout ha sido modificado respecto al predeterminado
   const isModifiedFromDefault =
     columnOrder.some((id, index) => id !== defaultColumnIds[index]) ||
     visibleColumns.length !== defaultColumnIds.length ||
     visibleColumns.some((id) => !defaultColumnIds.includes(id));
 
-  // Detectar si el preset activo tiene modificaciones pendientes sin guardar
   const isActivePresetModified = activePreset
     ? columnOrder.some((id, idx) => id !== activePreset.order[idx]) ||
       visibleColumns.length !== activePreset.visible.length ||
@@ -285,20 +223,16 @@ export default function DataTable<T>({
       (activePreset.pageSize && pageSize !== activePreset.pageSize)
     : false;
 
-  // Estado modificado global
   const isLayoutDirty = activePreset ? isActivePresetModified : isModifiedFromDefault;
 
-  // Guardar layout en localStorage (permite nombre personalizado)
   function saveLayout(customName?: string) {
     if (!storageKey || typeof window === 'undefined') return;
     try {
       let updatedPresets: ColumnPreset[];
       let targetActiveId: string;
-
       const trimmedName = customName?.trim();
 
       if (activePreset && !trimmedName) {
-        // Actualizar preset activo existente
         targetActiveId = activePreset.id;
         updatedPresets = presets.map((p) =>
           p.id === activePreset.id
@@ -306,7 +240,6 @@ export default function DataTable<T>({
             : p
         );
       } else {
-        // Crear un nuevo preset
         targetActiveId = `preset-${Date.now()}`;
         const newPreset: ColumnPreset = {
           id: targetActiveId,
@@ -340,7 +273,6 @@ export default function DataTable<T>({
     }
   }
 
-  // Activar un preset existente
   function applyPreset(preset: ColumnPreset) {
     setColumnOrder(preset.order);
     setVisibleColumns(preset.visible);
@@ -367,7 +299,6 @@ export default function DataTable<T>({
     setShowSavedLayoutPopover(false);
   }
 
-  // Activar vista predeterminada inicial
   function applyDefaultPreset() {
     setColumnOrder(defaultColumnIds);
     setVisibleColumns(defaultColumnIds);
@@ -391,7 +322,6 @@ export default function DataTable<T>({
     setShowSavedLayoutPopover(false);
   }
 
-  // Eliminar un preset específico
   function deletePreset(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     const updatedPresets = presets.filter((p) => p.id !== id);
@@ -411,11 +341,10 @@ export default function DataTable<T>({
           window.localStorage.removeItem(storageKey);
           setHasSavedLayoutInStorage(false);
         } else {
-          const payload = {
-            presets: updatedPresets,
-            activePresetId: nextActiveId,
-          };
-          window.localStorage.setItem(storageKey, JSON.stringify(payload));
+          window.localStorage.setItem(
+            storageKey,
+            JSON.stringify({ presets: updatedPresets, activePresetId: nextActiveId })
+          );
         }
       } catch (e) {
         console.warn(`Error al eliminar preset en localStorage:`, e);
@@ -423,7 +352,6 @@ export default function DataTable<T>({
     }
   }
 
-  // Restablecer layout predeterminado (elimina todas las vistas y vuelve al inicio)
   function resetLayout() {
     if (storageKey && typeof window !== 'undefined') {
       window.localStorage.removeItem(storageKey);
@@ -448,15 +376,13 @@ export default function DataTable<T>({
     setActiveFilterPopover(null);
   }
 
-  // Toggle visibilidad de columna
   function toggleColumn(id: string) {
-    if (visibleColumns.includes(id) && visibleColumns.length <= 1) return; // Mantener al menos una columna
+    if (visibleColumns.includes(id) && visibleColumns.length <= 1) return;
     setVisibleColumns((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   }
 
-  // Mover columna arriba / abajo en el popover
   function moveColumn(id: string, direction: 'up' | 'down') {
     const idx = columnOrder.indexOf(id);
     if (idx === -1) return;
@@ -469,16 +395,13 @@ export default function DataTable<T>({
     setColumnOrder(next);
   }
 
-  // Drag & drop nativo de encabezados de columnas
   function handleDragStart(colId: string) {
     setDraggedColId(colId);
   }
 
   function handleDragOver(e: React.DragEvent, colId: string) {
     e.preventDefault();
-    if (colId !== dragOverColId) {
-      setDragOverColId(colId);
-    }
+    if (colId !== dragOverColId) setDragOverColId(colId);
   }
 
   function handleDrop(targetColId: string) {
@@ -500,7 +423,6 @@ export default function DataTable<T>({
     setDragOverColId(null);
   }
 
-  // Manejo de ordenamiento (asc <-> desc)
   function handleSort(id: string) {
     const nextDirection: 'asc' | 'desc' =
       sort?.id === id && sort.direction === 'asc' ? 'desc' : 'asc';
@@ -513,7 +435,6 @@ export default function DataTable<T>({
     setPage(1);
   }
 
-  // Columnas visibles y ordenadas
   const orderedVisibleColumns = useMemo(() => {
     return columnOrder
       .filter((id) => visibleColumns.includes(id))
@@ -524,90 +445,16 @@ export default function DataTable<T>({
       .filter(Boolean) as (Column<T> & { resolvedId: string })[];
   }, [columnOrder, visibleColumns, columns]);
 
-  // Filtrado y búsqueda
-  const filteredData = useMemo(() => {
-    if (!data) return [];
-    return data.filter((row) => {
-      // 1. Filtro global por query
-      if (query.trim()) {
-        const q = query.toLowerCase().trim();
-        const matchesQuery = columns.some((col, idx) => {
-          const colId = getColumnId(col, idx);
-          if (col.accessor) {
-            const val = row[col.accessor];
-            if (val != null && String(val).toLowerCase().includes(q)) return true;
-          }
-          if (col.filterFn) {
-            return col.filterFn(row, q);
-          }
-          // Fallback a propiedades string del objeto
-          const rawRow = row as Record<string, any>;
-          if (rawRow[colId] != null && String(rawRow[colId]).toLowerCase().includes(q)) {
-            return true;
-          }
-          return false;
-        });
-        if (!matchesQuery) return false;
-      }
+  const filteredData = useMemo(
+    () => filterTableData(data, query, filters, columns),
+    [data, query, filters, columns]
+  );
 
-      // 2. Filtros específicos por columna
-      for (const [colId, filterVal] of Object.entries(filters)) {
-        if (!filterVal || !filterVal.trim()) continue;
-        const valTrimmed = filterVal.toLowerCase().trim();
-        const col = columns.find((c, idx) => getColumnId(c, idx) === colId);
-        if (!col) continue;
+  const sortedData = useMemo(
+    () => sortTableData(filteredData, sort, columns, !!onSortChange),
+    [filteredData, sort, columns, onSortChange]
+  );
 
-        if (col.filterFn) {
-          if (!col.filterFn(row, valTrimmed)) return false;
-        } else if (col.accessor) {
-          const val = row[col.accessor];
-          if (val == null || !String(val).toLowerCase().includes(valTrimmed)) return false;
-        } else {
-          const rawRow = row as Record<string, any>;
-          if (
-            rawRow[colId] == null ||
-            !String(rawRow[colId]).toLowerCase().includes(valTrimmed)
-          ) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    });
-  }, [data, query, filters, columns]);
-
-  // Ordenamiento
-  const sortedData = useMemo(() => {
-    // Si el ordenamiento se maneja en backend vía onSortChange, se omite el reordenamiento local
-    if (onSortChange || !activeSort) return filteredData;
-    const col = columns.find((c, idx) => getColumnId(c, idx) === activeSort.id);
-    if (!col) return filteredData;
-
-    return [...filteredData].sort((a, b) => {
-      if (col.sortFn) {
-        const res = col.sortFn(a, b);
-        return activeSort.direction === 'asc' ? res : -res;
-      }
-      if (col.accessor) {
-        const valA = a[col.accessor];
-        const valB = b[col.accessor];
-        if (valA == null && valB == null) return 0;
-        if (valA == null) return 1;
-        if (valB == null) return -1;
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return activeSort.direction === 'asc' ? valA - valB : valB - valA;
-        }
-        const strA = String(valA);
-        const strB = String(valB);
-        const cmp = strA.localeCompare(strB, 'es', { sensitivity: 'base' });
-        return activeSort.direction === 'asc' ? cmp : -cmp;
-      }
-      return 0;
-    });
-  }, [filteredData, activeSort, columns, onSortChange]);
-
-  // Paginación
   const totalRows = sortedData.length;
   const totalPages = enablePagination ? Math.max(1, Math.ceil(totalRows / pageSize)) : 1;
   const currentPage = Math.min(page, totalPages);
@@ -623,17 +470,13 @@ export default function DataTable<T>({
 
   return (
     <div className={`${styles.wrapper} ${renderCard ? styles.wrapperWithCards : ''} ${className}`}>
-      {/* BARRA SUPERIOR DE HERRAMIENTAS (TOOLBAR) */}
+      {/* TOOLBAR */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarTop}>
-          {/* Búsqueda global */}
           {enableSearch && (
             <div className={styles.searchBox}>
               <span className={styles.searchIcon}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
+                <SearchIcon />
               </span>
               <input
                 type="text"
@@ -655,18 +498,13 @@ export default function DataTable<T>({
                   className={styles.searchClearBtn}
                   title="Limpiar búsqueda"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <CloseIcon />
                 </button>
               )}
             </div>
           )}
 
-          {/* Acciones de la barra (Columnas, Guardar Layout, Reset, Acciones externas) */}
           <div className={styles.toolbarActions}>
-            {/* Popover de Columnas */}
             {enableColumnVisibility && (
               <div className={`${styles.popoverWrapper} ${styles.desktopOnlyToolbarItem}`} ref={columnPopoverRef}>
                 <button
@@ -675,21 +513,9 @@ export default function DataTable<T>({
                   className={styles.btnAction}
                   title="Configurar visibilidad y orden de columnas"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="4" y1="21" x2="4" y2="14" />
-                    <line x1="4" y1="10" x2="4" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12" y2="3" />
-                    <line x1="20" y1="21" x2="20" y2="16" />
-                    <line x1="20" y1="12" x2="20" y2="3" />
-                    <line x1="1" y1="14" x2="7" y2="14" />
-                    <line x1="9" y1="8" x2="15" y2="8" />
-                    <line x1="17" y1="16" x2="23" y2="16" />
-                  </svg>
+                  <ColumnsIcon />
                   <span>Columnas ({visibleColumns.length}/{columns.length})</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <ChevronDownIcon />
                 </button>
 
                 {showColumnPopover && (
@@ -705,16 +531,12 @@ export default function DataTable<T>({
                       {columnOrder.map((colId, idx) => {
                         const col = columns.find((c, i) => getColumnId(c, i) === colId);
                         if (!col) return null;
-                        const isVisible = visibleColumns.includes(colId);
-                        const isFirst = idx === 0;
-                        const isLast = idx === columnOrder.length - 1;
-
                         return (
                           <div key={colId} className={styles.columnItem}>
                             <label className={styles.columnItemLabel}>
                               <input
                                 type="checkbox"
-                                checked={isVisible}
+                                checked={visibleColumns.includes(colId)}
                                 onChange={() => toggleColumn(colId)}
                                 className={styles.columnCheckbox}
                               />
@@ -724,7 +546,7 @@ export default function DataTable<T>({
                             <div className={styles.columnItemOrderBtns}>
                               <button
                                 type="button"
-                                disabled={isFirst}
+                                disabled={idx === 0}
                                 onClick={() => moveColumn(colId, 'up')}
                                 className={styles.columnOrderBtn}
                                 title="Mover columna arriba"
@@ -733,7 +555,7 @@ export default function DataTable<T>({
                               </button>
                               <button
                                 type="button"
-                                disabled={isLast}
+                                disabled={idx === columnOrder.length - 1}
                                 onClick={() => moveColumn(colId, 'down')}
                                 className={styles.columnOrderBtn}
                                 title="Mover columna abajo"
@@ -747,15 +569,8 @@ export default function DataTable<T>({
                     </div>
 
                     <div className={styles.popoverFooter}>
-                      <button
-                        type="button"
-                        onClick={resetLayout}
-                        className={styles.btnResetLayout}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="1 4 1 10 7 10" />
-                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                        </svg>
+                      <button type="button" onClick={resetLayout} className={styles.btnResetLayout}>
+                        <ResetIcon />
                         Restablecer vista inicial
                       </button>
                     </div>
@@ -764,7 +579,6 @@ export default function DataTable<T>({
               </div>
             )}
 
-            {/* Menú de Vistas Personalizadas (Presets de Columnas) */}
             {storageKey && (
               <div className={`${styles.popoverWrapper} ${styles.desktopOnlyToolbarItem}`} ref={savedLayoutPopoverRef}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -781,9 +595,7 @@ export default function DataTable<T>({
                     title="Vistas de columnas personalizadas con nombre"
                     aria-expanded={showSavedLayoutPopover}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
+                    <BookmarkIcon />
                     <span>
                       {layoutSaved
                         ? '¡Vista guardada!'
@@ -801,16 +613,10 @@ export default function DataTable<T>({
                             ? 'Vista activa con cambios pendientes'
                             : 'Vista personalizada activa'
                         }
-                        style={
-                          isActivePresetModified
-                            ? { backgroundColor: '#f59e0b' }
-                            : undefined
-                        }
+                        style={isActivePresetModified ? { backgroundColor: '#f59e0b' } : undefined}
                       />
                     )}
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    <ChevronDownIcon size={11} />
                   </button>
 
                   {(activePreset || isLayoutDirty) && (
@@ -821,10 +627,7 @@ export default function DataTable<T>({
                       title="Volver a la vista predeterminada"
                       aria-label="Vista predeterminada"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="1 4 1 10 7 10" />
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                      </svg>
+                      <ResetIcon size={14} />
                     </button>
                   )}
                 </div>
@@ -839,7 +642,6 @@ export default function DataTable<T>({
                     </div>
 
                     <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {/* Alerta de cambios no guardados en la vista activa */}
                       {activePreset && isActivePresetModified && (
                         <div
                           style={{
@@ -861,18 +663,13 @@ export default function DataTable<T>({
                             className={`${styles.btnAction} ${styles.btnActionSuccess}`}
                             style={{ height: '28px', fontSize: '11.5px', justifyContent: 'center', width: '100%' }}
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                              <polyline points="17 21 17 13 7 13 7 21" />
-                            </svg>
+                            <SaveDiskIcon />
                             Guardar cambios en esta vista
                           </button>
                         </div>
                       )}
 
-                      {/* Lista de presets */}
                       <div className={styles.presetList}>
-                        {/* 1. Vista Predeterminada */}
                         <div
                           className={`${styles.presetItem} ${
                             !activePreset && !isModifiedFromDefault ? styles.presetItemActive : ''
@@ -882,11 +679,7 @@ export default function DataTable<T>({
                           tabIndex={0}
                         >
                           <div className={styles.presetItemLeft}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                              <line x1="3" y1="9" x2="21" y2="9" />
-                              <line x1="9" y1="21" x2="9" y2="9" />
-                            </svg>
+                            <GridIcon />
                             <div className={styles.presetInfo}>
                               <span className={styles.presetName}>Vista predeterminada</span>
                               <span className={styles.presetMeta}>
@@ -899,7 +692,6 @@ export default function DataTable<T>({
                           )}
                         </div>
 
-                        {/* 2. Presets Guardados */}
                         {presets.map((preset) => {
                           const isCurrent = activePreset?.id === preset.id;
                           return (
@@ -911,9 +703,7 @@ export default function DataTable<T>({
                               tabIndex={0}
                             >
                               <div className={styles.presetItemLeft}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                                </svg>
+                                <BookmarkIcon />
                                 <div className={styles.presetInfo}>
                                   <span className={styles.presetName} title={preset.name}>
                                     {preset.name}
@@ -925,9 +715,7 @@ export default function DataTable<T>({
                               </div>
 
                               <div className={styles.presetActionsRight}>
-                                {isCurrent && (
-                                  <span className={styles.presetActiveBadge}>Activa</span>
-                                )}
+                                {isCurrent && <span className={styles.presetActiveBadge}>Activa</span>}
                                 <button
                                   type="button"
                                   className={styles.presetDeleteBtn}
@@ -935,10 +723,7 @@ export default function DataTable<T>({
                                   title={`Eliminar vista "${preset.name}"`}
                                   aria-label={`Eliminar vista ${preset.name}`}
                                 >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6" />
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                  </svg>
+                                  <TrashIcon />
                                 </button>
                               </div>
                             </div>
@@ -946,7 +731,6 @@ export default function DataTable<T>({
                         })}
                       </div>
 
-                      {/* Sección para crear nueva vista con nombre */}
                       <div className={styles.presetCreateBox}>
                         {isCreatingPreset ? (
                           <form
@@ -976,10 +760,7 @@ export default function DataTable<T>({
                               >
                                 Cancelar
                               </button>
-                              <button
-                                type="submit"
-                                className={styles.btnPresetSave}
-                              >
+                              <button type="submit" className={styles.btnPresetSave}>
                                 Guardar
                               </button>
                             </div>
@@ -993,10 +774,7 @@ export default function DataTable<T>({
                             }}
                             className={styles.btnCreatePresetTrigger}
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
+                            <PlusIcon />
                             Guardar vista actual con nombre
                           </button>
                         )}
@@ -1010,10 +788,7 @@ export default function DataTable<T>({
                         className={styles.btnResetLayout}
                         title="Borrar todas las vistas guardadas y volver al origen"
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="1 4 1 10 7 10" />
-                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                        </svg>
+                        <ResetIcon />
                         Restablecer todo
                       </button>
                     </div>
@@ -1022,12 +797,10 @@ export default function DataTable<T>({
               </div>
             )}
 
-            {/* Acciones adicionales provistas por la vista */}
             {actions}
           </div>
         </div>
 
-        {/* Indicador de filtros activos */}
         {hasActiveFilters && (
           <div className={styles.activeFiltersRow}>
             <span>
@@ -1043,10 +816,7 @@ export default function DataTable<T>({
               }}
               className={styles.btnClearAll}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <CloseIcon size={12} />
               Limpiar búsqueda y filtros
             </button>
           </div>
@@ -1062,10 +832,6 @@ export default function DataTable<T>({
                 const colId = col.resolvedId;
                 const isSortable = col.sortable !== false && (!!col.accessor || !!col.sortFn);
                 const isFilterable = col.filterable !== false && (!!col.accessor || !!col.filterFn);
-                const alignStyle: React.CSSProperties = col.align ? { textAlign: col.align } : {};
-                const widthStyle: React.CSSProperties = col.width ? { width: col.width } : {};
-                const isDragging = draggedColId === colId;
-                const isDragOver = dragOverColId === colId;
                 const activeFilterValue = filters[colId] || '';
                 const isFilterActive = !!activeFilterValue.trim();
 
@@ -1076,27 +842,20 @@ export default function DataTable<T>({
                     onDragStart={() => handleDragStart(colId)}
                     onDragOver={(e) => handleDragOver(e, colId)}
                     onDrop={() => handleDrop(colId)}
-                    className={`${styles.th} ${col.headerClassName || ''} ${isDragging ? styles.thDragging : ''} ${isDragOver ? styles.thDragOver : ''}`}
-                    style={{ ...alignStyle, ...widthStyle, ...col.headerStyle }}
+                    className={`${styles.th} ${col.headerClassName || ''} ${
+                      draggedColId === colId ? styles.thDragging : ''
+                    } ${dragOverColId === colId ? styles.thDragOver : ''}`}
+                    style={{
+                      ...(col.align ? { textAlign: col.align } : {}),
+                      ...(col.width ? { width: col.width } : {}),
+                      ...col.headerStyle,
+                    }}
                   >
                     <div className={styles.thContent}>
-                      {/* Drag handle */}
-                      <span
-                        className={styles.dragHandle}
-                        title="Arrastra para reordenar columna"
-                        aria-label="Arrastrar columna"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="9" cy="5" r="1" />
-                          <circle cx="9" cy="12" r="1" />
-                          <circle cx="9" cy="19" r="1" />
-                          <circle cx="15" cy="5" r="1" />
-                          <circle cx="15" cy="12" r="1" />
-                          <circle cx="15" cy="19" r="1" />
-                        </svg>
+                      <span className={styles.dragHandle} title="Arrastra para reordenar columna" aria-label="Arrastrar columna">
+                        <DragGripIcon />
                       </span>
 
-                      {/* Botón de Filtro por columna */}
                       {isFilterable && (
                         <div
                           className={styles.headerFilterWrapper}
@@ -1112,16 +871,11 @@ export default function DataTable<T>({
                             title={`Filtrar por ${typeof col.header === 'string' ? col.header : colId}`}
                             aria-label={`Filtrar ${colId}`}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill={isFilterActive ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                            </svg>
+                            <FilterFunnelIcon active={isFilterActive} />
                           </button>
 
                           {activeFilterPopover === colId && (
-                            <div
-                              className={styles.headerFilterPopover}
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className={styles.headerFilterPopover} onClick={(e) => e.stopPropagation()}>
                               <div className={styles.headerFilterHeader}>
                                 <span>Filtrar {typeof col.header === 'string' ? col.header : colId}</span>
                                 {isFilterActive && (
@@ -1158,26 +912,16 @@ export default function DataTable<T>({
                         </div>
                       )}
 
-                      {/* Nombre y Ordenamiento */}
                       {isSortable ? (
                         <button
                           type="button"
                           onClick={() => handleSort(colId)}
-                          className={`${styles.btnSort} ${activeSort?.id === colId ? styles.btnSortActive : ''}`}
+                          className={`${styles.btnSort} ${sort?.id === colId ? styles.btnSortActive : ''}`}
                           title={`Ordenar por ${typeof col.header === 'string' ? col.header : colId}`}
                           aria-label={`Ordenar por ${typeof col.header === 'string' ? col.header : colId}`}
                         >
                           <span>{col.header}</span>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path
-                              d="m7 9 5-5 5 5"
-                              stroke={activeSort?.id === colId ? (activeSort.direction === 'asc' ? 'currentColor' : '#cbd5e1') : '#94a3b8'}
-                            />
-                            <path
-                              d="m7 15 5 5 5-5"
-                              stroke={activeSort?.id === colId ? (activeSort.direction === 'desc' ? 'currentColor' : '#cbd5e1') : '#94a3b8'}
-                            />
-                          </svg>
+                          <SortArrowsIcon direction={sort?.id === colId ? sort.direction : null} />
                         </button>
                       ) : (
                         <span>{col.header}</span>
@@ -1194,11 +938,7 @@ export default function DataTable<T>({
                 <td colSpan={colSpan} className={styles.stateCell}>
                   <div className={styles.errorAlert}>
                     <div className={styles.errorText}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
+                      <AlertCircleIcon />
                       <span>{errorMessage || (error as any)?.message || 'Error al cargar los registros.'}</span>
                     </div>
                     {onRetry && (
@@ -1233,12 +973,7 @@ export default function DataTable<T>({
               <tr>
                 <td colSpan={colSpan} className={styles.stateCell}>
                   <div className={styles.emptyWrapper}>
-                    {emptyIcon || (
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                    )}
+                    {emptyIcon || <EmptySearchIcon />}
                     <span>{hasActiveFilters ? 'No se encontraron resultados para los filtros aplicados.' : emptyMessage}</span>
                     {hasActiveFilters && (
                       <button
@@ -1297,9 +1032,7 @@ export default function DataTable<T>({
                     }
                   >
                     {orderedVisibleColumns.map((col, colIdx) => {
-                      const alignStyle: React.CSSProperties = col.align ? { textAlign: col.align } : {};
                       let cellContent: React.ReactNode = null;
-
                       if (col.cell) {
                         cellContent = col.cell(row, globalIdx);
                       } else if (col.accessor) {
@@ -1311,7 +1044,10 @@ export default function DataTable<T>({
                         <td
                           key={col.resolvedId || colIdx}
                           className={`${styles.td} ${col.className || ''}`}
-                          style={{ ...alignStyle, ...col.style }}
+                          style={{
+                            ...(col.align ? { textAlign: col.align } : {}),
+                            ...col.style,
+                          }}
                         >
                           {cellContent}
                         </td>
@@ -1325,7 +1061,7 @@ export default function DataTable<T>({
         </table>
       </div>
 
-      {/* VISTA MÓVIL EN TARJETAS (SOLO SI SE PROVEE renderCard) */}
+      {/* VISTA MÓVIL EN TARJETAS */}
       {renderCard && (
         <div className={styles.mobileCardsContainer}>
           {loading ? (
@@ -1340,12 +1076,7 @@ export default function DataTable<T>({
             </div>
           ) : totalRows === 0 ? (
             <div className={styles.emptyWrapper} style={{ padding: '32px 16px' }}>
-              {emptyIcon || (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              )}
+              {emptyIcon || <EmptySearchIcon />}
               <span>{hasActiveFilters ? 'No se encontraron resultados para los filtros aplicados.' : emptyMessage}</span>
               {hasActiveFilters && (
                 <button
@@ -1411,9 +1142,7 @@ export default function DataTable<T>({
                 title="Página anterior"
                 aria-label="Página anterior"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
+                <ChevronLeftIcon />
               </button>
 
               <span className={styles.pageNavLabel}>
@@ -1428,16 +1157,13 @@ export default function DataTable<T>({
                 title="Página siguiente"
                 aria-label="Página siguiente"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                <ChevronRightIcon />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Footer personalizado opcional */}
       {footer && <div className={styles.tableCustomFooter}>{footer}</div>}
     </div>
   );

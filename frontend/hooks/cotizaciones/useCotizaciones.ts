@@ -282,11 +282,16 @@ export function useCambiarEstadoCotizacion() {
   });
 }
 
-// Utilidad: Descargar PDF de cotización autenticado
-export async function descargarCotizacionPdf(cotizacionId: string, numero: number): Promise<void> {
-  const blob = await fetchBlobWithAuth(`/cotizaciones/${cotizacionId}/pdf`, {
+// Utilidad: Obtener Blob del PDF de cotización autenticado
+export async function obtenerCotizacionPdfBlob(cotizacionId: string): Promise<Blob> {
+  return fetchBlobWithAuth(`/cotizaciones/${cotizacionId}/pdf`, {
     method: 'GET',
   });
+}
+
+// Utilidad: Descargar PDF de cotización autenticado
+export async function descargarCotizacionPdf(cotizacionId: string, numero: number): Promise<void> {
+  const blob = await obtenerCotizacionPdfBlob(cotizacionId);
 
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -297,4 +302,9 @@ export async function descargarCotizacionPdf(cotizacionId: string, numero: numbe
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 }
+
+export {
+  limpiarTelefonoWhatsApp,
+  generarMensajeCotizacionWhatsApp,
+} from './cotizacionHelpers';
 
