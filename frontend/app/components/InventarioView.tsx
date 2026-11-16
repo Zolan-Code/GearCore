@@ -640,7 +640,7 @@ export default function InventarioView({ userRole }: Props) {
             <span className={styles.kpiLabel}>
               {esInsumo ? 'Total Insumos' : esRepuesto ? 'Total Repuestos' : 'Total General'}
             </span>
-            <span className={styles.kpiValue}>{kpis.totalRepuestos} items</span>
+            <span className={styles.kpiValue}>{kpis.totalRepuestos} {kpis.totalRepuestos === 1 ? "ítem" : "ítems"}</span>
           </div>
         </div>
 

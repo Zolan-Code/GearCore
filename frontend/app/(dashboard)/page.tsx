@@ -265,7 +265,7 @@ export default function DashboardPage() {
             </div>
             <div className={styles.statRow}>
               <span>Insumos de Taller</span>
-              <strong>{totalInsumos} insumos</strong>
+              <strong>{totalInsumos} {totalInsumos === 1 ? "insumo" : "insumos"}</strong>
             </div>
             <div className={styles.statRow}>
               <span>Nivel de Stock</span>

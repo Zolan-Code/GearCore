@@ -4,7 +4,7 @@
 
 GearCore es una plataforma integral de nivel empresarial diseñada para modernizar, digitalizar y optimizar la gestión operativa, técnica y administrativa de talleres mecánicos automotrices. Cubre el ciclo de vida completo del servicio: recepción de vehículos con inspección visual e interactiva de daños en carrocería, decodificación automatizada de VIN, órdenes de trabajo (OT) con seguimiento de estados y horas-hombre, inventario dual de repuestos e insumos de taller, cotizaciones formales con cálculo de rentabilidad según principios SOLID, generación de documentos PDF profesionales, notificaciones directas por WhatsApp, trazabilidad inmutable por auditoría y un panel de Business Intelligence (BI) con reportes ejecutivos.
 
-Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller mediante tablets o smartphones, con soporte de modo oscuro de alto contraste y arquitectura PWA offline-first.
+Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller mediante tablets o smartphones, con soporte de modo oscuro de alto contraste y preparado para instalarse como PWA.
 
 ---
 
@@ -14,7 +14,7 @@ Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller 
 | :--- | :--- | :--- | :--- |
 | **Panel de Control (Dashboard)** | `/` | BI / Métricas | Business Intelligence en tiempo real: KPIs operativos y financieros, embudo de OTs, órdenes y repuestos recientes interactivos, filtros por fecha y descarga de **informe ejecutivo en PDF**. |
 | **Clientes y Vehículos** | `/clientes` | RF-01 a RF-05 | Directorio de clientes con validación estricta de RUT chileno, catálogo de vehículos por patente, kilometraje, ficha técnica y **decodificador automático de VIN (NHTSA vPIC)**. |
-| **Órdenes de Trabajo (OT)** | `/ordenes` | RF-06 a RF-12 | Ciclo de vida de 7 estados (`RECIBIDO` a `ENTREGADO`), **inspección interactiva de daños en carrocería en 4 perspectivas**, imputación de horas-hombre, asignación diferenciada de repuestos vs insumos de taller y mensajería editable por **WhatsApp**. |
+| **Órdenes de Trabajo (OT)** | `/ordenes` | RF-06 a RF-12 | Ciclo de vida de 7 estados (`RECIBIDO` a `ENTREGADO`), **inspección interactiva de daños en carrocería en 5 perspectivas**, imputación de horas-hombre, asignación diferenciada de repuestos vs insumos de taller y mensajería editable por **WhatsApp**. |
 | **Inventario de Repuestos e Insumos** | `/inventario` | RF-13 a RF-17 | Catálogo dual categorizado (Repuestos vs. Insumos de taller), control de SKU, precio de costo/venta, kardex de movimientos atómicos, alertas críticas de stock mínimo y personalización de vistas. |
 | **Cotizaciones y Facturación** | `/cotizaciones` | RF-18 a RF-21 | Emisión de presupuestos, snapshots inmutables de precios, cálculo de margen neto y rentabilidad mediante estrategia SOLID, emisión de **PDF oficial membretado con PDFKit** y conversión directa a OT. |
 | **Usuarios y Roles** | `/usuarios` | RF-26 a RF-29 | Control de acceso basado en roles (RBAC: Administrador, Asesor de Servicios, Mecánico), auditoría de accesos y switch interactivo ON/OFF para activación/bloqueo instantáneo de cuentas. |
@@ -54,7 +54,7 @@ Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller 
    - Soporte nativo de tema oscuro/claro con tokens HSL de alto contraste adaptados para ambientes de poca luz o talleres, persistencia en almacenamiento local y sincronización con preferencias del sistema operativo.
 
 8. **Suite de Pruebas Automatizadas:**
-   - 86 pruebas unitarias e integrales 100% pasando utilizando el test runner nativo de Node.js, cubriendo navegación RBAC, lógica de negocio de OTs, inspección de carrocería, datatable y diseño móvil.
+   - 85 pruebas unitarias e integrales 100% pasando utilizando el test runner nativo de Node.js, cubriendo navegación RBAC, lógica de negocio de OTs, inspección de carrocería, datatable y diseño móvil.
 
 ---
 
@@ -67,7 +67,7 @@ Diseñado bajo un enfoque **Mobile-First**, ergonómico para uso rudo en taller 
 - **Navegación y Layout**: Barra superior global (AppBar) con reloj/fecha dinámica, estado de red, usuario activo y centro de notificaciones; Sidebar colapsable en modo Rail (72px) con tooltips flotantes.
 - **Inspección Visual**: Siluetas automotrices vectoriales y marcado de coordenadas de impacto en tiempo real.
 - **Estilos**: CSS Modules puros de alto rendimiento, micro-animaciones fluidas sin frameworks pesados, tokenización semántica y modo oscuro (`[data-theme="dark"]`).
-- **PWA**: Preparado para instalación progresiva y modo offline (IndexedDB + Service Workers).
+- **PWA**: Manifest para instalación progresiva. El modo offline (IndexedDB + Service Workers) queda como trabajo futuro.
 
 ### Backend
 - **Framework**: [NestJS 10](https://nestjs.com/) (Node.js) con TypeScript y arquitectura modular basada en principios SOLID.
@@ -129,7 +129,7 @@ gearcore/
     ├── hooks/                  # Custom hooks desacoplados por dominio (React Query)
     ├── lib/                    # Cliente de Supabase, API helpers y validadores
     ├── public/                 # Assets estáticos, siluetas vehiculares y blueprints
-    ├── test/                   # Suite de 86 pruebas automatizadas (Node.js test runner)
+    ├── test/                   # Suite de 85 pruebas automatizadas (Node.js test runner)
     ├── .env.local.example
     └── package.json
 ```
@@ -254,13 +254,13 @@ npm run dev
 ## Pruebas y Control de Calidad
 
 ### Pruebas Automatizadas del Frontend
-El proyecto cuenta con una suite completa de **86 pruebas unitarias e integrales** que validan el comportamiento de rutas, componentes, inspección de carrocería, RBAC y diseño móvil:
+El proyecto cuenta con una suite completa de **85 pruebas unitarias e integrales** que validan el comportamiento de rutas, componentes, inspección de carrocería, RBAC y diseño móvil:
 
 ```bash
 cd frontend
 npm test
 ```
-> Resultado esperado: `86 pass, 0 fail`
+> Resultado esperado: `85 pass, 0 fail`
 
 ### Verificación Estricta de Tipos y Compilación (TypeScript)
 Para asegurar que no existan errores de tipado o regresiones:

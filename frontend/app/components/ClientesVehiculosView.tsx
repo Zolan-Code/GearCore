@@ -474,7 +474,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
         <div>
           <h4 className={styles.clientsSectionTitle}>
             <span>Directorio de Clientes Registrados</span>
-            <span className={styles.historyCountBadge}>{clientes.length} Clientes</span>
+            <span className={styles.historyCountBadge}>{clientes.length} {clientes.length === 1 ? "Cliente" : "Clientes"}</span>
             {fetchingClientes && !loadingClientes && (
               <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginLeft: '8px' }}>
                 Actualizando...
@@ -641,7 +641,8 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               (b._count?.vehiculos ?? b.vehiculos?.length ?? 0),
             cell: (c) => (
               <span className={styles.vehicleCountPill} title="Vehículos registrados del cliente">
-                {c._count?.vehiculos ?? c.vehiculos?.length ?? 0} vehículos
+                {(c._count?.vehiculos ?? c.vehiculos?.length ?? 0)}{" "}
+                {(c._count?.vehiculos ?? c.vehiculos?.length ?? 0) === 1 ? "vehículo" : "vehículos"}
               </span>
             ),
             filterFn: (c, q) => {
@@ -845,7 +846,7 @@ export default function ClientesVehiculosView({ userRole }: ClientesVehiculosPro
               <h4>
                 <span>Historial de Órdenes de Trabajo</span>
                 <span className={styles.historyCountBadge}>
-                  {otHistory.length} órdenes registradas
+                  {otHistory.length} {otHistory.length === 1 ? "orden registrada" : "órdenes registradas"}
                 </span>
               </h4>
             </div>
