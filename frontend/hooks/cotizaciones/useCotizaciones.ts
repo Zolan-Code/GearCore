@@ -154,7 +154,10 @@ export interface CambiarEstadoCotizacionPayload {
 }
 
 // Hook: Listar cotizaciones con filtros
-export function useCotizaciones(filtros?: { estado?: EstadoCotizacion; ordenTrabajoId?: string }) {
+export function useCotizaciones(
+  filtros?: { estado?: EstadoCotizacion; ordenTrabajoId?: string },
+  opciones?: { enabled?: boolean },
+) {
   const queryParams = new URLSearchParams();
   if (filtros?.estado) queryParams.set('estado', filtros.estado);
   if (filtros?.ordenTrabajoId) queryParams.set('ordenTrabajoId', filtros.ordenTrabajoId);
@@ -168,6 +171,7 @@ export function useCotizaciones(filtros?: { estado?: EstadoCotizacion; ordenTrab
       return data || [];
     },
     placeholderData: keepPreviousData,
+    enabled: opciones?.enabled ?? true,
   });
 }
 

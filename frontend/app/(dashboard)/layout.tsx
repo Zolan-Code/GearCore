@@ -120,9 +120,11 @@ function prefetchNavRoute(queryClient: QueryClient, href: string) {
         queryFn: () => fetchWithAuth('/usuarios'),
       });
     } else if (href.startsWith('/auditoria')) {
+      // Misma URL y queryKey que useAuditoria con el orden por defecto de AuditoriaView
       queryClient.prefetchQuery({
-        queryKey: ['auditoria'],
-        queryFn: () => fetchWithAuth('/usuarios/auditoria'),
+        queryKey: ['auditoria', 'creadoEn', 'desc', undefined],
+        queryFn: async () =>
+          (await fetchWithAuth('/auditoria?sortBy=creadoEn&sortOrder=desc')) || [],
       });
     } else if (href.startsWith('/perfil')) {
       queryClient.prefetchQuery({
@@ -447,7 +449,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isAuth = !loading && !!user?.id;
   const { data: repuestosData } = useRepuestos();
   const { data: ordenesData = [] } = useOrdenesTrabajo();
-  const { data: cotizacionesData = [] } = useCotizaciones();
+  // El Mecánico no tiene acceso a cotizaciones (403 en el backend): no se consulta para su rol
+  const { data: cotizacionesData = [] } = useCotizaciones(undefined, {
+    enabled: isAuth && user?.rol !== 'MECANICO',
+  });
 
   // Cerrar notificaciones al hacer clic fuera
   useEffect(() => {
