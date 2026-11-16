@@ -133,38 +133,46 @@ export default function CotizacionesView({ userRole }: Props) {
 
   // Manejador: Enviar documento por WhatsApp
   const handleEnviarWhatsApp = async (c: Cotizacion) => {
+    const nombreArchivo = `Cotizacion-${String(c.numero).padStart(5, '0')}.pdf`;
+
+    // 1. Abrir el chat de WhatsApp ANTES de cualquier espera (await).
+    //    Los navegadores solo permiten window.open inmediatamente después del clic;
+    //    si se abre tras descargar el PDF (lento si el servidor está despertando),
+    //    el navegador bloquea la ventana sin avisar.
+    const telefono = limpiarTelefonoWhatsApp(c.ordenTrabajo?.vehiculo?.cliente?.telefono);
+    const mensaje = generarMensajeCotizacionWhatsApp(c);
+    const urlWsp = telefono
+      ? `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
+      : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWsp, '_blank', 'noopener,noreferrer');
+
     try {
       setEnviandoWspId(c.id);
 
-      // 1. Descargar documento PDF automáticamente al equipo
+      // 2. Descargar documento PDF al equipo para adjuntarlo en el chat
       const blob = await obtenerCotizacionPdfBlob(c.id);
-      const nombreArchivo = `Cotizacion-${String(c.numero).padStart(5, '0')}.pdf`;
-
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = nombreArchivo;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      // 2. Abrir chat directo con el cliente en WhatsApp (WhatsApp Web / App nativa)
-      const telefono = limpiarTelefonoWhatsApp(c.ordenTrabajo?.vehiculo?.cliente?.telefono);
-      const mensaje = generarMensajeCotizacionWhatsApp(c);
-
-      const urlWsp = telefono
-        ? `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-        : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
-
-      window.open(urlWsp, '_blank', 'noopener,noreferrer');
+      // Liberar la URL con retraso: revocarla de inmediato puede cancelar la descarga en Safari/Firefox
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 
       // 3. Si la cotización estaba en BORRADOR, ofrecer actualizar estado a ENVIADA
       if (c.estado === 'BORRADOR') {
+        const esMovil =
+          typeof window !== 'undefined' &&
+          window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+        const instruccion = esMovil
+          ? `En el chat, toca el clip 📎 → Documento y elige ${nombreArchivo} desde Descargas.`
+          : `Arrástralo al chat de WhatsApp.`;
         setModalConfirmacion({
           abierto: true,
           titulo: '¿Marcar como Enviada?',
-          mensaje: `Se abrió el chat con el cliente y se descargó ${nombreArchivo}. Arrástralo al chat de WhatsApp. ¿Deseas actualizar su estado a ENVIADA?`,
+          mensaje: `Se abrió el chat con el cliente y se descargó ${nombreArchivo}. ${instruccion} ¿Deseas actualizar su estado a ENVIADA?`,
           tipo: 'GENERICO',
           textoBoton: 'Sí, marcar como ENVIADA',
           onConfirm: async () => {
@@ -181,7 +189,11 @@ export default function CotizacionesView({ userRole }: Props) {
         });
       }
     } catch (err: any) {
-      alert('Error al enviar cotización por WhatsApp: ' + (err.message || 'Error inesperado'));
+      alert(
+        'Se abrió WhatsApp, pero no se pudo descargar el PDF: ' +
+          (err.message || 'Error inesperado') +
+          '. Usa el botón de descarga PDF y adjúntalo manualmente.',
+      );
     } finally {
       setEnviandoWspId(null);
     }
