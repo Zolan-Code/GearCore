@@ -1914,3 +1914,25 @@
 
 
 
+
+/* Aviso bajo el splash cuando la carga inicial tarda (servidor despertando) */
+.splashAviso {
+  margin-top: 28px;
+  padding: 0 16px;
+  max-width: 360px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  animation: splashAvisoEntrada 0.4s ease-out;
+}
+
+@keyframes splashAvisoEntrada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { fetchWithAuth } from '../../lib/api';
 import styles from './inventario.module.css';
 import DataTable from './DataTable';
+import Skeleton from './Skeleton';
 import {
   useRepuestos,
   useCrearRepuesto,
@@ -640,7 +641,13 @@ export default function InventarioView({ userRole }: Props) {
             <span className={styles.kpiLabel}>
               {esInsumo ? 'Total Insumos' : esRepuesto ? 'Total Repuestos' : 'Total General'}
             </span>
-            <span className={styles.kpiValue}>{kpis.totalRepuestos} {kpis.totalRepuestos === 1 ? "ítem" : "ítems"}</span>
+            <span className={styles.kpiValue}>
+              {loadingInventario ? (
+                <Skeleton width={90} height={24} />
+              ) : (
+                <>{kpis.totalRepuestos} {kpis.totalRepuestos === 1 ? "ítem" : "ítems"}</>
+              )}
+            </span>
           </div>
         </div>
 
@@ -655,7 +662,11 @@ export default function InventarioView({ userRole }: Props) {
             <div className={styles.kpiInfo}>
               <span className={styles.kpiLabel}>Valor en Bodega</span>
               <span className={styles.kpiValue}>
-                ${kpis.valorTotalInventario.toLocaleString('es-CL')}
+                {loadingInventario ? (
+                  <Skeleton width={110} height={24} />
+                ) : (
+                  `$${kpis.valorTotalInventario.toLocaleString('es-CL')}`
+                )}
               </span>
             </div>
           </div>
@@ -676,7 +687,7 @@ export default function InventarioView({ userRole }: Props) {
           <div className={styles.kpiInfo}>
             <span className={styles.kpiLabel}>Stock Bajo / Crítico</span>
             <span className={styles.kpiValue} style={{ color: '#d97706' }}>
-              {kpis.totalStockBajo}
+              {loadingInventario ? <Skeleton width={40} height={24} /> : kpis.totalStockBajo}
             </span>
           </div>
         </div>
@@ -696,7 +707,7 @@ export default function InventarioView({ userRole }: Props) {
           <div className={styles.kpiInfo}>
             <span className={styles.kpiLabel}>Agotados (Stock 0)</span>
             <span className={styles.kpiValue} style={{ color: '#dc2626' }}>
-              {kpis.totalAgotados}
+              {loadingInventario ? <Skeleton width={40} height={24} /> : kpis.totalAgotados}
             </span>
           </div>
         </div>

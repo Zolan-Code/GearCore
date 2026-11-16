@@ -336,6 +336,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Si la carga inicial tarda (p. ej. el backend en Render está despertando), se avisa al usuario
+  const [cargaLenta, setCargaLenta] = useState(false);
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setCargaLenta(true), 5000);
+    return () => clearTimeout(timer);
+  }, [loading]);
   const { theme, toggleTheme } = useTheme();
   const activeNavHref = getActiveNavHref(pathname);
 
@@ -603,6 +610,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className={`${styles.kineticWord} ${styles.kineticWordGear}`}>GEAR</span>
           <span className={`${styles.kineticWord} ${styles.kineticWordCore}`}>CORE</span>
         </div>
+        {cargaLenta && (
+          <p className={styles.splashAviso} role="status">
+            Iniciando el servidor, esto puede tardar hasta un minuto…
+          </p>
+        )}
       </div>
     );
   }

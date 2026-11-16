@@ -1,0 +1,31 @@
+/* Bloque genérico de carga (skeleton) con brillo animado.
+   Usa colores propios porque en modo claro --bg-subtle y --bg-hover son iguales
+   y el brillo no se notaría. */
+.skeleton {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeletonBrillo 1.5s infinite ease-in-out;
+}
+
+:global([data-theme="dark"]) .skeleton {
+  background: linear-gradient(90deg, #1c1c20 25%, #2a2a30 50%, #1c1c20 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes skeletonBrillo {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

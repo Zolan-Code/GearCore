@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import styles from './cotizaciones.module.css';
 import DataTable, { Column } from './DataTable';
+import Skeleton from './Skeleton';
 import {
   useCotizaciones,
   useCrearCotizacion,
@@ -372,7 +373,7 @@ export default function CotizacionesView({ userRole }: Props) {
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             </svg>
           </div>
-          <div className={styles.kpiValue}>{totalCotizaciones}</div>
+          <div className={styles.kpiValue}>{isLoading ? <Skeleton width="55%" height={28} /> : totalCotizaciones}</div>
           <div className={styles.kpiDetail}>Total de presupuestos registrados</div>
         </div>
 
@@ -384,7 +385,7 @@ export default function CotizacionesView({ userRole }: Props) {
             </svg>
           </div>
           <div className={styles.kpiValue} style={{ color: '#059669' }}>
-            {aprobadas}
+            {isLoading ? <Skeleton width="55%" height={28} /> : aprobadas}
           </div>
           <div className={styles.kpiDetail}>Listas o en proceso de reparación</div>
         </div>
@@ -397,7 +398,7 @@ export default function CotizacionesView({ userRole }: Props) {
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
           </div>
-          <div className={styles.kpiValue}>{formatoMoneda(montoTotalCobrado)}</div>
+          <div className={styles.kpiValue}>{isLoading ? <Skeleton width="55%" height={28} /> : formatoMoneda(montoTotalCobrado)}</div>
           <div className={styles.kpiDetail}>Facturación total comprometida</div>
         </div>
 
@@ -411,7 +412,7 @@ export default function CotizacionesView({ userRole }: Props) {
                 <polyline points="17 6 23 6 23 12" />
               </svg>
             </div>
-            <div className={styles.kpiValue}>{promedioMargenNeto.toFixed(1)}%</div>
+            <div className={styles.kpiValue}>{isLoading ? <Skeleton width="55%" height={28} /> : `${promedioMargenNeto.toFixed(1)}%`}</div>
             <div className={styles.kpiDetail}>Rentabilidad neta promedio (repuestos + mano de obra)</div>
           </div>
         )}

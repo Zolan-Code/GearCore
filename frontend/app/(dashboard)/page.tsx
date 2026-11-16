@@ -10,6 +10,7 @@ import {
   descargarInformeDashboardPdf,
 } from '../../hooks/dashboard/useDashboardMetricas';
 import { useRepuestos } from '../../hooks/repuestos/useRepuestos';
+import Skeleton from '../components/Skeleton';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function DashboardPage() {
   });
 
   // Inventario en vivo (aprovecha la cache de TanStack Query sin peticiones adicionales)
-  const { data: inventarioData } = useRepuestos();
+  const { data: inventarioData, isLoading: cargandoInventario } = useRepuestos();
   const itemsInventario = inventarioData?.items || [];
   const totalRepuestos = itemsInventario.filter((i) => i.tipo !== 'INSUMO').length;
   const totalInsumos = itemsInventario.filter((i) => i.tipo === 'INSUMO').length;
@@ -37,6 +38,12 @@ export default function DashboardPage() {
   const operaciones = metricas?.operaciones;
   const rankingRepuestos = metricas?.rankingRepuestos || [];
   const productividadMecanicos = metricas?.productividadMecanicos || [];
+
+  // Mientras cargan las métricas se muestra un skeleton en vez de ceros que parecen datos reales
+  const metrica = (contenido: React.ReactNode, ancho = 56) =>
+    isLoading ? <Skeleton width={ancho} height={16} /> : contenido;
+  const metricaInventario = (contenido: React.ReactNode, ancho = 72) =>
+    cargandoInventario ? <Skeleton width={ancho} height={16} /> : contenido;
 
   async function handleDescargarInforme() {
     try {
@@ -140,7 +147,7 @@ export default function DashboardPage() {
       {/* Tarjetas Principales de Resumen (SCRUM-35) */}
       <section className={styles.cardsGrid}>
         {/* Tarjeta 1: Financiera (Solo ADMINISTRADOR) o Turno */}
-        {userRole === 'ADMINISTRADOR' && finanzas ? (
+        {userRole === 'ADMINISTRADOR' && (finanzas || isLoading) ? (
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <h4>Ganancia Bruta (BI)</h4>
@@ -153,20 +160,20 @@ export default function DashboardPage() {
               <div className={styles.statRow}>
                 <span>Margen Neto</span>
                 <strong style={{ color: '#22c55e', fontSize: 16 }}>
-                  {formatearMoneda(finanzas.gananciaBruta)}
+                  {metrica(formatearMoneda(finanzas?.gananciaBruta ?? 0), 90)}
                 </strong>
               </div>
               <div className={styles.statRow}>
                 <span>Facturación Total</span>
-                <strong>{formatearMoneda(finanzas.totalFacturado)}</strong>
+                <strong>{metrica(formatearMoneda(finanzas?.totalFacturado ?? 0), 90)}</strong>
               </div>
               <div className={styles.statRow}>
                 <span>Margen Promedio</span>
-                <strong>{finanzas.margenPromedio}%</strong>
+                <strong>{metrica(`${finanzas?.margenPromedio ?? 0}%`, 44)}</strong>
               </div>
             </div>
             <Link href="/cotizaciones" className={styles.cardAction} style={{ textAlign: 'center', textDecoration: 'none' }}>
-              Ver Cotizaciones ({finanzas.cotizacionesAprobadas})
+              Ver Cotizaciones{finanzas ? ` (${finanzas.cotizacionesAprobadas})` : ''}
             </Link>
           </div>
         ) : (
@@ -181,7 +188,7 @@ export default function DashboardPage() {
             <div className={styles.cardBody}>
               <div className={styles.statRow}>
                 <span>Horas taller invertidas</span>
-                <strong>{operaciones?.horasInvertidasTotal || 0} hrs</strong>
+                <strong>{metrica(`${operaciones?.horasInvertidasTotal || 0} hrs`)}</strong>
               </div>
               <div className={styles.statRow}>
                 <span>Estado actual</span>
@@ -205,16 +212,16 @@ export default function DashboardPage() {
             <div className={styles.statRow}>
               <span>Completadas a tiempo</span>
               <strong style={{ color: '#3b82f6', fontSize: 16 }}>
-                {operaciones?.porcentajeATiempo || 100}%
+                {metrica(`${operaciones?.porcentajeATiempo || 100}%`, 44)}
               </strong>
             </div>
             <div className={styles.statRow}>
               <span>Total Entregadas</span>
-              <strong>{operaciones?.otCompletadasTotal || 0}</strong>
+              <strong>{metrica(operaciones?.otCompletadasTotal || 0, 28)}</strong>
             </div>
             <div className={styles.statRow}>
               <span>Horas Invertidas</span>
-              <strong>{operaciones?.horasInvertidasTotal || 0} hrs</strong>
+              <strong>{metrica(`${operaciones?.horasInvertidasTotal || 0} hrs`)}</strong>
             </div>
           </div>
           <Link href="/ordenes" className={styles.cardAction} style={{ textAlign: 'center', textDecoration: 'none' }}>
@@ -235,12 +242,12 @@ export default function DashboardPage() {
             <div className={styles.statRow}>
               <span>OTs en Curso</span>
               <strong style={{ color: '#f59e0b', fontSize: 16 }}>
-                {operaciones?.ordenesEnProceso || 0}
+                {metrica(operaciones?.ordenesEnProceso || 0, 28)}
               </strong>
             </div>
             <div className={styles.statRow}>
               <span>Total Registradas</span>
-              <strong>{operaciones?.totalOT || 0}</strong>
+              <strong>{metrica(operaciones?.totalOT || 0, 28)}</strong>
             </div>
           </div>
           <Link href="/ordenes" className={styles.cardAction} style={{ textAlign: 'center', textDecoration: 'none' }}>
@@ -261,15 +268,17 @@ export default function DashboardPage() {
           <div className={styles.cardBody}>
             <div className={styles.statRow}>
               <span>Repuestos</span>
-              <strong>{totalRepuestos} artículos</strong>
+              <strong>{metricaInventario(`${totalRepuestos} ${totalRepuestos === 1 ? 'artículo' : 'artículos'}`)}</strong>
             </div>
             <div className={styles.statRow}>
               <span>Insumos de Taller</span>
-              <strong>{totalInsumos} {totalInsumos === 1 ? "insumo" : "insumos"}</strong>
+              <strong>{metricaInventario(`${totalInsumos} ${totalInsumos === 1 ? 'insumo' : 'insumos'}`)}</strong>
             </div>
             <div className={styles.statRow}>
               <span>Nivel de Stock</span>
-              {totalCriticos > 0 ? (
+              {cargandoInventario ? (
+                <Skeleton width={96} height={16} />
+              ) : totalCriticos > 0 ? (
                 <strong style={{ color: '#ef4444' }}>{totalCriticos} en alerta</strong>
               ) : (
                 <strong style={{ color: '#10b981' }}>Niveles Óptimos</strong>
@@ -318,7 +327,9 @@ export default function DashboardPage() {
             return (
               <Link key={step.key} href={`/ordenes?estado=${step.key}`} className={styles.pipelineStep}>
                 <span className={styles.pipelineStepLabel}>{step.label}</span>
-                <span className={styles.pipelineStepCount}>{count}</span>
+                <span className={styles.pipelineStepCount}>
+                  {isLoading ? <Skeleton width={22} height={20} /> : count}
+                </span>
               </Link>
             );
           })}
@@ -334,7 +345,13 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {(!metricas?.ultimasOrdenes || metricas.ultimasOrdenes.length === 0) ? (
+        {isLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0' }} aria-busy="true">
+            {[0, 1, 2].map((n) => (
+              <Skeleton key={n} height={18} />
+            ))}
+          </div>
+        ) : (!metricas?.ultimasOrdenes || metricas.ultimasOrdenes.length === 0) ? (
           <p style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>
             No hay órdenes registradas.
           </p>
@@ -392,7 +409,9 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {rankingRepuestos.length === 0 ? (
+          {isLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0' }} aria-busy="true">{[0, 1, 2].map((n) => <Skeleton key={n} height={18} />)}</div>
+          ) : rankingRepuestos.length === 0 ? (
             <p style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>
               No hay movimientos de repuestos registrados en el periodo seleccionado.
             </p>
@@ -480,7 +499,9 @@ export default function DashboardPage() {
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Taller Activo</span>
           </div>
 
-          {productividadMecanicos.length === 0 ? (
+          {isLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0' }} aria-busy="true">{[0, 1, 2].map((n) => <Skeleton key={n} height={18} />)}</div>
+          ) : productividadMecanicos.length === 0 ? (
             <p style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>
               {userRole === 'MECANICO'
                 ? 'Panel asignado a mecánicos del taller.'
