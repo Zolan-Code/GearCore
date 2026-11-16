@@ -49,6 +49,9 @@ interface Props {
   userId?: string;
 }
 
+// Largo mínimo del diagnóstico técnico para poder enviar la OT a cotizar
+const MIN_CARACTERES_DIAGNOSTICO = 10;
+
 const ESTADOS_OT: { id: EstadoOT; label: string; class: string }[] = [
   { id: 'RECIBIDO', label: 'Recibido', class: styles.statusRecibido },
   { id: 'DIAGNOSTICO', label: 'Diagnóstico', class: styles.statusDiagnostico },
@@ -668,6 +671,32 @@ export default function OrdenesTrabajoView({ userRole, userId }: Props) {
 
   // Botón de avance de estado: guarda primero lo pendiente para no perder lo escrito
   async function handleGuardarYAvanzar(otId: string, siguiente: EstadoOT) {
+    // Validaciones antes de pasar a cotización: la cotización se arma con el
+    // diagnóstico, los repuestos asignados y las horas-hombre de la OT.
+    if (siguiente === 'COTIZACION' && selectedOT) {
+      if (editDiagnostico.trim().length < MIN_CARACTERES_DIAGNOSTICO) {
+        setModalTab('tecnico');
+        setDialogo({
+          tipo: 'error',
+          titulo: 'Falta el diagnóstico técnico',
+          mensaje: `Describe el diagnóstico (al menos ${MIN_CARACTERES_DIAGNOSTICO} caracteres) antes de enviar la OT a cotizar. Es lo que justifica la cotización ante el cliente.`,
+        });
+        return;
+      }
+
+      const cantidadRepuestos = selectedOT.detalleRepuestos?.length || 0;
+      const horasTotales = (Number(selectedOT.horasHombre) || 0) + (parseFloat(horasInput) || 0);
+      if (
+        cantidadRepuestos === 0 &&
+        horasTotales <= 0 &&
+        !window.confirm(
+          'Esta OT no tiene repuestos ni horas registradas, así que la cotización se creará vacía. ¿Enviar a cotizar de todos modos?',
+        )
+      ) {
+        return;
+      }
+    }
+
     // Spinner en el botón de avance durante todo el proceso (guardar + cambiar estado)
     setActualizandoEstadoId(otId);
     if (hayCambiosSinGuardar) {

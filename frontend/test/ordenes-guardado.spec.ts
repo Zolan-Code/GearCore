@@ -34,3 +34,19 @@ test('Modal de OT: muestra el estado nuevo apenas cambia (sin esperar la lista)'
   const hook = fs.readFileSync(path.resolve('hooks/ordenes-trabajo/useOrdenesTrabajo.ts'), 'utf8');
   assert.ok(hook.includes("setQueryData<OrdenTrabajo[]>(['ordenes-trabajo']"), 'El cambio de estado debe actualizar la lista en caché al instante');
 });
+
+test('Modal de OT: validaciones antes de enviar a cotizar', () => {
+  const avanzar = ordenesTsx.slice(
+    ordenesTsx.indexOf('async function handleGuardarYAvanzar'),
+    ordenesTsx.indexOf('function cerrarGestionModal'),
+  );
+  assert.ok(avanzar.includes("siguiente === 'COTIZACION'"), 'Debe validar solo al pasar a COTIZACION');
+  assert.ok(avanzar.includes('MIN_CARACTERES_DIAGNOSTICO'), 'Debe exigir un diagnóstico mínimo');
+  assert.ok(avanzar.includes('Falta el diagnóstico técnico'), 'Debe explicar por qué no avanza');
+  assert.ok(avanzar.includes('repuestos ni horas'), 'Debe advertir si la cotización quedará vacía');
+  // La validación ocurre antes de guardar o cambiar el estado
+  assert.ok(
+    avanzar.indexOf('Falta el diagnóstico técnico') < avanzar.indexOf('setActualizandoEstadoId(otId)'),
+    'La validación debe ejecutarse antes de iniciar el cambio de estado',
+  );
+});
